@@ -65,6 +65,7 @@ public enum Command: String, CaseIterable, Equatable, Identifiable {
     case summonCoCaptain = "Summon Co-Captain"
     case toggleGrid = "Toggle Grid"
     case shareProject = "Share Project"
+    case proSubscription = "Pro Subscription"
     case help = "Help & Documentation"
     
     public var id: String { self.rawValue }
@@ -78,6 +79,7 @@ public enum Command: String, CaseIterable, Equatable, Identifiable {
         case .summonCoCaptain: return "sparkles"
         case .toggleGrid: return "grid"
         case .shareProject: return "square.and.arrow.up"
+        case .proSubscription: return "crown"
         case .help: return "questionmark.circle"
         }
     }

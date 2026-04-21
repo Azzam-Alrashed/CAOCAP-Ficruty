@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var projectStore = ProjectStore(fileName: "onboarding_v1.json")
     @State private var isHomeActive = false
     @State private var homeProjectStore = ProjectStore(fileName: "home_v1.json", initialNodes: HomeProvider.homeNodes)
+    @State private var showingPurchaseSheet = false
     
     var body: some View {
         ZStack {
@@ -36,6 +37,11 @@ struct ContentView: View {
                 }
                 .presentationBackgroundInteraction(.enabled)
         }
+        .sheet(isPresented: $showingPurchaseSheet) {
+            PurchaseView()
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(Color(hex: "050505"))
+        }
         .onAppear {
             setupCommandHandlers()
         }
@@ -46,6 +52,8 @@ struct ContentView: View {
             switch command {
             case .summonCoCaptain:
                 coCaptain.setPresented(true)
+            case .proSubscription:
+                showingPurchaseSheet = true
             default:
                 break
             }
