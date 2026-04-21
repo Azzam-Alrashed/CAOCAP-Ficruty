@@ -1,34 +1,31 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject var commandPalette = CommandPaletteViewModel()
-    @StateObject var coCaptain = CoCaptainViewModel()
-    @AppStorage("hasCompletedOnboarding") var hasCompletedOnboarding: Bool = false
-    @State private var isHomeActive = false
-    @State private var projectStore = ProjectStore(fileName: "onboarding_v2.json", projectName: "Onboarding")
-    @State private var homeProjectStore = ProjectStore(fileName: "home_v2.json", projectName: "Main Workspace", initialNodes: HomeProvider.homeNodes)
+    @State var commandPalette = CommandPaletteViewModel()
+    @State var coCaptain = CoCaptainViewModel()
+    @State private var router = AppRouter()
     @State private var showingPurchaseSheet = false
     @State private var currentScale: CGFloat = 1.0
     
     var body: some View {
         ZStack {
-            if isHomeActive {
+            switch router.currentWorkspace {
+            case .home:
                 // The Home Canvas (Main Navigation Hub)
-                InfiniteCanvasView(store: homeProjectStore, currentScale: $currentScale, onNodeAction: { action in
+                InfiniteCanvasView(store: router.homeStore, currentScale: $currentScale, onNodeAction: { action in
                     if action == "Retry Onboarding" {
                         withAnimation(.spring()) {
-                            isHomeActive = false
+                            router.navigate(to: .onboarding)
                             currentScale = 1.0
                         }
                     }
                 })
                 .id("home_canvas")
-            } else {
-                InfiniteCanvasView(store: projectStore, currentScale: $currentScale, onNodeAction: { action in
+            case .onboarding:
+                InfiniteCanvasView(store: router.onboardingStore, currentScale: $currentScale, onNodeAction: { action in
                     if action == "Go to the Home workspace" {
                         withAnimation(.spring()) {
-                            isHomeActive = true
-                            hasCompletedOnboarding = true
+                            router.navigate(to: .home)
                             currentScale = 1.0
                         }
                     }
@@ -37,7 +34,7 @@ struct ContentView: View {
             }
             
             // HUD Overlay
-            CanvasHUDView(store: isHomeActive ? homeProjectStore : projectStore, viewportScale: currentScale)
+            CanvasHUDView(store: router.activeStore, viewportScale: currentScale)
             
             FloatingCommandButton(onTap: {
                 commandPalette.setPresented(true)
@@ -64,11 +61,8 @@ struct ContentView: View {
         .onAppear {
             setupCommandHandlers()
             
-            // Determine initial view based on onboarding status
-            isHomeActive = hasCompletedOnboarding
-            
             // Sync initial scale
-            currentScale = (isHomeActive ? homeProjectStore : projectStore).viewportScale
+            currentScale = router.activeStore.viewportScale
         }
     }
     

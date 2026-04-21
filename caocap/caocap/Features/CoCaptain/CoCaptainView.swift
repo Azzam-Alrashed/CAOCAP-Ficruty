@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CoCaptainView: View {
-    @ObservedObject var viewModel: CoCaptainViewModel
+    var viewModel: CoCaptainViewModel
     @State private var text: String = ""
     
     var body: some View {

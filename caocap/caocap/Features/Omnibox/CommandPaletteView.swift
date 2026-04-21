@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CommandPaletteView: View {
-    @ObservedObject var viewModel: CommandPaletteViewModel
+    @Bindable var viewModel: CommandPaletteViewModel
     @FocusState private var isFocused: Bool
     
     var body: some View {

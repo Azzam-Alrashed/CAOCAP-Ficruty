@@ -1,14 +1,16 @@
 import SwiftUI
+import Observation
 
-public class CommandPaletteViewModel: ObservableObject {
-    @Published public var query: String = "" {
+@Observable
+public class CommandPaletteViewModel {
+    public var query: String = "" {
         didSet {
             // Reset selection when search changes
             selectedIndex = 0
         }
     }
-    @Published public var isPresented: Bool = false
-    @Published public var selectedIndex: Int = 0
+    public var isPresented: Bool = false
+    public var selectedIndex: Int = 0
     public var commands: [Command] = Command.allCases
     
     public var filteredCommands: [Command] {

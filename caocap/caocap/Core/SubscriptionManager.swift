@@ -1,31 +1,36 @@
 import Foundation
 import StoreKit
+import Observation
 
 @MainActor
-public class SubscriptionManager: ObservableObject {
+@Observable
+public class SubscriptionManager {
     public static let shared = SubscriptionManager()
     
-    @Published public private(set) var products: [Product] = []
-    @Published public private(set) var purchasedProductIDs = Set<String>()
+    public private(set) var products: [Product] = []
+    public private(set) var purchasedProductIDs = Set<String>()
     
     private let productIDs = [
         "com.caocap.pro.monthly",
         "com.caocap.pro.yearly"
     ]
     
-    private var updates: Task<Void, Never>? = nil
-    
-    init() {
-        // Start listening for transactions
-        updates = Task {
-            for await result in Transaction.updates {
-                await handle(transactionResult: result)
-            }
+    private final class TaskCanceller {
+        var task: Task<Void, Never>?
+        deinit {
+            task?.cancel()
         }
     }
     
-    deinit {
-        updates?.cancel()
+    private let updatesCanceller = TaskCanceller()
+    
+    init() {
+        // Start listening for transactions
+        updatesCanceller.task = Task { [weak self] in
+            for await result in Transaction.updates {
+                await self?.handle(transactionResult: result)
+            }
+        }
     }
     
     public func fetchProducts() async {

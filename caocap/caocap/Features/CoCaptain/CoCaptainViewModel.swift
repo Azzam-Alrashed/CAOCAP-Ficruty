@@ -1,8 +1,10 @@
 import SwiftUI
+import Observation
 
-public class CoCaptainViewModel: ObservableObject {
-    @Published public var isPresented: Bool = false
-    @Published public var messages: [String] = ["Hello! I'm your Co-Captain. How can I help you build today?"]
+@Observable
+public class CoCaptainViewModel {
+    public var isPresented: Bool = false
+    public var messages: [String] = ["Hello! I'm your Co-Captain. How can I help you build today?"]
     
     public init() {}
     
