@@ -12,16 +12,16 @@ struct InfiniteCanvasView: View {
     /// The central store managing node data and persistence.
     var store: ProjectStore
     
-    /// Callback triggered when the 'Launch Project' node is tapped.
-    var onLaunchProject: (() -> Void)? = nil
+    /// Callback triggered when a specialized action node is tapped.
+    var onNodeAction: ((String) -> Void)? = nil
     
-    init(store: ProjectStore, currentScale: Binding<CGFloat>, onLaunchProject: (() -> Void)? = nil) {
+    init(store: ProjectStore, currentScale: Binding<CGFloat>, onNodeAction: ((String) -> Void)? = nil) {
         self.store = store
         self._currentScale = currentScale
-        self.onLaunchProject = onLaunchProject
+        self.onNodeAction = onNodeAction
         
         // Onboarding always starts fresh; active projects load saved state.
-        if onLaunchProject != nil {
+        if onNodeAction != nil && store.fileName.contains("onboarding") {
             self._viewport = State(initialValue: ViewportState(offset: .zero, scale: 1.0))
         } else {
             self._viewport = State(initialValue: ViewportState(
@@ -60,8 +60,8 @@ struct InfiniteCanvasView: View {
                                 y: node.position.y + currentOffset.height
                             )
                             .onTapGesture {
-                                if node.title == "Go to the Home workspace" {
-                                    onLaunchProject?()
+                                if node.title == "Go to the Home workspace" || node.title == "Retry Onboarding" {
+                                    onNodeAction?(node.title)
                                 } else {
                                     selectedNode = node
                                 }
@@ -84,7 +84,7 @@ struct InfiniteCanvasView: View {
                                             store.updateNodePosition(
                                                 id: node.id,
                                                 position: CGPoint(x: finalX, y: finalY),
-                                                persist: onLaunchProject == nil
+                                                persist: onNodeAction == nil
                                             )
                                             
                                             nodeDragOffsets[node.id] = nil
@@ -116,7 +116,7 @@ struct InfiniteCanvasView: View {
                             store.updateViewport(
                                 offset: viewport.offset,
                                 scale: viewport.scale,
-                                persist: onLaunchProject == nil
+                                persist: onNodeAction == nil
                             )
                         }
                     }
@@ -135,7 +135,7 @@ struct InfiniteCanvasView: View {
                         store.updateViewport(
                             offset: viewport.offset,
                             scale: viewport.scale,
-                            persist: onLaunchProject == nil
+                            persist: onNodeAction == nil
                         )
                     }
             )
@@ -259,5 +259,5 @@ struct DottedBackground: View {
 }
 
 #Preview {
-    InfiniteCanvasView(store: ProjectStore(), currentScale: .constant(1.0))
+    InfiniteCanvasView(store: ProjectStore(), currentScale: .constant(1.0), onNodeAction: nil)
 }

@@ -35,7 +35,7 @@ public class ProjectStore {
     
     /// Returns the local file URL where project data is stored.
     /// This property also ensures the parent directory exists.
-    private let fileName: String
+    public let fileName: String
     
     private var fileURL: URL {
         let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)

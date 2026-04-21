@@ -35,6 +35,14 @@ public struct HomeProvider {
                 subtitle: "Start a fresh spatial journey.",
                 icon: "plus.circle.fill",
                 theme: .green
+            ),
+            SpatialNode(
+                id: UUID(),
+                position: CGPoint(x: 0, y: 500),
+                title: "Retry Onboarding",
+                subtitle: "Revisit the guided tour and app manifesto.",
+                icon: "graduationcap.fill",
+                theme: .blue
             )
         ]
     }
