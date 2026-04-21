@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject var commandPalette = CommandPaletteViewModel()
+    @StateObject var coCaptain = CoCaptainViewModel()
     
     var body: some View {
         ZStack {
@@ -13,8 +14,29 @@ struct ContentView: View {
             
             CommandPaletteView(viewModel: commandPalette)
         }
+        .sheet(isPresented: $coCaptain.isPresented) {
+            CoCaptainView(viewModel: coCaptain)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground {
+                    Color.white.opacity(0.4)
+                        .background(.ultraThinMaterial)
+                }
+                .presentationBackgroundInteraction(.enabled)
+        }
         .onAppear {
-            // Global keyboard shortcut logic
+            setupCommandHandlers()
+        }
+    }
+    
+    private func setupCommandHandlers() {
+        commandPalette.onExecute = { command in
+            switch command {
+            case .summonCoCaptain:
+                coCaptain.setPresented(true)
+            default:
+                break
+            }
         }
     }
 }

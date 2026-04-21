@@ -16,6 +16,8 @@ public class CommandPaletteViewModel: ObservableObject {
         return commands.filter { $0.title.localizedCaseInsensitiveContains(query) }
     }
     
+    public var onExecute: ((Command) -> Void)?
+    
     public init() {}
     
     public func setPresented(_ presented: Bool) {
@@ -48,7 +50,7 @@ public class CommandPaletteViewModel: ObservableObject {
     
     public func executeCommand(_ command: Command) {
         print("Executing command: \(command.title)")
-        // In a real app, this would trigger actual logic
+        onExecute?(command)
         setPresented(false)
     }
     
@@ -60,6 +62,7 @@ public class CommandPaletteViewModel: ObservableObject {
 public enum Command: String, CaseIterable, Equatable, Identifiable {
     case openFile = "Open File"
     case createNode = "Create New Node"
+    case summonCoCaptain = "Summon Co-Captain"
     case toggleGrid = "Toggle Grid"
     case shareProject = "Share Project"
     case help = "Help & Documentation"
@@ -72,6 +75,7 @@ public enum Command: String, CaseIterable, Equatable, Identifiable {
         switch self {
         case .openFile: return "doc.text.magnifyingglass"
         case .createNode: return "plus.square"
+        case .summonCoCaptain: return "sparkles"
         case .toggleGrid: return "grid"
         case .shareProject: return "square.and.arrow.up"
         case .help: return "questionmark.circle"

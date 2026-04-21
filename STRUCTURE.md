@@ -26,6 +26,9 @@ The functional modules of the application. Each feature should contain its own V
 - **`Omnibox/`**: Navigation and intent-driven command palette.
   - `CommandPaletteView.swift`: The UI for the palette.
   - `CommandPaletteViewModel.swift`: Search logic and command execution.
+- **`CoCaptain/`**: The AI agentic interface.
+  - `CoCaptainView.swift`: The glassmorphic chat UI.
+  - `CoCaptainViewModel.swift`: Message handling and agent state.
 - **`Overlays/`**: Heads-up display and floating interface elements.
   - `FloatingCommandButton.swift`: The AI-sparkle button.
 
