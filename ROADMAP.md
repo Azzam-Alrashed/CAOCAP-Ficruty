@@ -15,7 +15,10 @@ This document outlines the strategic milestones for Ficruty (caocap). Our goal i
 - [x] **Native Code Editors**: Syntax-highlighted `CodeEditorView` (HTML/CSS/JS) + SRS Zen Mode editor.
 - [x] **Live Compilation Engine**: Real-time HTML+CSS+JS merging into WebView, debounced at 500ms.
 - [x] **Monetization (Pro)**: StoreKit 2 subscription integration.
-- [ ] **Onboarding Polish**: A guided first-run experience that teaches the spatial paradigm.
+- [/] **Onboarding Polish**: A guided first-run experience.
+    - [ ] **Tutorial Manifest**: Create a `tutorial.json` with pre-placed learning nodes.
+    - [ ] **Spatial Markers**: Implement animated "Focus Rings" to highlight UI elements during steps.
+    - [ ] **Gesture Gates**: Add logic that unlocks the next step only after a specific pan/zoom/long-press action.
 - [ ] **App Store Compliance**: Privacy Policy, Terms of Service, data usage declarations.
 - [ ] **TestFlight Beta**: Internal and external beta distribution.
 
@@ -24,7 +27,11 @@ This document outlines the strategic milestones for Ficruty (caocap). Our goal i
 ## 🧠 Phase 1: Agentic Intelligence *(Next)*
 *Focus: Integrating AI deeply into the spatial workflow to enable true "Vibe Coding."*
 
-- [ ] **CoCaptain UI**: A polished, floating AI sidekick panel anchored to the canvas.
+- [/] **CoCaptain UI**: A polished, floating AI sidekick panel.
+    - [ ] **Glassmorphic Sheet**: Implement a `.ultraThinMaterial` sliding panel with spring physics.
+    - [ ] **Context Engine**: Logic to "harvest" the current canvas state (nodes, connections) as AI context.
+    - [ ] **Streaming UI**: Build a token-aware text view that handles real-time code generation.
+    - [ ] **The "Apply" Flow**: A UI interaction to inject AI-generated code directly into a selected node.
 - [ ] **Code Generation**: CoCaptain generates HTML/CSS/JS from a natural language SRS node.
 - [ ] **Context Awareness**: The agent reads the entire spatial graph (node types, content, connections) to provide grounded suggestions.
 - [ ] **Intent-to-Node**: Transform a natural language prompt directly into a fully wired node graph.
@@ -35,7 +42,10 @@ This document outlines the strategic milestones for Ficruty (caocap). Our goal i
 ## ⚡ Phase 2: The Code Runtime
 *Focus: Making the spatial canvas a true execution environment.*
 
-- [ ] **Omnibox Canvas Search**: Search-to-fly functionality to navigate large multi-node canvases.
+- [ ] **Omnibox Canvas Search**: Search-to-fly functionality.
+    - [ ] **Search Index**: Real-time indexing of node titles and text content.
+    - [ ] **Flight Engine**: Implementation of smooth viewport interpolation (Ease-In-Out) to "fly" to a node.
+    - [ ] **Focus Zoom**: Automatically adjust zoom level to fit the targeted node perfectly.
 - [ ] **Multi-Project Templates**: A library of starter templates (games, landing pages, tools) selectable from the Omnibox.
 - [ ] **Spatial Debugger**: Visualize variable flow, console output, and execution state as canvas overlays.
 - [ ] **Console Node**: A dedicated node type that captures `console.log` output from the WebView in real-time.
