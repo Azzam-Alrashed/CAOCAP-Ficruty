@@ -13,21 +13,46 @@ struct SRSEditorView: View {
     }
     
     var body: some View {
-        NavigationView {
-            TextEditor(text: $text)
-                .font(.body)
-                .padding()
-                .navigationTitle(node.title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") {
-                            store.updateNodeTextContent(id: node.id, text: text, persist: true)
-                            dismiss()
-                        }
-                        .fontWeight(.semibold)
-                    }
+        VStack(spacing: 0) {
+            // Custom Top Bar
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text.fill")
+                        .foregroundColor(node.theme.color)
+                    Text("Requirements")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
                 }
+                .padding(.leading, 20)
+                
+                Spacer()
+                
+                Button(action: {
+                    store.updateNodeTextContent(id: node.id, text: text, persist: true)
+                    dismiss()
+                }) {
+                    Text("Done")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                        .background(node.theme.color)
+                        .cornerRadius(16)
+                }
+                .padding(.trailing, 20)
+            }
+            .frame(height: 56)
+            .background(Color(uiColor: .systemBackground))
+            
+            Divider()
+            
+            // Notion-like Editor
+            TextEditor(text: $text)
+                .font(.system(size: 17, weight: .regular, design: .serif))
+                .lineSpacing(8)
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
         }
+        .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     }
 }

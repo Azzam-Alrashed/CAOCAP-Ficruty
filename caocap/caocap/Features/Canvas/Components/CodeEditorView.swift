@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct CodeEditorView: View {
     let node: SpatialNode
@@ -14,110 +13,51 @@ struct CodeEditorView: View {
     }
     
     var body: some View {
-        NavigationView {
-            NativeTextView(text: $text)
-                .navigationTitle(node.title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") {
-                            store.updateNodeTextContent(id: node.id, text: text, persist: true)
-                            dismiss()
-                        }
-                        .fontWeight(.semibold)
-                    }
+        VStack(spacing: 0) {
+            // Custom Top Bar (VS Code Tab Style)
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "curlybraces")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("\(node.title.lowercased()).\(fileExtension(for: node.title))")
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(red: 0.12, green: 0.12, blue: 0.12)) // Dark active tab color
+                
+                Spacer()
+                
+                Button(action: {
+                    store.updateNodeTextContent(id: node.id, text: text, persist: true)
+                    dismiss()
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.gray)
+                        .padding(8)
+                        .background(Circle().fill(Color.white.opacity(0.1)))
+                }
+                .padding(.trailing, 16)
+            }
+            .frame(height: 48)
+            .background(Color(red: 0.15, green: 0.15, blue: 0.15)) // Header background
+            
+            // The Main Editor
+            LineNumberedTextView(text: $text)
+                .edgesIgnoringSafeArea(.bottom)
         }
-    }
-}
-
-struct NativeTextView: UIViewRepresentable {
-    @Binding var text: String
-    
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.delegate = context.coordinator
-        textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.autocapitalizationType = .none
-        textView.autocorrectionType = .no
-        textView.smartQuotesType = .no
-        textView.smartDashesType = .no
-        textView.backgroundColor = .systemBackground
-        textView.textColor = .label
-        return textView
-    }
-    
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.text != text {
-            uiView.text = text
-            context.coordinator.highlight(textView: uiView)
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        .background(Color(red: 0.12, green: 0.12, blue: 0.12).ignoresSafeArea())
     }
     
-    class Coordinator: NSObject, UITextViewDelegate {
-        var parent: NativeTextView
-        
-        init(_ parent: NativeTextView) {
-            self.parent = parent
-        }
-        
-        func textViewDidChange(_ textView: UITextView) {
-            self.parent.text = textView.text
-            highlight(textView: textView)
-        }
-        
-        func highlight(textView: UITextView) {
-            let textStorage = textView.textStorage
-            let text = textStorage.string
-            let fullRange = NSRange(location: 0, length: text.utf16.count)
-            
-            textStorage.beginEditing()
-            
-            // Reset attributes
-            textStorage.setAttributes([
-                .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-                .foregroundColor: UIColor.label
-            ], range: fullRange)
-            
-            // HTML Tags: <...>
-            if let regex = try? NSRegularExpression(pattern: "<[^>]+>") {
-                let matches = regex.matches(in: text, range: fullRange)
-                for match in matches {
-                    textStorage.addAttribute(.foregroundColor, value: UIColor.systemBlue, range: match.range)
-                }
-            }
-            
-            // Strings: "..." or '...'
-            if let regex = try? NSRegularExpression(pattern: "(\"[^\"]*\")|('[^']*')") {
-                let matches = regex.matches(in: text, range: fullRange)
-                for match in matches {
-                    textStorage.addAttribute(.foregroundColor, value: UIColor.systemRed, range: match.range)
-                }
-            }
-            
-            // JS Keywords
-            let keywords = ["const", "let", "var", "function", "return", "if", "else", "for", "while", "class", "import", "export", "true", "false", "new", "document", "window"]
-            let keywordPattern = "\\b(\(keywords.joined(separator: "|")))\\b"
-            if let regex = try? NSRegularExpression(pattern: keywordPattern) {
-                let matches = regex.matches(in: text, range: fullRange)
-                for match in matches {
-                    textStorage.addAttribute(.foregroundColor, value: UIColor.systemPurple, range: match.range)
-                }
-            }
-            
-            // CSS properties (e.g. color:, margin:)
-            if let regex = try? NSRegularExpression(pattern: "\\b[a-zA-Z-]+:") {
-                let matches = regex.matches(in: text, range: fullRange)
-                for match in matches {
-                    textStorage.addAttribute(.foregroundColor, value: UIColor.systemOrange, range: match.range)
-                }
-            }
-            
-            textStorage.endEditing()
+    private func fileExtension(for title: String) -> String {
+        switch title.lowercased() {
+        case "html": return "html"
+        case "css": return "css"
+        case "javascript": return "js"
+        default: return "txt"
         }
     }
 }
