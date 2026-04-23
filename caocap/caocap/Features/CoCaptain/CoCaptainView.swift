@@ -18,9 +18,21 @@ struct CoCaptainView: View {
                             }
                             
                             if viewModel.isThinking {
-                                ThinkingIndicator()
-                                    .id("thinking_indicator")
-                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                HStack(alignment: .bottom, spacing: 8) {
+                                    // AI Avatar for thinking state
+                                    Image("cocaptain")
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 28, height: 28)
+                                        .clipShape(Circle())
+                                        .shadow(color: .blue.opacity(0.5), radius: 4, x: 0, y: 0)
+                                    
+                                    ThinkingIndicator()
+                                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                    
+                                    Spacer()
+                                }
+                                .id("thinking_indicator")
                             }
                         }
                         .padding()
@@ -41,9 +53,6 @@ struct CoCaptainView: View {
                     }
                 }
                 
-                Spacer()
-                
-                // Input Area
                 VStack(spacing: 0) {
                     Divider().opacity(0.5)
                     HStack(alignment: .bottom, spacing: 8) {
@@ -185,7 +194,7 @@ struct ChatBubble: View {
             }
             
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
-                Text(AttributedString(message.text))
+                Text(message.attributedText)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
@@ -222,15 +231,6 @@ struct ChatBubble: View {
     }
 }
 
-extension AttributedString {
-    init(_ text: String) {
-        if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            self = attributed
-        } else {
-            self = AttributedString(stringLiteral: text)
-        }
-    }
-}
 
 struct MessageBubbleShape: Shape {
     var isUser: Bool

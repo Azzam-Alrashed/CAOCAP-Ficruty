@@ -74,4 +74,19 @@ public struct ChatMessage: Identifiable, Hashable {
         self.text = text
         self.isUser = isUser
     }
+    
+    /// Returns the text as an AttributedString with markdown support.
+    public var attributedText: AttributedString {
+        if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            return attributed
+        } else {
+            return AttributedString(text)
+        }
+    }
+}
+
+extension AttributedString {
+    init(_ text: String) {
+        self = AttributedString(stringLiteral: text)
+    }
 }
