@@ -13,6 +13,13 @@ public class CoCaptainViewModel {
     
     public init() {}
     
+    public func clearHistory() {
+        messages = [
+            ChatMessage(text: "Hello! I'm your Co-Captain. How can I help you build today?", isUser: false)
+        ]
+        LLMService.shared.resetChat()
+    }
+    
     public func setPresented(_ presented: Bool) {
         if !presented {
             // Cancel any in-flight stream when the sheet is dismissed

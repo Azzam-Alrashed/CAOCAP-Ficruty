@@ -128,8 +128,12 @@ struct CoCaptainView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.blue)
+                    Button(action: {
+                        viewModel.clearHistory()
+                    }) {
+                        Text("Clear")
+                            .foregroundColor(.red)
+                    }
                 }
             }
         }
@@ -178,6 +182,7 @@ struct ThinkingIndicator: View {
 
 struct ChatBubble: View {
     let message: ChatMessage
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -203,8 +208,32 @@ struct ChatBubble: View {
                                 MessageBubbleShape(isUser: true)
                                     .fill(LinearGradient(colors: [Color(hex: "007AFF"), Color(hex: "0051FF")], startPoint: .topLeading, endPoint: .bottomTrailing))
                             } else {
+                                let aiGradient = ColorScheme.light == colorScheme ? 
+                                    [Color(white: 1.0), Color(white: 0.96)] : 
+                                    [Color(white: 0.18), Color(white: 0.14)]
+                                
                                 MessageBubbleShape(isUser: false)
-                                    .fill(Color.primary.opacity(0.08))
+                                    .fill(
+                                        LinearGradient(
+                                            colors: aiGradient,
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .overlay(
+                                        MessageBubbleShape(isUser: false)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [
+                                                        Color.blue.opacity(0.3),
+                                                        Color.cyan.opacity(0.1)
+                                                    ],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 0.8
+                                            )
+                                    )
                             }
                         }
                     )

@@ -7,7 +7,7 @@ import OSLog
 /// Uses `FirebaseAI.firebaseAI(backend: .googleAI())` — the correct Firebase AI Logic
 /// Swift API as of the `FirebaseAILogic` SDK.
 ///
-/// Provides a streaming interface so the chat UI can update token-by-token.
+/// Provides a streaming interface and maintains chat history for multi-turn conversations.
 @MainActor
 public final class LLMService {
 
@@ -15,7 +15,7 @@ public final class LLMService {
 
     private let logger = Logger(subsystem: "com.ficruty.caocap", category: "LLMService")
 
-    // MARK: - Model
+    // MARK: - Model & Session
 
     /// Lazily initialised so Firebase is guaranteed to be configured before first use.
     private lazy var model: GenerativeModel = {
@@ -41,24 +41,37 @@ public final class LLMService {
         )
     }()
 
+    /// The active chat session that maintains history.
+    private var chat: Chat?
+
     private init() {}
 
-    // MARK: - Streaming
+    // MARK: - API
 
-    /// Generates a streaming response for the given user prompt.
-    ///
-    /// The returned `AsyncThrowingStream` yields individual text chunks as they arrive,
-    /// allowing the UI to update in real time. The stream finishes normally on completion
-    /// or throws on error.
+    /// Resets the current chat session, clearing all history.
+    public func resetChat() {
+        chat = nil
+        logger.info("Chat session reset.")
+    }
+
+    /// Generates a streaming response for the given user prompt, maintaining conversation history.
     ///
     /// - Parameter prompt: The raw user message.
     /// - Returns: An `AsyncThrowingStream` of partial response strings.
     public func streamResponse(for prompt: String) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
+        // Initialize chat session if it doesn't exist
+        if chat == nil {
+            chat = model.startChat()
+        }
+
+        return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    logger.debug("Starting LLM stream.")
-                    let stream = try model.generateContentStream(prompt)
+                    logger.debug("Starting LLM stream with history.")
+                    
+                    // Use sendMessageStream to participate in the multi-turn session
+                    let stream = try chat!.sendMessageStream(prompt)
+                    
                     for try await chunk in stream {
                         if let text = chunk.text {
                             continuation.yield(text)
