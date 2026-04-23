@@ -21,6 +21,9 @@
 		ECD77F932F99BCBA00C96BF7 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = ECD77F922F99BCBA00C96BF7 /* FirebaseStorage */; };
 		ECD77FA32F99C9C900C96BF7 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = ECD77FA22F99C9C900C96BF7 /* GoogleSignIn */; };
 		ECD77FA52F99C9C900C96BF7 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = ECD77FA42F99C9C900C96BF7 /* GoogleSignInSwift */; };
+		ECD77FAC2F9AA6C400C96BF7 /* Popovers in Frameworks */ = {isa = PBXBuildFile; productRef = ECD77FAB2F9AA6C400C96BF7 /* Popovers */; };
+		ECD77FAF2F9AA83700C96BF7 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = ECD77FAE2F9AA83700C96BF7 /* Lottie */; };
+		ECEC6A1D2F9AA8D3007F3CF0 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = ECEC6A1C2F9AA8D3007F3CF0 /* SwiftSoup */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +91,9 @@
 				ECD77FA32F99C9C900C96BF7 /* GoogleSignIn in Frameworks */,
 				ECD77F8F2F99BCBA00C96BF7 /* FirebaseMessaging in Frameworks */,
 				ECD77F7F2F99BCBA00C96BF7 /* FirebaseAILogic in Frameworks */,
+				ECD77FAC2F9AA6C400C96BF7 /* Popovers in Frameworks */,
+				ECD77FAF2F9AA83700C96BF7 /* Lottie in Frameworks */,
+				ECEC6A1D2F9AA8D3007F3CF0 /* SwiftSoup in Frameworks */,
 				ECD77F932F99BCBA00C96BF7 /* FirebaseStorage in Frameworks */,
 				ECD77F8D2F99BCBA00C96BF7 /* FirebaseFunctions in Frameworks */,
 				ECD77F892F99BCBA00C96BF7 /* FirebaseCrashlytics in Frameworks */,
@@ -170,6 +176,9 @@
 				ECD77F922F99BCBA00C96BF7 /* FirebaseStorage */,
 				ECD77FA22F99C9C900C96BF7 /* GoogleSignIn */,
 				ECD77FA42F99C9C900C96BF7 /* GoogleSignInSwift */,
+				ECD77FAB2F9AA6C400C96BF7 /* Popovers */,
+				ECD77FAE2F9AA83700C96BF7 /* Lottie */,
+				ECEC6A1C2F9AA8D3007F3CF0 /* SwiftSoup */,
 			);
 			productName = caocap;
 			productReference = EC997C772F96178E00C19E5E /* caocap.app */;
@@ -256,6 +265,9 @@
 			packageReferences = (
 				ECD77F7B2F99BCBA00C96BF7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				ECD77FA12F99C9C900C96BF7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				ECD77FAA2F9AA6C400C96BF7 /* XCRemoteSwiftPackageReference "Popovers" */,
+				ECD77FAD2F9AA83700C96BF7 /* XCRemoteSwiftPackageReference "lottie-ios" */,
+				ECEC6A1B2F9AA8D3007F3CF0 /* XCRemoteSwiftPackageReference "SwiftSoup" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EC997C782F96178E00C19E5E /* Products */;
@@ -644,6 +656,30 @@
 				minimumVersion = 9.1.0;
 			};
 		};
+		ECD77FAA2F9AA6C400C96BF7 /* XCRemoteSwiftPackageReference "Popovers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aheze/Popovers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.2;
+			};
+		};
+		ECD77FAD2F9AA83700C96BF7 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.6.0;
+			};
+		};
+		ECEC6A1B2F9AA8D3007F3CF0 /* XCRemoteSwiftPackageReference "SwiftSoup" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/scinfu/SwiftSoup";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.13.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -716,6 +752,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = ECD77FA12F99C9C900C96BF7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		ECD77FAB2F9AA6C400C96BF7 /* Popovers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ECD77FAA2F9AA6C400C96BF7 /* XCRemoteSwiftPackageReference "Popovers" */;
+			productName = Popovers;
+		};
+		ECD77FAE2F9AA83700C96BF7 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ECD77FAD2F9AA83700C96BF7 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
+		};
+		ECEC6A1C2F9AA8D3007F3CF0 /* SwiftSoup */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ECEC6A1B2F9AA8D3007F3CF0 /* XCRemoteSwiftPackageReference "SwiftSoup" */;
+			productName = SwiftSoup;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
