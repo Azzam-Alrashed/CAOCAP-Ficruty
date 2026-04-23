@@ -23,9 +23,10 @@ enum AuthState: Equatable {
 ///
 /// Responsibilities:
 ///  - Silently signs in new users anonymously on first launch.
-///  - Restores existing sessions on subsequent launches (no round-trip to Firebase needed).
-///  - Exposes reactive `authState` for the UI to observe.
-///  - Will be extended to support Sign in with Apple account linking.
+///  - Restores existing sessions on subsequent launches.
+///  - Provides Sign in with Apple, Google, and GitHub as upgrade paths.
+///  - Links provider credentials to the existing anonymous account so
+///    all user data (projects, etc.) is preserved on upgrade.
 ///
 /// Inject via SwiftUI Environment:
 /// ```swift
@@ -35,16 +36,21 @@ enum AuthState: Equatable {
 @MainActor
 final class AuthenticationManager {
 
-    // MARK: Public State
+    // MARK: - Public State
 
     private(set) var authState: AuthState = .loading
 
-    /// Convenience accessor — true if the user has any valid session.
+    /// True if the user has any valid session (anonymous or real).
     var isSignedIn: Bool {
         switch authState {
         case .anonymous, .authenticated: return true
         case .loading, .failed: return false
         }
+    }
+
+    var isAnonymous: Bool {
+        if case .anonymous = authState { return true }
+        return false
     }
 
     var currentUID: String? {
@@ -54,7 +60,7 @@ final class AuthenticationManager {
         }
     }
 
-    // MARK: Private
+    // MARK: - Private
 
     private let logger = Logger(subsystem: "com.ficruty.caocap", category: "Auth")
 
@@ -70,16 +76,13 @@ final class AuthenticationManager {
     }
     private let listenerCanceller = ListenerCanceller()
 
-    // MARK: Lifecycle
+    // MARK: - Lifecycle
 
     init() {}
 
     // MARK: - Bootstrap
 
-    /// Starts the auth flow. Called once from `AppConfiguration`.
-    ///
-    /// Attaches a Firebase listener so `authState` stays in sync with
-    /// the real session without requiring manual polling.
+    /// Starts the auth listener. Call once from `AppConfiguration`.
     func start() {
         listenerCanceller.handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
@@ -91,21 +94,47 @@ final class AuthenticationManager {
 
     // MARK: - Anonymous Sign-In
 
-    /// Signs in anonymously. Safe to call multiple times — no-ops if already signed in.
+    /// Silently signs in anonymously. No-ops if a session already exists.
     func signInAnonymously() async {
         guard !isSignedIn else {
             logger.debug("Already signed in — skipping anonymous sign-in.")
             return
         }
-
         do {
             let result = try await Auth.auth().signInAnonymously()
             logger.info("Anonymous sign-in succeeded. UID: \(result.user.uid)")
-            // authState is updated automatically via the listener
         } catch {
             logger.error("Anonymous sign-in failed: \(error.localizedDescription)")
             authState = .failed(reason: error.localizedDescription)
         }
+    }
+
+    // MARK: - Sign In with Apple
+
+    /// Links or signs in with an Apple credential.
+    /// Call this with the credential produced by `AppleSignInCoordinator`.
+    func signInWithApple(credential: OAuthCredential) async throws {
+        try await linkOrSignIn(with: credential, provider: "Apple")
+    }
+
+    // MARK: - Sign In with Google
+
+    /// Links or signs in with a Google credential.
+    /// Call this with the credential produced by `GoogleSignInCoordinator`.
+    func signInWithGoogle(credential: AuthCredential) async throws {
+        try await linkOrSignIn(with: credential, provider: "Google")
+    }
+
+    // MARK: - Sign In with GitHub
+
+    /// Starts the GitHub web OAuth flow and links or signs in.
+    /// Firebase handles the web presentation internally via ASWebAuthenticationSession.
+    func signInWithGitHub() async throws {
+        let provider = OAuthProvider(providerID: "github.com")
+        provider.scopes = ["user:email"]
+
+        let credential = try await provider.credential(with: nil)
+        try await linkOrSignIn(with: credential, provider: "GitHub")
     }
 
     // MARK: - Sign Out
@@ -120,6 +149,29 @@ final class AuthenticationManager {
     }
 
     // MARK: - Private Helpers
+
+    /// Links `credential` to the current anonymous account if the user is anonymous,
+    /// otherwise signs in fresh. This preserves all anonymous data on upgrade.
+    private func linkOrSignIn(with credential: AuthCredential, provider: String) async throws {
+        if let currentUser = Auth.auth().currentUser, currentUser.isAnonymous {
+            // Upgrade path: link the provider to the existing anonymous account.
+            // The UID stays the same — all data is preserved.
+            do {
+                let result = try await currentUser.link(with: credential)
+                logger.info("\(provider) linked to anonymous account. UID: \(result.user.uid)")
+                // Listener will fire and update authState automatically.
+            } catch let error as NSError where error.code == AuthErrorCode.credentialAlreadyInUse.rawValue {
+                // The credential belongs to a different account — sign in to that account instead.
+                logger.warning("\(provider) credential already in use. Signing into existing account.")
+                let result = try await Auth.auth().signIn(with: credential)
+                logger.info("Signed into existing \(provider) account. UID: \(result.user.uid)")
+            }
+        } else {
+            // Fresh sign-in (no anonymous session).
+            let result = try await Auth.auth().signIn(with: credential)
+            logger.info("\(provider) sign-in succeeded. UID: \(result.user.uid)")
+        }
+    }
 
     private func handle(user: User?) {
         guard let user else {

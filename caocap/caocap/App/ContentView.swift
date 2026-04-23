@@ -5,6 +5,7 @@ struct ContentView: View {
     @State var coCaptain = CoCaptainViewModel()
     @State private var router = AppRouter()
     @State private var showingPurchaseSheet = false
+    @State private var showingSignIn = false
     @State private var currentScale: CGFloat = 1.0
     @Environment(\.undoManager) var undoManager
     @Environment(\.colorScheme) var colorScheme
@@ -31,7 +32,11 @@ struct ContentView: View {
             }
             
             // HUD Overlay
-            CanvasHUDView(store: router.activeStore, viewportScale: currentScale)
+            CanvasHUDView(
+                store: router.activeStore,
+                viewportScale: currentScale,
+                onSignInTapped: { showingSignIn = true }
+            )
             
             FloatingCommandButton(
                 onTap: {
@@ -65,6 +70,15 @@ struct ContentView: View {
                         .background(.ultraThinMaterial)
                 }
                 .presentationBackgroundInteraction(.enabled)
+        }
+        .sheet(isPresented: $showingSignIn) {
+            SignInView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground {
+                    Color.black.opacity(0.95)
+                        .background(.ultraThinMaterial)
+                }
         }
         .sheet(isPresented: $showingPurchaseSheet) {
             PurchaseView()
@@ -115,6 +129,8 @@ struct ContentView: View {
                 router.goBack()
             case .proSubscription:
                 showingPurchaseSheet = true
+            case .signIn:
+                showingSignIn = true
             default:
                 break
             }

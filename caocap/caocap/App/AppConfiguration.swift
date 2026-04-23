@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import FirebaseCore
+import GoogleSignIn
 
 /// Centralizes all third-party SDK configuration and app-launch bootstrap logic.
 ///
@@ -26,6 +27,7 @@ final class AppConfiguration {
     /// Call once from `AppDelegate.application(_:didFinishLaunchingWithOptions:)`.
     func configure(authManager: AuthenticationManager) {
         configureFirebase()
+        configureGoogleSignIn()
         // `start()` is @MainActor-isolated. Firebase is configured synchronously above;
         // the auth listener starts on the next main actor run loop tick.
         Task { @MainActor in
@@ -41,9 +43,20 @@ final class AppConfiguration {
             logger.warning("Firebase already configured — skipping duplicate call.")
             return
         }
-
         FirebaseApp.configure()
         logger.info("Firebase configured successfully.")
+    }
+
+    // MARK: - Google Sign-In
+
+    private func configureGoogleSignIn() {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            logger.error("Google Sign-In: missing clientID in GoogleService-Info.plist.")
+            return
+        }
+        let config = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.configuration = config
+        logger.info("Google Sign-In configured successfully.")
     }
 }
 
