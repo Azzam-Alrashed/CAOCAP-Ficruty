@@ -14,82 +14,64 @@ public class CoCaptainViewModel {
     public init() {}
     
     public func setPresented(_ presented: Bool) {
+        if !presented {
+            // Cancel any in-flight stream when the sheet is dismissed
+            streamingTask?.cancel()
+            streamingTask = nil
+            isThinking = false
+        }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             isPresented = presented
         }
     }
     
-    // MARK: - Constants
-    private enum Constants {
-        static let thinkingDelay: UInt64 = 1_000_000_000 // 1 second
-        static let layoutSpacing: CGFloat = 450
-        static let verticalOffset: CGFloat = 450
-    }
+    /// Holds the active streaming task so it can be cancelled on dismiss.
+    private var streamingTask: Task<Void, Never>?
+    
+    public var isThinking: Bool = false
     
     public func sendMessage(_ text: String) {
         let userMessage = ChatMessage(text: text, isUser: true)
         messages.append(userMessage)
         
-        // Process Intent
-        Task {
-            try? await Task.sleep(nanoseconds: Constants.thinkingDelay)
-            
-            let normalizedText = text.lowercased()
-            let isPrototypingIntent = normalizedText.contains("game") || normalizedText.contains("prototype")
-            
-            if isPrototypingIntent {
-                generatePrototype(for: text)
-                let aiMessage = ChatMessage(text: "I've laid out the foundation for your mini-game on the canvas! I've added nodes for Logic, Physics, and Assets.", isUser: false)
-                messages.append(aiMessage)
-            } else {
-                let aiMessage = ChatMessage(text: "That sounds interesting! I can help you prototype that. Try asking me to 'build a mini-game' to see my spatial prototyping in action.", isUser: false)
-                messages.append(aiMessage)
+        isThinking = true
+
+        // Placeholder message updated in real-time as tokens arrive
+        let aiMessageId = UUID()
+        messages.append(ChatMessage(id: aiMessageId, text: "", isUser: false))
+
+        streamingTask = Task {
+            do {
+                var fullResponse = ""
+                for try await chunk in LLMService.shared.streamResponse(for: text) {
+                    fullResponse += chunk
+                    if let index = messages.firstIndex(where: { $0.id == aiMessageId }) {
+                        messages[index] = ChatMessage(id: aiMessageId, text: fullResponse, isUser: false)
+                    }
+                }
+            } catch {
+                if let index = messages.firstIndex(where: { $0.id == aiMessageId }) {
+                    messages[index] = ChatMessage(
+                        id: aiMessageId,
+                        text: "Sorry, I hit an error: \(error.localizedDescription)",
+                        isUser: false
+                    )
+                }
             }
+            isThinking = false
         }
     }
     
-    private func generatePrototype(for intent: String) {
-        guard let store = store else { return }
-        
-        // Calculate the center of the current viewport to spawn nodes
-        let center = CGPoint(
-            x: -store.viewportOffset.width / store.viewportScale,
-            y: -store.viewportOffset.height / store.viewportScale
-        )
-        
-        let nodes = [
-            SpatialNode(
-                position: CGPoint(x: center.x, y: center.y - Constants.verticalOffset),
-                title: "Game Engine",
-                subtitle: "Core loop and state management.",
-                icon: "cpu",
-                theme: .purple
-            ),
-            SpatialNode(
-                position: CGPoint(x: center.x - Constants.layoutSpacing, y: center.y + Constants.verticalOffset),
-                title: "Physics",
-                subtitle: "Collision and movement logic.",
-                icon: "bolt.fill",
-                theme: .orange
-            ),
-            SpatialNode(
-                position: CGPoint(x: center.x + Constants.layoutSpacing, y: center.y + Constants.verticalOffset),
-                title: "Assets",
-                subtitle: "Sprites, sounds, and levels.",
-                icon: "photo.on.rectangle.angled",
-                theme: .green
-            )
-        ]
-        
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-            store.nodes.append(contentsOf: nodes)
-            store.requestSave()
-        }
-    }
 }
 
 public struct ChatMessage: Identifiable, Hashable {
-    public let id = UUID()
+    public let id: UUID
     public let text: String
     public let isUser: Bool
+    
+    public init(id: UUID = UUID(), text: String, isUser: Bool) {
+        self.id = id
+        self.text = text
+        self.isUser = isUser
+    }
 }

@@ -16,26 +16,26 @@ struct CoCaptainView: View {
                                 ChatBubble(message: message)
                                     .id(message.id)
                             }
+                            
+                            if viewModel.isThinking {
+                                ThinkingIndicator()
+                                    .id("thinking_indicator")
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            }
                         }
                         .padding()
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: viewModel.messages) { _ in
-                        if let lastMessage = viewModel.messages.last {
-                            withAnimation {
-                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                            }
-                        }
+                    .onChange(of: viewModel.messages) {
+                        scrollToBottom(proxy: proxy)
                     }
-                    .onChange(of: isFocused) { newValue in
+                    .onChange(of: viewModel.isThinking) {
+                        scrollToBottom(proxy: proxy)
+                    }
+                    .onChange(of: isFocused) { _, newValue in
                         if newValue {
-                            // Slight delay to allow keyboard animation to begin
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                if let lastMessage = viewModel.messages.last {
-                                    withAnimation {
-                                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                                    }
-                                }
+                                scrollToBottom(proxy: proxy)
                             }
                         }
                     }
@@ -125,6 +125,46 @@ struct CoCaptainView: View {
             }
         }
     }
+    
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        if viewModel.isThinking {
+            withAnimation {
+                proxy.scrollTo("thinking_indicator", anchor: .bottom)
+            }
+        } else if let lastMessage = viewModel.messages.last {
+            withAnimation {
+                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+            }
+        }
+    }
+}
+
+struct ThinkingIndicator: View {
+    @State private var dotScale: CGFloat = 0.5
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Color.blue.opacity(0.5))
+                    .frame(width: 6, height: 6)
+                    .scaleEffect(dotScale)
+                    .animation(
+                        .easeInOut(duration: 0.6)
+                        .repeatForever()
+                        .delay(Double(index) * 0.2),
+                        value: dotScale
+                    )
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.05))
+        .clipShape(Capsule())
+        .onAppear {
+            dotScale = 1.0
+        }
+    }
 }
 
 struct ChatBubble: View {
@@ -132,8 +172,9 @@ struct ChatBubble: View {
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            if message.isUser { Spacer() }
-            else {
+            if message.isUser {
+                Spacer()
+            } else {
                 // AI Avatar Icon
                 Image("cocaptain")
                     .resizable()
@@ -143,25 +184,50 @@ struct ChatBubble: View {
                     .shadow(color: .blue.opacity(0.5), radius: 4, x: 0, y: 0)
             }
             
-            Text(message.text)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    Group {
-                        if message.isUser {
-                            MessageBubbleShape(isUser: true)
-                                .fill(LinearGradient(colors: [Color(hex: "007AFF"), Color(hex: "0051FF")], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        } else {
-                            MessageBubbleShape(isUser: false)
-                                .fill(Color.primary.opacity(0.08))
+            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
+                Text(AttributedString(message.text))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        Group {
+                            if message.isUser {
+                                MessageBubbleShape(isUser: true)
+                                    .fill(LinearGradient(colors: [Color(hex: "007AFF"), Color(hex: "0051FF")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            } else {
+                                MessageBubbleShape(isUser: false)
+                                    .fill(Color.primary.opacity(0.08))
+                            }
                         }
-                    }
-                )
-                .foregroundColor(message.isUser ? .white : .primary)
-                .font(.system(size: 15, weight: .regular))
-                .shadow(color: message.isUser ? .blue.opacity(0.2) : .clear, radius: 5, y: 2)
+                    )
+                    .foregroundColor(message.isUser ? .white : .primary)
+                    .font(.system(size: 15, weight: .regular))
+                    .shadow(color: message.isUser ? .blue.opacity(0.2) : .clear, radius: 5, y: 2)
+            }
             
-            if !message.isUser { Spacer() }
+            if message.isUser {
+                // User Avatar Icon (SF Symbol placeholder)
+                ZStack {
+                    Circle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(width: 32, height: 32)
+                    
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.primary.opacity(0.6))
+                }
+            } else {
+                Spacer()
+            }
+        }
+    }
+}
+
+extension AttributedString {
+    init(_ text: String) {
+        if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            self = attributed
+        } else {
+            self = AttributedString(stringLiteral: text)
         }
     }
 }
