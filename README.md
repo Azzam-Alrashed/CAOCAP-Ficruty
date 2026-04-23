@@ -46,6 +46,16 @@ When you create a new project in Ficruty, you don't open a file. You open a **sp
 
 ---
 
+## The CoCaptain 🧠
+Ficruty isn't just spatial; it's **agentic**. The **CoCaptain** is your AI sidekick that understands the entire spatial graph.
+
+- **Context-Aware Intelligence**: CoCaptain reads the SRS requirements, HTML structure, and CSS styles to provide grounded coding assistance.
+- **Multi-turn Memory**: Maintain deep conversations about your project with full chat history persistence.
+- **Agentic Apply**: Ask CoCaptain to "fix the layout" or "add a dark mode," and it can generate the precise code needed for your nodes.
+- **Firebase AI Logic**: Powered by Google Gemini through Firebase AI Logic for low-latency, streaming responses.
+
+---
+
 ## The Philosophy
 Ficruty is a technical pursuit of the "Forgotten Future" described by **Bret Victor** in [The Future of Programming](https://youtu.be/8pTEmbeENF4). The premise: in 1973, the future of programming was spatial, direct, and immediate. We ended up in a world of text files and compilers instead.
 
@@ -60,6 +70,8 @@ Built with a strict focus on **native performance** and **zero third-party depen
 |---|---|
 | Language | Swift 5.10+ with modern concurrency |
 | UI Framework | SwiftUI (`@Observable`, `GeometryReader`, `UIViewRepresentable`) |
+| Backend | Firebase (Auth, AI Logic SDK, Cloud Functions) |
+| AI Model | Google Gemini 3 Flash |
 | Web Engine | WebKit (`WKWebView`) for HTML5/CSS3/JS execution |
 | Code Editing | Native `UITextView` with custom regex-based syntax highlighting |
 | Spatial Engine | SwiftUI infinite canvas with pinch-to-zoom and pan gestures |
@@ -77,6 +89,8 @@ The core spatial development environment is fully functional:
 - ✅ Native syntax-highlighted code editors (HTML, CSS, JS)
 - ✅ Live compilation engine (500ms debounce)
 - ✅ Full-screen WebView previewing
+- ✅ CoCaptain Agentic Assistant (Multi-turn chat, context harvesting)
+- ✅ Firebase Authentication (Apple, Google, GitHub)
 - ✅ StoreKit 2 Pro monetization
 - ⏳ Onboarding polish
 - ⏳ App Store compliance & TestFlight
@@ -105,6 +119,13 @@ open CAOCAP-Ficruty/caocap/caocap.xcodeproj
 ---
 
 ## Devlog
+
+### 2026-04-23: Agentic Intelligence & Firebase
+- **CoCaptain v1.0**: Implemented multi-turn chat memory and scroll position persistence for a seamless AI experience.
+- **Firebase AI Integration**: Switched to Firebase AI Logic SDK for Gemini-powered responses, enabling real-world agentic capabilities.
+- **Secure Authentication**: Integrated Firebase Auth with support for Apple, Google, and GitHub. Added silent anonymous sign-in and account linking UI.
+- **UI Polish**: Redesigned the CoCaptain input area with a sleek, auto-growing layout. Switched user message bubbles to a premium monochromatic blue gradient.
+- **Interaction Design**: Implemented "Slide-to-Select" radial menu behavior for the `FloatingCommandButton`.
 
 ### 2026-04-22: Spatial WebView & Live Coding Engine
 - **Live Preview WebView**: Integrated a 9:16 `WKWebView` node as the central rendering target for all spatial code.

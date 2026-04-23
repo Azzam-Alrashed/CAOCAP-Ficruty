@@ -31,6 +31,7 @@ caocap/
 ├── Services/
 ├── Extensions/
 ├── Features/
+│   ├── Auth/
 │   ├── Canvas/
 │   │   ├── Components/
 │   │   └── Providers/
@@ -51,8 +52,9 @@ The application shell and lifecycle management. The thinnest layer possible — 
 
 | File | Responsibility |
 |---|---|
-| `caocapApp.swift` | `@main` entry point. Injects `AppRouter` as an environment object. |
-| `ContentView.swift` | Root view. Observes `AppRouter` and switches between Onboarding, Home, and Project workspaces. |
+| `caocapApp.swift` | `@main` entry point. Initializes Firebase and injects `AppRouter` as an environment object. |
+| `ContentView.swift` | Root view. Observes `AppRouter` and switches between Onboarding, Auth, Home, and Project workspaces. |
+| `AppConfiguration.swift` | Static configuration for Firebase Function names and environment keys. |
 | `Info.plist` | System-level permissions and metadata. |
 
 ---
@@ -62,7 +64,7 @@ Centralized, type-safe routing. All workspace transitions flow through here — 
 
 | File | Responsibility |
 |---|---|
-| `AppRouter.swift` | `@Observable` class managing `WorkspaceState` (`.onboarding`, `.home`, `.project`). Owns all `ProjectStore` instances and `createNewProject()` initialization logic. |
+| `AppRouter.swift` | `@Observable` class managing `WorkspaceState` (`.onboarding`, `.auth`, `.home`, `.project`). Owns all `ProjectStore` instances. and `createNewProject()` initialization logic. |
 
 ---
 
@@ -82,6 +84,8 @@ Infrastructure and heavy-lifting. These are long-lived objects that outlive indi
 | File | Responsibility |
 |---|---|
 | `ProjectStore.swift` | The core persistence engine. Manages `[SpatialNode]` state, atomic JSON writes, debounced `requestSave()`, viewport persistence, and the **Live Compilation Engine** (`compileLivePreview()`). |
+| `AuthenticationManager.swift` | Wraps Firebase Auth. Handles anonymous login, account linking, and social provider flows. |
+| `LLMService.swift` | Interface for the Firebase AI Logic SDK. Manages streaming sessions with the Gemini backend. |
 | `SubscriptionManager.swift` | StoreKit 2 integration. Manages Pro subscription state, purchase flow, and transaction verification. |
 
 ---
@@ -97,6 +101,15 @@ Lightweight, reusable Swift and framework extensions. No dependencies on app-spe
 
 ### `Features/`
 All user-facing UI. Each subfolder is a self-contained feature module with its own views, components, and state.
+
+---
+
+#### `Auth/`
+Identity management and account security.
+
+| File | Responsibility |
+|---|---|
+| `SignInView.swift` | Multi-provider sign-in sheet with Apple, Google, and GitHub options. Supports "Save Work" account linking for anonymous users. |
 
 ---
 
@@ -131,17 +144,27 @@ The spatial runtime — the heart of Ficruty.
 ---
 
 #### `Omnibox/`
-The `Cmd+K` intent-driven command palette. A floating Spotlight-style UI that surfaces project actions, navigation, and (eventually) AI commands.
+The `Cmd+K` intent-driven command palette. A floating Spotlight-style UI that surfaces project actions, navigation, and AI commands.
 
 ---
 
 #### `CoCaptain/`
-The AI agentic sidekick interface. Currently scaffolded; full implementation in Phase 1.
+The agentic AI companion. A native sheet interface for real-time collaboration.
+
+| File | Responsibility |
+|---|---|
+| `CoCaptainView.swift` | Implements a spatial chat UI with monochromatic gradients and persistent scroll states. |
+| `CoCaptainViewModel.swift` | Orchestrates "Context Harvesting" and multi-turn chat history persistence. |
 
 ---
 
 #### `Overlays/`
 Persistent floating HUD elements — the project header bar, zoom indicator, and action buttons that float above the canvas at all times.
+
+| File | Responsibility |
+|---|---|
+| `FloatingCommandButton.swift` | Implements a **Slide-to-Select radial menu** for quick access to tools. |
+| `CanvasHUDView.swift` | Displays project title and current zoom percentage. |
 
 ---
 
@@ -160,7 +183,8 @@ Assets used exclusively by Xcode Previews. Not included in production builds.
 
 ## Architectural Principles
 
-1. **Unidirectional Data Flow**: `AppRouter` owns workspace state. `ProjectStore` owns node state. Views observe and never mutate state directly without going through a store method.
-2. **No Blocking Main Thread**: All disk I/O in `ProjectStore` runs on a detached background `Task`. The canvas always renders at full frame rate.
-3. **Zero Core Dependencies**: The syntax highlighter, line-number gutter, and compilation engine are all written in pure Swift/UIKit. No external packages for core functionality.
-4. **Type-Safe Everything**: `NodeType`, `NodeAction`, `NodeTheme`, and `WorkspaceState` are all enums. No stringly-typed logic anywhere.
+1. **Unidirectional Data Flow**: `AppRouter` owns workspace state. `ProjectStore` owns node state. Views observe and never mutate state directly.
+2. **No Blocking Main Thread**: All disk I/O and network requests run on detached background tasks.
+3. **Agentic Context Harvesting**: CoCaptain reads the *entire* spatial graph state before every prompt, ensuring grounded AI responses.
+4. **Zero Core Dependencies**: Core logic (compilation, syntax highlighting) remains in pure Swift. Firebase is used exclusively for identity and AI.
+5. **Type-Safe Everything**: `NodeAction`, `WorkspaceState`, and `LLMMessage` are all strict enums or structs.
