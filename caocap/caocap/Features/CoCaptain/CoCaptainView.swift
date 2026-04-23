@@ -6,6 +6,7 @@ struct CoCaptainView: View {
     @FocusState private var isFocused: Bool
     
     var body: some View {
+        @Bindable var viewModel = viewModel
         NavigationStack {
             VStack(spacing: 0) {
                 // Chat History
@@ -36,7 +37,9 @@ struct CoCaptainView: View {
                             }
                         }
                         .padding()
+                        .scrollTargetLayout()
                     }
+                    .scrollPosition(id: $viewModel.lastScrollPosition)
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: viewModel.messages) {
                         scrollToBottom(proxy: proxy)
@@ -47,6 +50,20 @@ struct CoCaptainView: View {
                     .onChange(of: isFocused) { _, newValue in
                         if newValue {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                scrollToBottom(proxy: proxy)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        // Restore position if it exists, otherwise scroll to bottom
+                        if let lastPos = viewModel.lastScrollPosition {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                withAnimation {
+                                    proxy.scrollTo(lastPos, anchor: .top)
+                                }
+                            }
+                        } else {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 scrollToBottom(proxy: proxy)
                             }
                         }

@@ -11,6 +11,9 @@ public class CoCaptainViewModel {
     
     public var store: ProjectStore?
     
+    /// Tracks the ID of the message that was last visible to the user.
+    public var lastScrollPosition: UUID?
+    
     public init() {}
     
     public func clearHistory() {
