@@ -1,102 +1,213 @@
-import SwiftUI
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
-public class CoCaptainViewModel {
+public final class CoCaptainViewModel {
     public var isPresented: Bool = false
-    public var messages: [ChatMessage] = [
-        ChatMessage(text: "Hello! I'm your Co-Captain. How can I help you build today?", isUser: false)
-    ]
-    
-    public var store: ProjectStore?
-    
+    public var items: [CoCaptainTimelineItem]
+    public var store: ProjectStore? {
+        didSet {
+            handleStoreChange()
+        }
+    }
+    @ObservationIgnored
+    public var actionDispatcher: (any AppActionPerforming)?
+
     /// Tracks the ID of the message that was last visible to the user.
     public var lastScrollPosition: UUID?
-    
-    public init() {}
-    
-    public func clearHistory() {
-        messages = [
-            ChatMessage(text: "Hello! I'm your Co-Captain. How can I help you build today?", isUser: false)
-        ]
-        LLMService.shared.resetChat()
+
+    @ObservationIgnored
+    private let agentCoordinator = CoCaptainAgentCoordinator()
+    @ObservationIgnored
+    private let patchEngine = NodePatchEngine()
+    @ObservationIgnored
+    private var lastStoreFileName: String?
+    @ObservationIgnored
+    private var streamingTask: Task<Void, Never>?
+
+    public var isThinking: Bool = false
+
+    public init() {
+        self.items = [CoCaptainViewModel.greetingItem()]
     }
-    
+
+    public func clearHistory() {
+        items = [CoCaptainViewModel.greetingItem()]
+        agentCoordinator.resetChat()
+        lastScrollPosition = nil
+    }
+
     public func setPresented(_ presented: Bool) {
         if !presented {
-            // Cancel any in-flight stream when the sheet is dismissed
             streamingTask?.cancel()
             streamingTask = nil
             isThinking = false
         }
+
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             isPresented = presented
         }
     }
-    
-    /// Holds the active streaming task so it can be cancelled on dismiss.
-    private var streamingTask: Task<Void, Never>?
-    
-    public var isThinking: Bool = false
-    
+
     public func sendMessage(_ text: String) {
-        let userMessage = ChatMessage(text: text, isUser: true)
-        messages.append(userMessage)
-        
+        let userItem = ChatBubbleItem(text: text, isUser: true)
+        items.append(CoCaptainTimelineItem(content: .message(userItem)))
+
         isThinking = true
+        let aiMessageID = UUID()
+        items.append(
+            CoCaptainTimelineItem(
+                id: aiMessageID,
+                content: .message(ChatBubbleItem(id: aiMessageID, text: "", isUser: false))
+            )
+        )
 
-        // Placeholder message updated in real-time as tokens arrive
-        let aiMessageId = UUID()
-        messages.append(ChatMessage(id: aiMessageId, text: "", isUser: false))
-
-        streamingTask = Task {
+        streamingTask = Task { @MainActor in
             do {
-                var fullResponse = ""
-                for try await chunk in LLMService.shared.streamResponse(for: text) {
-                    fullResponse += chunk
-                    if let index = messages.firstIndex(where: { $0.id == aiMessageId }) {
-                        messages[index] = ChatMessage(id: aiMessageId, text: fullResponse, isUser: false)
-                    }
+                let result = try await agentCoordinator.run(
+                    userMessage: text,
+                    store: store,
+                    dispatcher: actionDispatcher
+                ) { [weak self] partialText in
+                    self?.updateMessage(id: aiMessageID, text: partialText)
+                }
+
+                updateMessage(id: aiMessageID, text: result.visibleText)
+
+                if let executionSummary = result.executionSummary {
+                    items.append(CoCaptainTimelineItem(content: .execution(executionSummary)))
+                }
+
+                if let reviewBundle = result.reviewBundle {
+                    items.append(CoCaptainTimelineItem(content: .reviewBundle(reviewBundle)))
                 }
             } catch {
-                if let index = messages.firstIndex(where: { $0.id == aiMessageId }) {
-                    messages[index] = ChatMessage(
-                        id: aiMessageId,
-                        text: "Sorry, I hit an error: \(error.localizedDescription)",
-                        isUser: false
-                    )
-                }
+                updateMessage(id: aiMessageID, text: "Sorry, I hit an error: \(error.localizedDescription)")
             }
+
             isThinking = false
         }
     }
-    
-}
 
-public struct ChatMessage: Identifiable, Hashable {
-    public let id: UUID
-    public let text: String
-    public let isUser: Bool
-    
-    public init(id: UUID = UUID(), text: String, isUser: Bool) {
-        self.id = id
-        self.text = text
-        self.isUser = isUser
+    public func applyReviewItem(bundleID: UUID, itemID: UUID) {
+        guard let bundleIndex = items.firstIndex(where: { $0.id == bundleID }),
+              case .reviewBundle(var bundle) = items[bundleIndex].content,
+              let itemIndex = bundle.items.firstIndex(where: { $0.id == itemID }) else {
+            return
+        }
+
+        var item = bundle.items[itemIndex]
+
+        switch item.source {
+        case .appAction(let actionID):
+            let result = actionDispatcher?.perform(actionID, source: .agentApproved)
+            item.status = result?.executed == true ? .applied : .conflicted
+            if let result, result.executed {
+                items.append(
+                    CoCaptainTimelineItem(
+                        content: .execution(ExecutionStatusItem(summary: result.message))
+                    )
+                )
+            }
+        case .nodeEdit(let role, let operations, let baseText):
+            guard let store,
+                  let node = patchEngine.resolveNode(for: role, in: store) else {
+                item.status = .conflicted
+                break
+            }
+
+            guard (node.textContent ?? "") == baseText else {
+                item.status = .conflicted
+                break
+            }
+
+            do {
+                let preview = try patchEngine.preview(role: role, operations: operations, in: store)
+                store.updateNodeTextContent(id: node.id, text: preview.resultText, persist: true)
+                item.status = .applied
+                items.append(
+                    CoCaptainTimelineItem(
+                        content: .execution(
+                            ExecutionStatusItem(summary: "Applied updates to \(role.displayName).")
+                        )
+                    )
+                )
+            } catch {
+                item.status = .conflicted
+            }
+        }
+
+        bundle.items[itemIndex] = item
+        items[bundleIndex].content = .reviewBundle(bundle)
     }
-    
-    /// Returns the text as an AttributedString with markdown support.
-    public var attributedText: AttributedString {
-        if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            return attributed
-        } else {
-            return AttributedString(text)
+
+    public func rejectReviewItem(bundleID: UUID, itemID: UUID) {
+        updateReviewItem(bundleID: bundleID, itemID: itemID, status: .rejected)
+    }
+
+    public func applyAll(in bundleID: UUID) {
+        guard let bundle = reviewBundle(for: bundleID) else { return }
+        for itemID in bundle.items.filter({ $0.status == .pending }).map(\.id) {
+            applyReviewItem(bundleID: bundleID, itemID: itemID)
         }
     }
-}
 
-extension AttributedString {
-    init(_ text: String) {
-        self = AttributedString(stringLiteral: text)
+    public func rejectAll(in bundleID: UUID) {
+        guard let bundle = reviewBundle(for: bundleID) else { return }
+        for itemID in bundle.items.filter({ $0.status == .pending }).map(\.id) {
+            rejectReviewItem(bundleID: bundleID, itemID: itemID)
+        }
+    }
+
+    private func handleStoreChange() {
+        let currentFileName = store?.fileName
+        guard currentFileName != lastStoreFileName else { return }
+        defer { lastStoreFileName = currentFileName }
+
+        guard lastStoreFileName != nil else { return }
+
+        streamingTask?.cancel()
+        streamingTask = nil
+        isThinking = false
+        clearHistory()
+    }
+
+    private func reviewBundle(for bundleID: UUID) -> ReviewBundleItem? {
+        guard let bundleIndex = items.firstIndex(where: { $0.id == bundleID }),
+              case .reviewBundle(let bundle) = items[bundleIndex].content else {
+            return nil
+        }
+        return bundle
+    }
+
+    private func updateReviewItem(bundleID: UUID, itemID: UUID, status: ReviewItemStatus) {
+        guard let bundleIndex = items.firstIndex(where: { $0.id == bundleID }),
+              case .reviewBundle(var bundle) = items[bundleIndex].content,
+              let itemIndex = bundle.items.firstIndex(where: { $0.id == itemID }) else {
+            return
+        }
+
+        bundle.items[itemIndex].status = status
+        items[bundleIndex].content = .reviewBundle(bundle)
+    }
+
+    private func updateMessage(id: UUID, text: String) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        if case .message(var bubble) = items[index].content {
+            bubble.text = text
+            items[index].content = .message(bubble)
+        }
+    }
+
+    private static func greetingItem() -> CoCaptainTimelineItem {
+        CoCaptainTimelineItem(
+            content: .message(
+                ChatBubbleItem(
+                    text: "Hello! I'm your Co-Captain. How can I help you build today?",
+                    isUser: false
+                )
+            )
+        )
     }
 }

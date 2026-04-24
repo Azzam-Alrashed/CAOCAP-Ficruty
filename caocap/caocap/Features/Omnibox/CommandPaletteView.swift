@@ -40,12 +40,12 @@ struct CommandPaletteView: View {
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVStack(spacing: 0) {
-                                ForEach(Array(viewModel.filteredCommands.enumerated()), id: \.element.id) { index, command in
-                                    CommandRow(
-                                        command: command,
+                                ForEach(Array(viewModel.filteredActions.enumerated()), id: \.element.id) { index, action in
+                                    AppActionRow(
+                                        item: action,
                                         isSelected: index == viewModel.selectedIndex
                                     ) {
-                                        viewModel.executeCommand(command)
+                                        viewModel.executeAction(action)
                                     }
                                     .id(index)
                                 }
@@ -97,19 +97,19 @@ struct CommandPaletteView: View {
     }
 }
 
-struct CommandRow: View {
-    let command: Command
+struct AppActionRow: View {
+    let item: AppActionDefinition
     let isSelected: Bool
-    let action: () -> Void
+    let onSelect: () -> Void
     
     var body: some View {
-        Button(action: action) {
+        Button(action: onSelect) {
             HStack(spacing: 12) {
-                Image(systemName: command.icon)
+                Image(systemName: item.icon)
                     .font(.system(size: 16))
                     .frame(width: 24)
                 
-                Text(command.title)
+                Text(item.title)
                     .font(.system(size: 16))
                 
                 Spacer()

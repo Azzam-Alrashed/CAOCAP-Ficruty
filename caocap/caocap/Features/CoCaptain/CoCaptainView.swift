@@ -4,33 +4,31 @@ struct CoCaptainView: View {
     var viewModel: CoCaptainViewModel
     @State private var text: String = ""
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         @Bindable var viewModel = viewModel
         NavigationStack {
             VStack(spacing: 0) {
-                // Chat History
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            ForEach(viewModel.messages) { message in
-                                ChatBubble(message: message)
-                                    .id(message.id)
+                            ForEach(viewModel.items) { item in
+                                TimelineItemView(item: item, viewModel: viewModel)
+                                    .id(item.id)
                             }
-                            
+
                             if viewModel.isThinking {
                                 HStack(alignment: .bottom, spacing: 8) {
-                                    // AI Avatar for thinking state
                                     Image("cocaptain")
                                         .resizable()
                                         .scaledToFill()
                                         .frame(width: 28, height: 28)
                                         .clipShape(Circle())
                                         .shadow(color: .blue.opacity(0.5), radius: 4, x: 0, y: 0)
-                                    
+
                                     ThinkingIndicator()
                                         .transition(.opacity.combined(with: .move(edge: .bottom)))
-                                    
+
                                     Spacer()
                                 }
                                 .id("thinking_indicator")
@@ -41,7 +39,7 @@ struct CoCaptainView: View {
                     }
                     .scrollPosition(id: $viewModel.lastScrollPosition)
                     .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: viewModel.messages) {
+                    .onChange(of: viewModel.items) {
                         scrollToBottom(proxy: proxy)
                     }
                     .onChange(of: viewModel.isThinking) {
@@ -55,7 +53,6 @@ struct CoCaptainView: View {
                         }
                     }
                     .onAppear {
-                        // Restore position if it exists, otherwise scroll to bottom
                         if let lastPos = viewModel.lastScrollPosition {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                                 withAnimation {
@@ -69,22 +66,23 @@ struct CoCaptainView: View {
                         }
                     }
                 }
-                
-                VStack(spacing: 0) {
+
+                VStack(spacing: 10) {
                     Divider().opacity(0.5)
+
+                    if let store = viewModel.store {
+                        ContextPill(projectName: store.projectName, nodeCount: store.nodes.count)
+                    }
+
                     HStack(alignment: .bottom, spacing: 8) {
-                        // Leading Attachment Button
-                        Button(action: {
-                            // Attachment action placeholder
-                        }) {
+                        Button(action: {}) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 26))
                                 .foregroundColor(.blue)
                                 .shadow(color: .blue.opacity(0.2), radius: 4)
                         }
                         .padding(.bottom, 6)
-                        
-                        // Pill-shaped TextField
+
                         HStack(spacing: 0) {
                             TextField("Ask CoCaptain...", text: $text, axis: .vertical)
                                 .lineLimit(1...5)
@@ -99,10 +97,9 @@ struct CoCaptainView: View {
                                 .stroke(isFocused ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
                         )
                         .animation(.easeInOut(duration: 0.2), value: isFocused)
-                        
+
                         let isInputValid = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        
-                        // Dynamic Send/Mic Button
+
                         Button(action: {
                             if isInputValid {
                                 viewModel.sendMessage(text.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -131,9 +128,9 @@ struct CoCaptainView: View {
                         .padding(.bottom, 5)
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(Color.primary.opacity(0.02))
+                    .padding(.bottom, 10)
                 }
+                .background(Color.primary.opacity(0.02))
             }
             .navigationTitle("Co-Captain")
             .navigationBarTitleDisplayMode(.inline)
@@ -143,7 +140,7 @@ struct CoCaptainView: View {
                         viewModel.setPresented(false)
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         viewModel.clearHistory()
@@ -155,23 +152,175 @@ struct CoCaptainView: View {
             }
         }
     }
-    
+
     private func scrollToBottom(proxy: ScrollViewProxy) {
         if viewModel.isThinking {
             withAnimation {
                 proxy.scrollTo("thinking_indicator", anchor: .bottom)
             }
-        } else if let lastMessage = viewModel.messages.last {
+        } else if let lastItem = viewModel.items.last {
             withAnimation {
-                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                proxy.scrollTo(lastItem.id, anchor: .bottom)
             }
+        }
+    }
+}
+
+struct TimelineItemView: View {
+    let item: CoCaptainTimelineItem
+    let viewModel: CoCaptainViewModel
+
+    var body: some View {
+        switch item.content {
+        case .message(let bubble):
+            ChatBubbleView(message: bubble)
+        case .execution(let status):
+            ExecutionSummaryView(status: status)
+        case .reviewBundle(let bundle):
+            ReviewBundleView(bundle: bundle, viewModel: viewModel, bundleID: item.id)
+        }
+    }
+}
+
+struct ContextPill: View {
+    let projectName: String
+    let nodeCount: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "scope")
+            Text("Using current canvas")
+            Text("·")
+            Text(projectName)
+            Text("·")
+            Text("\(nodeCount) nodes")
+        }
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(.secondary)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(Capsule())
+    }
+}
+
+struct ExecutionSummaryView: View {
+    let status: ExecutionStatusItem
+
+    var body: some View {
+        HStack {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+            Text(status.summary)
+                .font(.system(size: 13, weight: .medium))
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.green.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+struct ReviewBundleView: View {
+    let bundle: ReviewBundleItem
+    let viewModel: CoCaptainViewModel
+    let bundleID: UUID
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(bundle.title)
+                    .font(.system(size: 16, weight: .bold))
+                Spacer()
+                Button("Apply All") {
+                    viewModel.applyAll(in: bundleID)
+                }
+                .font(.system(size: 12, weight: .semibold))
+                Button("Reject All") {
+                    viewModel.rejectAll(in: bundleID)
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.red)
+            }
+
+            ForEach(bundle.items) { item in
+                ReviewCardView(item: item) {
+                    viewModel.applyReviewItem(bundleID: bundleID, itemID: item.id)
+                } onReject: {
+                    viewModel.rejectReviewItem(bundleID: bundleID, itemID: item.id)
+                }
+            }
+        }
+        .padding(14)
+        .background(Color.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+struct ReviewCardView: View {
+    let item: PendingReviewItem
+    let onApply: () -> Void
+    let onReject: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(item.targetLabel)
+                    .font(.system(size: 14, weight: .bold))
+                Spacer()
+                Text(item.status.rawValue.capitalized)
+                    .font(.system(size: 11, weight: .bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusColor.opacity(0.14))
+                    .foregroundColor(statusColor)
+                    .clipShape(Capsule())
+            }
+
+            Text(item.summary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Text(item.preview.isEmpty ? "No preview available." : item.preview)
+                .font(.system(size: 12, weight: .regular, design: .monospaced))
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.black.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            HStack {
+                Button("Apply") {
+                    onApply()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(item.status != .pending)
+
+                Button("Reject") {
+                    onReject()
+                }
+                .buttonStyle(.bordered)
+                .disabled(item.status != .pending)
+            }
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var statusColor: Color {
+        switch item.status {
+        case .pending: return .orange
+        case .applied: return .green
+        case .conflicted: return .red
+        case .rejected: return .secondary
         }
     }
 }
 
 struct ThinkingIndicator: View {
     @State private var dotScale: CGFloat = 0.5
-    
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<3) { index in
@@ -181,8 +330,8 @@ struct ThinkingIndicator: View {
                     .scaleEffect(dotScale)
                     .animation(
                         .easeInOut(duration: 0.6)
-                        .repeatForever()
-                        .delay(Double(index) * 0.2),
+                            .repeatForever()
+                            .delay(Double(index) * 0.2),
                         value: dotScale
                     )
             }
@@ -197,16 +346,15 @@ struct ThinkingIndicator: View {
     }
 }
 
-struct ChatBubble: View {
-    let message: ChatMessage
+struct ChatBubbleView: View {
+    let message: ChatBubbleItem
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if message.isUser {
                 Spacer()
             } else {
-                // AI Avatar Icon
                 Image("cocaptain")
                     .resizable()
                     .scaledToFill()
@@ -214,7 +362,7 @@ struct ChatBubble: View {
                     .clipShape(Circle())
                     .shadow(color: .blue.opacity(0.5), radius: 4, x: 0, y: 0)
             }
-            
+
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.attributedText)
                     .padding(.horizontal, 16)
@@ -223,12 +371,18 @@ struct ChatBubble: View {
                         Group {
                             if message.isUser {
                                 MessageBubbleShape(isUser: true)
-                                    .fill(LinearGradient(colors: [Color(hex: "007AFF"), Color(hex: "0051FF")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(hex: "007AFF"), Color(hex: "0051FF")],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                             } else {
-                                let aiGradient = ColorScheme.light == colorScheme ? 
-                                    [Color(white: 1.0), Color(white: 0.96)] : 
+                                let aiGradient = ColorScheme.light == colorScheme ?
+                                    [Color(white: 1.0), Color(white: 0.96)] :
                                     [Color(white: 0.18), Color(white: 0.14)]
-                                
+
                                 MessageBubbleShape(isUser: false)
                                     .fill(
                                         LinearGradient(
@@ -256,16 +410,14 @@ struct ChatBubble: View {
                     )
                     .foregroundColor(message.isUser ? .white : .primary)
                     .font(.system(size: 15, weight: .regular))
-                    .shadow(color: message.isUser ? .blue.opacity(0.2) : .clear, radius: 5, y: 2)
             }
-            
+
             if message.isUser {
-                // User Avatar Icon (SF Symbol placeholder)
                 ZStack {
                     Circle()
                         .fill(Color.primary.opacity(0.1))
                         .frame(width: 32, height: 32)
-                    
+
                     Image(systemName: "person.fill")
                         .font(.system(size: 14))
                         .foregroundColor(.primary.opacity(0.6))
@@ -277,33 +429,31 @@ struct ChatBubble: View {
     }
 }
 
-
 struct MessageBubbleShape: Shape {
     var isUser: Bool
     var radius: CGFloat = 18
-    
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        
-        // Define corners: pointy tail at bottom-right for User, bottom-left for AI
+
         let tl = radius
         let tr = radius
         let bl = isUser ? radius : 4
         let br = isUser ? 4 : radius
-        
+
         path.move(to: CGPoint(x: rect.minX + tl, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.maxX - tr, y: rect.minY))
         path.addArc(center: CGPoint(x: rect.maxX - tr, y: rect.minY + tr), radius: tr, startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 0), clockwise: false)
-        
+
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
         path.addArc(center: CGPoint(x: rect.maxX - br, y: rect.maxY - br), radius: br, startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 90), clockwise: false)
-        
+
         path.addLine(to: CGPoint(x: rect.minX + bl, y: rect.maxY))
         path.addArc(center: CGPoint(x: rect.minX + bl, y: rect.maxY - bl), radius: bl, startAngle: Angle(degrees: 90), endAngle: Angle(degrees: 180), clockwise: false)
-        
+
         path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + tl))
         path.addArc(center: CGPoint(x: rect.minX + tl, y: rect.minY + tl), radius: tl, startAngle: Angle(degrees: 180), endAngle: Angle(degrees: 270), clockwise: false)
-        
+
         return path
     }
 }

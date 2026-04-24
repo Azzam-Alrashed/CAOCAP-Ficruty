@@ -36,6 +36,7 @@ public final class LLMService {
                 - When providing code, always wrap it in Markdown code blocks with the language identifier.
                 - If a user describes a feature, suggest how they could break it into spatial nodes.
                 - Never reveal that you are an AI; simply act as the Co-Captain.
+                - When the prompt includes an agent contract, follow it exactly and append the requested fenced machine-readable block after the human-facing response.
                 """
             )
         )
@@ -59,10 +60,31 @@ public final class LLMService {
     /// - Parameter prompt: The raw user message.
     /// - Returns: An `AsyncThrowingStream` of partial response strings.
     public func streamResponse(for prompt: String) -> AsyncThrowingStream<String, Error> {
+        streamResponse(
+            for: prompt,
+            context: nil,
+            expectsStructuredResponse: false,
+            availableActions: []
+        )
+    }
+
+    public func streamResponse(
+        for userMessage: String,
+        context: String?,
+        expectsStructuredResponse: Bool,
+        availableActions: [AppActionDefinition]
+    ) -> AsyncThrowingStream<String, Error> {
         // Initialize chat session if it doesn't exist
         if chat == nil {
             chat = model.startChat()
         }
+
+        let prompt = buildPrompt(
+            userMessage: userMessage,
+            context: context,
+            expectsStructuredResponse: expectsStructuredResponse,
+            availableActions: availableActions
+        )
 
         return AsyncThrowingStream { continuation in
             let task = Task {
@@ -87,5 +109,54 @@ public final class LLMService {
             // Support cooperative cancellation from the caller side
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    private func buildPrompt(
+        userMessage: String,
+        context: String?,
+        expectsStructuredResponse: Bool,
+        availableActions: [AppActionDefinition]
+    ) -> String {
+        var parts: [String] = []
+
+        if let context, !context.isEmpty {
+            parts.append("Current canvas context:\n\(context)")
+        }
+
+        if expectsStructuredResponse {
+            let actionLines = availableActions.map { action in
+                "- \(action.id.rawValue): \(action.title) [mutating=\(action.isMutating)]"
+            }.joined(separator: "\n")
+
+            parts.append(
+                """
+                Agent contract:
+                - Respond conversationally first.
+                - If you want to control the app or propose code updates, append a fenced block named `cocaptain-actions`.
+                - Only use these action ids:
+                \(actionLines.isEmpty ? "- none" : actionLines)
+                - Only target these node roles for edits: srs, html, css, javascript.
+                - JSON schema:
+                {
+                  "assistantMessage": "short natural language summary",
+                  "safeActions": [{"actionId": "go_home"}],
+                  "pendingActions": [{"actionId": "new_project"}],
+                  "nodeEdits": [{
+                    "role": "html",
+                    "summary": "what changes",
+                    "operations": [{
+                      "type": "replace_exact|insert_before_exact|insert_after_exact|append|prepend",
+                      "target": "exact text when required",
+                      "content": "new content"
+                    }]
+                  }]
+                }
+                - If no actions or edits are needed, omit the fenced block entirely.
+                """
+            )
+        }
+
+        parts.append("User request:\n\(userMessage)")
+        return parts.joined(separator: "\n\n")
     }
 }

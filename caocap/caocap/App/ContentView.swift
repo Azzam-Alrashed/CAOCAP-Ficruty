@@ -3,18 +3,18 @@ import SwiftUI
 struct ContentView: View {
     @State var commandPalette = CommandPaletteViewModel()
     @State var coCaptain = CoCaptainViewModel()
+    @State private var actionDispatcher = AppActionDispatcher()
     @State private var router = AppRouter()
     @State private var showingPurchaseSheet = false
     @State private var showingSignIn = false
     @State private var currentScale: CGFloat = 1.0
     @Environment(\.undoManager) var undoManager
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         ZStack {
             switch router.currentWorkspace {
             case .home:
-                // The Home Canvas (Main Navigation Hub)
                 InfiniteCanvasView(store: router.homeStore, currentScale: $currentScale, onNodeAction: { action in
                     handleNodeAction(action)
                 })
@@ -30,14 +30,13 @@ struct ContentView: View {
                 })
                 .id("project_canvas_\(fileName)")
             }
-            
-            // HUD Overlay
+
             CanvasHUDView(
                 store: router.activeStore,
                 viewportScale: currentScale,
                 onSignInTapped: { showingSignIn = true }
             )
-            
+
             FloatingCommandButton(
                 onTap: {
                     commandPalette.setPresented(true)
@@ -47,8 +46,7 @@ struct ContentView: View {
                     router.activeStore.undoStackChanged += 1
                 },
                 onSummonCoCaptain: {
-                    coCaptain.store = router.activeStore
-                    coCaptain.setPresented(true)
+                    _ = actionDispatcher.perform(.summonCoCaptain, source: .user)
                 },
                 onRedo: {
                     undoManager?.redo()
@@ -57,7 +55,7 @@ struct ContentView: View {
                 canUndo: (router.activeStore.undoStackChanged >= 0) && (undoManager?.canUndo ?? false),
                 canRedo: (router.activeStore.undoStackChanged >= 0) && (undoManager?.canRedo ?? false)
             )
-            
+
             CommandPaletteView(viewModel: commandPalette)
         }
         .background(Color.black.ignoresSafeArea())
@@ -86,22 +84,23 @@ struct ContentView: View {
                 .presentationBackground(Color(hex: "050505"))
         }
         .onAppear {
+            configureActionDispatcher()
             setupCommandHandlers()
-            
-            // Sync initial scale
+
             currentScale = router.activeStore.viewportScale
-            
-            // Inject UndoManager into the active store
             router.activeStore.undoManager = undoManager
             router.homeStore.undoManager = undoManager
             router.onboardingStore.undoManager = undoManager
+
+            coCaptain.store = router.activeStore
+            coCaptain.actionDispatcher = actionDispatcher
         }
         .onChange(of: router.currentWorkspace) {
-            // Update the undo manager reference when switching projects
             router.activeStore.undoManager = undoManager
+            coCaptain.store = router.activeStore
         }
     }
-    
+
     private func handleNodeAction(_ action: NodeAction) {
         switch action {
         case .navigateHome:
@@ -114,26 +113,33 @@ struct ContentView: View {
             router.createNewProject()
         }
     }
-    
-    private func setupCommandHandlers() {
-        commandPalette.onExecute = { command in
-            switch command {
-            case .summonCoCaptain:
+
+    private func configureActionDispatcher() {
+        actionDispatcher.configure(
+            goHome: {
+                router.goHome()
+                currentScale = 1.0
+            },
+            goBack: {
+                router.goBack()
+            },
+            newProject: {
+                router.createNewProject()
+            },
+            createNode: {
+                router.activeStore.addNode()
+            },
+            summonCoCaptain: {
                 coCaptain.store = router.activeStore
                 coCaptain.setPresented(true)
-            case .newProject:
-                router.createNewProject()
-            case .goHome:
-                router.goHome()
-            case .goBack:
-                router.goBack()
-            case .proSubscription:
-                showingPurchaseSheet = true
-            case .signIn:
-                showingSignIn = true
-            default:
-                break
             }
+        )
+    }
+
+    private func setupCommandHandlers() {
+        commandPalette.actions = actionDispatcher.availableActions
+        commandPalette.onExecute = { actionID in
+            _ = actionDispatcher.perform(actionID, source: .user)
         }
     }
 }

@@ -1,0 +1,196 @@
+import Foundation
+
+public enum AppActionCategory: String, Hashable {
+    case navigation
+    case project
+    case assistant
+}
+
+public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
+    case goHome = "go_home"
+    case goBack = "go_back"
+    case newProject = "new_project"
+    case createNode = "create_node"
+    case summonCoCaptain = "summon_cocaptain"
+
+    public var id: String { rawValue }
+}
+
+public struct AppActionDefinition: Identifiable, Hashable {
+    public let id: AppActionID
+    public let title: String
+    public let icon: String
+    public let category: AppActionCategory
+    public let isMutating: Bool
+    public let allowsAutonomousExecution: Bool
+
+    public init(
+        id: AppActionID,
+        title: String,
+        icon: String,
+        category: AppActionCategory,
+        isMutating: Bool,
+        allowsAutonomousExecution: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.category = category
+        self.isMutating = isMutating
+        self.allowsAutonomousExecution = allowsAutonomousExecution
+    }
+}
+
+public enum AppActionSource: Hashable {
+    case user
+    case agentAutomatic
+    case agentApproved
+}
+
+public struct AppActionResult: Hashable {
+    public let actionID: AppActionID
+    public let title: String
+    public let executed: Bool
+    public let message: String
+
+    public init(actionID: AppActionID, title: String, executed: Bool, message: String) {
+        self.actionID = actionID
+        self.title = title
+        self.executed = executed
+        self.message = message
+    }
+}
+
+@MainActor
+public protocol AppActionPerforming: AnyObject {
+    var availableActions: [AppActionDefinition] { get }
+    func definition(for id: AppActionID) -> AppActionDefinition?
+    @discardableResult
+    func perform(_ id: AppActionID, source: AppActionSource) -> AppActionResult
+}
+
+@MainActor
+public final class AppActionDispatcher: AppActionPerforming {
+    public private(set) var availableActions: [AppActionDefinition] = [
+        AppActionDefinition(
+            id: .goHome,
+            title: "Go to Home",
+            icon: "house.fill",
+            category: .navigation,
+            isMutating: false,
+            allowsAutonomousExecution: true
+        ),
+        AppActionDefinition(
+            id: .goBack,
+            title: "Go Back",
+            icon: "arrow.left.circle",
+            category: .navigation,
+            isMutating: false,
+            allowsAutonomousExecution: true
+        ),
+        AppActionDefinition(
+            id: .newProject,
+            title: "New Project",
+            icon: "plus.circle.fill",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .createNode,
+            title: "Create New Node",
+            icon: "plus.square",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .summonCoCaptain,
+            title: "Summon Co-Captain",
+            icon: "sparkles",
+            category: .assistant,
+            isMutating: false,
+            allowsAutonomousExecution: true
+        )
+    ]
+
+    private var goHomeHandler: (() -> Void)?
+    private var goBackHandler: (() -> Void)?
+    private var newProjectHandler: (() -> Void)?
+    private var createNodeHandler: (() -> Void)?
+    private var summonCoCaptainHandler: (() -> Void)?
+
+    public init() {}
+
+    public func configure(
+        goHome: @escaping () -> Void,
+        goBack: @escaping () -> Void,
+        newProject: @escaping () -> Void,
+        createNode: @escaping () -> Void,
+        summonCoCaptain: @escaping () -> Void
+    ) {
+        self.goHomeHandler = goHome
+        self.goBackHandler = goBack
+        self.newProjectHandler = newProject
+        self.createNodeHandler = createNode
+        self.summonCoCaptainHandler = summonCoCaptain
+    }
+
+    public func definition(for id: AppActionID) -> AppActionDefinition? {
+        availableActions.first(where: { $0.id == id })
+    }
+
+    @discardableResult
+    public func perform(_ id: AppActionID, source: AppActionSource) -> AppActionResult {
+        guard let definition = definition(for: id) else {
+            return AppActionResult(
+                actionID: id,
+                title: id.rawValue,
+                executed: false,
+                message: "Action unavailable."
+            )
+        }
+
+        if source == .agentAutomatic {
+            guard definition.allowsAutonomousExecution && !definition.isMutating else {
+                return AppActionResult(
+                    actionID: definition.id,
+                    title: definition.title,
+                    executed: false,
+                    message: "Action requires approval."
+                )
+            }
+        }
+
+        let handler: (() -> Void)?
+        switch id {
+        case .goHome:
+            handler = goHomeHandler
+        case .goBack:
+            handler = goBackHandler
+        case .newProject:
+            handler = newProjectHandler
+        case .createNode:
+            handler = createNodeHandler
+        case .summonCoCaptain:
+            handler = summonCoCaptainHandler
+        }
+
+        guard let handler else {
+            return AppActionResult(
+                actionID: definition.id,
+                title: definition.title,
+                executed: false,
+                message: "Action is not configured."
+            )
+        }
+
+        handler()
+        return AppActionResult(
+            actionID: definition.id,
+            title: definition.title,
+            executed: true,
+            message: "\(definition.title) executed."
+        )
+    }
+}
