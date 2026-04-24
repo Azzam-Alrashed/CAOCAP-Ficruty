@@ -15,8 +15,8 @@ public struct OnboardingProvider {
             SpatialNode(
                 id: node1Id,
                 position: .zero,
-                title: "Welcome to CAOCAP",
-                subtitle: "The spatial landscape for agentic software design.",
+                title: String(localized: "Welcome to CAOCAP"),
+                subtitle: String(localized: "The spatial landscape for agentic software design."),
                 icon: "sparkles",
                 theme: .purple,
                 nextNodeId: node2Id
@@ -24,8 +24,8 @@ public struct OnboardingProvider {
             SpatialNode(
                 id: node2Id,
                 position: CGPoint(x: 600, y: 150),
-                title: "The Infinite Canvas",
-                subtitle: "Break free from the file tree. Pan and zoom to navigate your architecture.",
+                title: String(localized: "The Infinite Canvas"),
+                subtitle: String(localized: "Break free from the file tree. Pan and zoom to navigate your architecture."),
                 icon: "map.fill",
                 theme: .blue,
                 nextNodeId: node3Id
@@ -33,8 +33,8 @@ public struct OnboardingProvider {
             SpatialNode(
                 id: node3Id,
                 position: CGPoint(x: 1200, y: -100),
-                title: "Nodes of Intent",
-                subtitle: "Each node represents a component, a logic block, or a vision. Drag them to organize your mind.",
+                title: String(localized: "Nodes of Intent"),
+                subtitle: String(localized: "Each node represents a component, a logic block, or a vision. Drag them to organize your mind."),
                 icon: "square.grid.3x3.fill",
                 theme: .orange,
                 nextNodeId: node4Id
@@ -42,8 +42,8 @@ public struct OnboardingProvider {
             SpatialNode(
                 id: node4Id,
                 position: CGPoint(x: 1800, y: 300),
-                title: "Agentic Design",
-                subtitle: "You define the 'What'. Your Co-Captain handles the 'How'. Spatial programming starts here.",
+                title: String(localized: "Agentic Design"),
+                subtitle: String(localized: "You define the 'What'. Your Co-Captain handles the 'How'. Spatial programming starts here."),
                 icon: "brain.head.profile",
                 theme: .pink,
                 nextNodeId: node5Id
@@ -52,8 +52,8 @@ public struct OnboardingProvider {
                 id: node5Id,
                 type: .webView,
                 position: CGPoint(x: 1500, y: 900),
-                title: "Live Preview",
-                subtitle: "See your creations come to life in real-time. This node is a live browser engine.",
+                title: String(localized: "Live Preview"),
+                subtitle: String(localized: "See your creations come to life in real-time. This node is a live browser engine."),
                 icon: "safari.fill",
                 theme: .green,
                 nextNodeId: node6Id,
@@ -71,8 +71,8 @@ public struct OnboardingProvider {
             SpatialNode(
                 id: node6Id,
                 position: CGPoint(x: 600, y: 1200),
-                title: "The Command Palette",
-                subtitle: "Press the Floating Action Button to summon tools, create nodes, or talk to the AI.",
+                title: String(localized: "The Command Palette"),
+                subtitle: String(localized: "Press the Floating Action Button to summon tools, create nodes, or talk to the AI."),
                 icon: "command",
                 theme: .blue,
                 nextNodeId: node7Id
@@ -80,8 +80,8 @@ public struct OnboardingProvider {
             SpatialNode(
                 id: node7Id,
                 position: CGPoint(x: -400, y: 800),
-                title: "Your Journey Begins",
-                subtitle: "Enter your Home workspace to start building your first spatial project.",
+                title: String(localized: "Your Journey Begins"),
+                subtitle: String(localized: "Enter your Home workspace to start building your first spatial project."),
                 icon: "rocket.fill",
                 theme: .purple,
                 action: .navigateHome

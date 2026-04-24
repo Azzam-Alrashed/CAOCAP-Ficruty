@@ -1,0 +1,516 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Welcome to CAOCAP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مرحباً بك في CAOCAP" }
+        },
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "Welcome to CAOCAP" }
+        }
+      }
+    },
+    "The spatial landscape for agentic software design." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المشهد المكاني لتصميم البرمجيات الوكيلية." }
+        },
+        "en" : {
+          "stringUnit" : { "state" : "translated", "value" : "The spatial landscape for agentic software design." }
+        }
+      }
+    },
+    "The Infinite Canvas" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "اللوحة اللانهائية" }
+        }
+      }
+    },
+    "Nodes of Intent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "عقد النوايا" }
+        }
+      }
+    },
+    "Agentic Design" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "التصميم الوكيلي" }
+        }
+      }
+    },
+    "Live Preview" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المعاينة المباشرة" }
+        }
+      }
+    },
+    "The Command Palette" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "لوحة الأوامر" }
+        }
+      }
+    },
+    "Your Journey Begins" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "رحلتك تبدأ الآن" }
+        }
+      }
+    },
+    "Profile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الملف الشخصي" }
+        }
+      }
+    },
+    "Projects" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المشاريع" }
+        }
+      }
+    },
+    "Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الإعدادات" }
+        }
+      }
+    },
+    "New Project" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مشروع جديد" }
+        }
+      }
+    },
+    "Save Your Work" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "حفظ عملك" }
+        }
+      }
+    },
+    "Continue with Apple" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المتابعة باستخدام Apple" }
+        }
+      }
+    },
+    "Continue with Google" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المتابعة باستخدام Google" }
+        }
+      }
+    },
+    "Continue with GitHub" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المتابعة باستخدام GitHub" }
+        }
+      }
+    },
+    "Signing in..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "جاري تسجيل الدخول..." }
+        }
+      }
+    },
+    "CAOCAP PRO" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "كاوكاب برو" }
+        }
+      }
+    },
+    "Unlimited Creativity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "إبداع بلا حدود" }
+        }
+      }
+    },
+    "Welcome to Pro!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مرحباً بك في النسخة الاحترافية!" }
+        }
+      }
+    },
+    "Restore Purchases" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "استعادة المشتريات" }
+        }
+      }
+    },
+    "Terms" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الشروط" }
+        }
+      }
+    },
+    "Privacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الخصوصية" }
+        }
+      }
+    },
+    "Done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "تم" }
+        }
+      }
+    },
+    "Your Projects" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مشاريعك" }
+        }
+      }
+    },
+    "No Projects Found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "لم يتم العثور على مشاريع" }
+        }
+      }
+    },
+    "Last edited" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "آخر تعديل" }
+        }
+      }
+    },
+    "Interface" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الواجهة" }
+        }
+      }
+    },
+    "Theme" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المظهر" }
+        }
+      }
+    },
+    "Language" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "اللغة" }
+        }
+      }
+    },
+    "Sign Out" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "تسجيل الخروج" }
+        }
+      }
+    },
+    "OK" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "حسناً" }
+        }
+      }
+    },
+    "AI Co-Captain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مساعد الذكاء الاصطناعي" }
+        }
+      }
+    },
+    "Go to Home" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الذهاب إلى الرئيسية" }
+        }
+      }
+    },
+    "Go Back" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "العودة للخلف" }
+        }
+      }
+    },
+    "Create New Node" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "إنشاء عقدة جديدة" }
+        }
+      }
+    },
+    "Summon Co-Captain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "استدعاء المساعد" }
+        }
+      }
+    },
+    "Open File" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "فتح ملف" }
+        }
+      }
+    },
+    "Toggle Grid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "تبديل الشبكة" }
+        }
+      }
+    },
+    "Share Project" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مشاركة المشروع" }
+        }
+      }
+    },
+    "Pro Subscription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "اشتراك برو" }
+        }
+      }
+    },
+    "Sign In" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "تسجيل الخروج" }
+        }
+      }
+    },
+    "Open Settings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "فتح الإعدادات" }
+        }
+      }
+    },
+    "Open Profile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "فتح الملف الشخصي" }
+        }
+      }
+    },
+    "Project Explorer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مستكشف المشاريع" }
+        }
+      }
+    },
+    "Help & Documentation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المساعدة والوثائق" }
+        }
+      }
+    },
+    "Action unavailable." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الإجراء غير متاح." }
+        }
+      }
+    },
+    "Action requires approval." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الإجراء يتطلب موافقة." }
+        }
+      }
+    },
+    "Action is not configured." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "الإجراء غير مهيأ." }
+        }
+      }
+    },
+    "nodes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "عقد" }
+        }
+      }
+    },
+    "SAVING" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "جاري الحفظ" }
+        }
+      }
+    },
+    "LIVE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مباشر" }
+        }
+      }
+    },
+    "Search commands..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "بحث عن أوامر..." }
+        }
+      }
+    },
+    "Use arrows to navigate, Enter to select" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "استخدم الأسهم للتنقل، Enter للاختيار" }
+        }
+      }
+    },
+    "Ask Co-Captain..." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "اسأل المساعد..." }
+        }
+      }
+    },
+    "Co-Captain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "المساعد" }
+        }
+      }
+    },
+    "Clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "مسح" }
+        }
+      }
+    },
+    "Using current canvas" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "باستخدام اللوحة الحالية" }
+        }
+      }
+    },
+    "Apply All" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "تطبيق الكل" }
+        }
+      }
+    },
+    "Reject All" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "رفض الكل" }
+        }
+      }
+    },
+    "Apply" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "تطبيق" }
+        }
+      }
+    },
+    "Reject" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "رفض" }
+        }
+      }
+    },
+    "No preview available." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : { "state" : "translated", "value" : "لا يوجد معاينة متاحة." }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

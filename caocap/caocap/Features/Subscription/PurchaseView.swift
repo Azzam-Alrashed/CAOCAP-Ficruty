@@ -12,9 +12,9 @@ struct PurchaseView: View {
     
     // Mock features based on CAOCAP Pro
     let features = [
-        FeatureItem(icon: "sparkles", title: "AI Co-Captain", subtitle: "Unlimited intelligent design suggestions", color: Color(hex: "A855F7")),
-        FeatureItem(icon: "cloud.fill", title: "Cloud Sync", subtitle: "Access your projects from any device", color: Color(hex: "10B981")),
-        FeatureItem(icon: "paintpalette.fill", title: "Custom Themes", subtitle: "Exclusive premium UI themes and colors", color: Color(hex: "F59E0B")),
+        FeatureItem(icon: "sparkles", title: String(localized: "AI Co-Captain"), subtitle: String(localized: "Unlimited intelligent design suggestions"), color: Color(hex: "A855F7")),
+        FeatureItem(icon: "cloud.fill", title: String(localized: "Cloud Sync"), subtitle: String(localized: "Access your projects from any device"), color: Color(hex: "10B981")),
+        FeatureItem(icon: "paintpalette.fill", title: String(localized: "Custom Themes"), subtitle: String(localized: "Exclusive premium UI themes and colors"), color: Color(hex: "F59E0B")),
     ]
     
     var body: some View {
@@ -55,7 +55,7 @@ struct PurchaseView: View {
                         }
                         
                         VStack(spacing: 8) {
-                            Text("CAOCAP PRO")
+                            Text(String(localized: "CAOCAP PRO"))
                                 .font(.system(size: 14, weight: .black))
                                 .kerning(4)
                                 .foregroundStyle(
@@ -66,11 +66,11 @@ struct PurchaseView: View {
                                     )
                                 )
                             
-                            Text("Unlimited Creativity")
+                            Text(String(localized: "Unlimited Creativity"))
                                 .font(.system(size: 34, weight: .bold, design: .rounded))
                                 .foregroundStyle(.primary)
                             
-                            Text("The ultimate toolkit for spatial designers and vibecoders.")
+                            Text(String(localized: "The ultimate toolkit for spatial designers and vibecoders."))
                                 .font(.system(size: 17))
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -100,10 +100,10 @@ struct PurchaseView: View {
                         } else {
                             PlanCard(
                                 id: "CAOCAP_Pro_Monthly",
-                                title: "Monthly",
+                                title: String(localized: "Monthly"),
                                 price: productPrice(for: "CAOCAP_Pro_Monthly"),
-                                subtitle: "Billed monthly",
-                                trialPeriod: "7 DAYS FREE",
+                                subtitle: String(localized: "Billed monthly"),
+                                trialPeriod: String(localized: "7 DAYS FREE"),
                                 isSelected: selectedProductID == "CAOCAP_Pro_Monthly",
                                 isLoading: manager.isLoading,
                                 action: { withAnimation(.spring()) { selectedProductID = "CAOCAP_Pro_Monthly" } }
@@ -111,10 +111,10 @@ struct PurchaseView: View {
                             
                             PlanCard(
                                 id: "CAOCAP_Pro_Yearly",
-                                title: "Yearly",
+                                title: String(localized: "Yearly"),
                                 price: productPrice(for: "CAOCAP_Pro_Yearly"),
-                                subtitle: "Billed annually",
-                                trialPeriod: "14 DAYS FREE",
+                                subtitle: String(localized: "Billed annually"),
+                                trialPeriod: String(localized: "14 DAYS FREE"),
                                 isSelected: selectedProductID == "CAOCAP_Pro_Yearly",
                                 isBestValue: true,
                                 isLoading: manager.isLoading,
@@ -147,7 +147,7 @@ struct PurchaseView: View {
                                         .tint(.white)
                                 } else {
                                     HStack {
-                                        Text(manager.isSubscribed ? "Manage Subscription" : (selectedProductID == "CAOCAP_Pro_Yearly" ? "Start 14-Day Free Trial" : "Start 7-Day Free Trial"))
+                                        Text(manager.isSubscribed ? String(localized: "Manage Subscription") : (selectedProductID == "CAOCAP_Pro_Yearly" ? String(localized: "Start 14-Day Free Trial") : String(localized: "Start 7-Day Free Trial")))
                                             .font(.system(size: 18, weight: .bold))
                                         Image(systemName: manager.isSubscribed ? "gearshape.fill" : "sparkles")
                                             .font(.system(size: 18, weight: .bold))
@@ -163,20 +163,20 @@ struct PurchaseView: View {
                         
                         // Footer Links
                         HStack(spacing: 20) {
-                            Button("Restore Purchases") {
+                            Button(String(localized: "Restore Purchases")) {
                                 Task { try? await manager.restorePurchases() }
                             }
                             Circle().frame(width: 3, height: 3)
-                            Link("Terms", destination: URL(string: "https://caocap.app/terms")!)
+                            Link(String(localized: "Terms"), destination: URL(string: "https://caocap.app/terms")!)
                             Circle().frame(width: 3, height: 3)
-                            Link("Privacy", destination: URL(string: "https://caocap.app/privacy")!)
+                            Link(String(localized: "Privacy"), destination: URL(string: "https://caocap.app/privacy")!)
                         }
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         
                         // Mandatory Disclosure
                         VStack(spacing: 8) {
-                            Text("Subscription automatically renews unless auto-renew is turned off at least 24-hours before the end of the current period. Payment will be charged to your iTunes Account at confirmation of purchase. Account will be charged for renewal within 24-hours prior to the end of the current period. Subscriptions may be managed and auto-renewal may be turned off by going to your Account Settings after purchase.")
+                            Text(String(localized: "Subscription automatically renews unless auto-renew is turned off at least 24-hours before the end of the current period. Payment will be charged to your iTunes Account at confirmation of purchase. Account will be charged for renewal within 24-hours prior to the end of the current period. Subscriptions may be managed and auto-renewal may be turned off by going to your Account Settings after purchase."))
                                 .multilineTextAlignment(.center)
                                 .font(.system(size: 10))
                                 .foregroundStyle(.secondary.opacity(0.8))
@@ -198,7 +198,7 @@ struct PurchaseView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 80))
                         .foregroundStyle(.green)
-                    Text("Welcome to Pro!")
+                    Text(String(localized: "Welcome to Pro!"))
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.primary)
                 }
@@ -233,8 +233,8 @@ struct PurchaseView: View {
         .task {
             await manager.fetchProducts()
         }
-        .alert("Purchase Failed", isPresented: Binding(get: { purchaseError != nil }, set: { if !$0 { purchaseError = nil } })) {
-            Button("OK", role: .cancel) { }
+        .alert(String(localized: "Purchase Failed"), isPresented: Binding(get: { purchaseError != nil }, set: { if !$0 { purchaseError = nil } })) {
+            Button(String(localized: "OK"), role: .cancel) { }
         } message: {
             if let error = purchaseError {
                 Text(error)
@@ -259,7 +259,7 @@ struct PurchaseView: View {
         generator.impactOccurred()
         
         guard let product = manager.products.first(where: { $0.id == selectedProductID }) else {
-            purchaseError = "Product not found. Please try again later."
+            purchaseError = String(localized: "Product not found. Please try again later.")
             return
         }
         

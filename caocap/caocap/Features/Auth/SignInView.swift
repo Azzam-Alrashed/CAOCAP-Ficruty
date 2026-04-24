@@ -52,11 +52,11 @@ struct SignInView: View {
                         )
                 }
 
-                Text("Save Your Work")
+                Text(String(localized: "Save Your Work"))
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
-                Text("Sign in to sync your projects across\nall your devices. Your current work is preserved.")
+                Text(String(localized: "Sign in to sync your projects across\nall your devices. Your current work is preserved."))
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -71,7 +71,7 @@ struct SignInView: View {
             // Sign-In Buttons
             VStack(spacing: 12) {
                 SignInButton(
-                    label: "Continue with Apple",
+                    label: String(localized: "Continue with Apple"),
                     foreground: .primary,
                     background: Color(uiColor: .label),
                     isApple: true,
@@ -87,7 +87,7 @@ struct SignInView: View {
                 .offset(y: button1Visible ? 0 : 16)
 
                 SignInButton(
-                    label: "Continue with Google",
+                    label: String(localized: "Continue with Google"),
                     foreground: .primary,
                     background: Color(uiColor: .secondarySystemBackground),
                     stroke: Color.primary.opacity(0.1),
@@ -99,7 +99,7 @@ struct SignInView: View {
                 .offset(y: button2Visible ? 0 : 16)
 
                 SignInButton(
-                    label: "Continue with GitHub",
+                    label: String(localized: "Continue with GitHub"),
                     foreground: .primary,
                     background: Color(uiColor: .secondarySystemBackground),
                     stroke: Color.primary.opacity(0.1),
@@ -126,7 +126,7 @@ struct SignInView: View {
             Spacer(minLength: 24)
 
             // Privacy note
-            Text("By continuing, you agree to our Terms of Service and Privacy Policy.")
+            Text(String(localized: "By continuing, you agree to our Terms of Service and Privacy Policy."))
                 .font(.system(size: 12))
                 .foregroundColor(.secondary.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -165,7 +165,7 @@ struct SignInView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .primary))
                         .scaleEffect(1.4)
-                    Text("Signing in...")
+                    Text(String(localized: "Signing in..."))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                 }

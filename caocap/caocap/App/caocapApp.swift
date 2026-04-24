@@ -31,12 +31,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 struct caocapApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @AppStorage("app_theme") private var selectedTheme = "System"
+    @AppStorage("app_language") private var selectedLanguage = "English"
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(delegate.authManager)
                 .preferredColorScheme(colorScheme)
+                .environment(\.locale, LocalizationManager.shared.locale(for: selectedLanguage))
         }
     }
     

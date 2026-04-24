@@ -23,11 +23,11 @@ struct ProjectExplorerView: View {
                     }, onDelete: deleteProjects)
                 }
             }
-            .navigationTitle("Your Projects")
+            .navigationTitle(String(localized: "Your Projects"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "Done")) { dismiss() }
                         .fontWeight(.bold)
                 }
                 
@@ -64,10 +64,10 @@ private struct EmptyStateView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.secondary.opacity(0.3))
             
-            Text("No Projects Found")
+            Text(String(localized: "No Projects Found"))
                 .font(.headline)
             
-            Text("Start a new project from the Home workspace to see it here.")
+            Text(String(localized: "Start a new project from the Home workspace to see it here."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -116,7 +116,7 @@ private struct ProjectRow: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(.primary)
                     
-                    Text("Last edited \(project.lastModified.formatted(.relative(presentation: .numeric)))")
+                    Text("\(String(localized: "Last edited")) \(project.lastModified.formatted(.relative(presentation: .numeric)))")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }

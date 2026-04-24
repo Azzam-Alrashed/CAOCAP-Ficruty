@@ -7,8 +7,8 @@ public struct HomeProvider {
             SpatialNode(
                 id: UUID(),
                 position: CGPoint(x: -200, y: -200),
-                title: "Profile",
-                subtitle: "Manage your account and preferences.",
+                title: String(localized: "Profile"),
+                subtitle: String(localized: "Manage your account and preferences."),
                 icon: "person.crop.circle.fill",
                 theme: .blue,
                 action: .openProfile
@@ -16,8 +16,8 @@ public struct HomeProvider {
             SpatialNode(
                 id: UUID(),
                 position: CGPoint(x: 200, y: -200),
-                title: "Projects",
-                subtitle: "View and organize your work.",
+                title: String(localized: "Projects"),
+                subtitle: String(localized: "View and organize your work."),
                 icon: "folder.fill",
                 theme: .purple,
                 action: .openProjectExplorer
@@ -25,8 +25,8 @@ public struct HomeProvider {
             SpatialNode(
                 id: UUID(),
                 position: CGPoint(x: -200, y: 200),
-                title: "Settings",
-                subtitle: "App configuration and tools.",
+                title: String(localized: "Settings"),
+                subtitle: String(localized: "App configuration and tools."),
                 icon: "gearshape.fill",
                 theme: .orange,
                 action: .openSettings
@@ -34,8 +34,8 @@ public struct HomeProvider {
             SpatialNode(
                 id: UUID(),
                 position: CGPoint(x: 200, y: 200),
-                title: "New Project",
-                subtitle: "Start a fresh spatial journey.",
+                title: String(localized: "New Project"),
+                subtitle: String(localized: "Start a fresh spatial journey."),
                 icon: "plus.circle.fill",
                 theme: .green,
                 action: .createNewProject

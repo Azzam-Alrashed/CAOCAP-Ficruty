@@ -22,7 +22,7 @@ struct CommandPaletteView: View {
                         Image(systemName: "sparkles")
                             .font(.system(size: 20))
                         
-                        TextField("Search commands...", text: $viewModel.query)
+                        TextField(String(localized: "Search commands..."), text: $viewModel.query)
                             .textFieldStyle(.plain)
                             .focused($isFocused)
                             .font(.system(size: 18, weight: .medium))
@@ -61,7 +61,7 @@ struct CommandPaletteView: View {
                     
                     // Footer hint
                     HStack {
-                        Text("Use arrows to navigate, Enter to select")
+                        Text(String(localized: "Use arrows to navigate, Enter to select"))
                             .font(.system(size: 10, weight: .light))
                             .opacity(0.5)
                         Spacer()
