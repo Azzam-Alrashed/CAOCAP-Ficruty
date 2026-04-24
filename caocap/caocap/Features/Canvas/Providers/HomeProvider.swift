@@ -43,8 +43,8 @@ public struct HomeProvider {
             SpatialNode(
                 id: UUID(),
                 position: CGPoint(x: 0, y: 500),
-                title: "Retry Onboarding",
-                subtitle: "Revisit the guided tour and app manifesto.",
+                title: String(localized: "Retry Onboarding"),
+                subtitle: String(localized: "Revisit the guided tour and app manifesto."),
                 icon: "graduationcap.fill",
                 theme: .blue,
                 action: .retryOnboarding

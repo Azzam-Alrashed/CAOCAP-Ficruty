@@ -61,8 +61,8 @@ public struct OnboardingProvider {
                 <html>
                 <body style="background: linear-gradient(135deg, #7C3AED, #3B82F6); color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui, sans-serif; margin: 0; text-align: center;">
                     <div>
-                        <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">Hello, CAOCAP</h1>
-                        <p style="font-size: 1.2rem; opacity: 0.8;">Live Spatial Preview</p>
+                        <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">\(String(localized: "Hello, CAOCAP"))</h1>
+                        <p style="font-size: 1.2rem; opacity: 0.8;">\(String(localized: "Live Spatial Preview"))</p>
                     </div>
                 </body>
                 </html>

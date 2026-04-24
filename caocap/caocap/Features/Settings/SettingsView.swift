@@ -36,19 +36,19 @@ struct SettingsView: View {
                         
                         VStack(spacing: 24) {
                             // MARK: - Interface
-                            SettingsSection(title: "Interface") {
-                                SettingsPickerRow(icon: "paintbrush.fill", title: "Theme", selection: $selectedTheme, options: themes, color: .purple)
+                            SettingsSection(title: String(localized: "Interface")) {
+                                SettingsPickerRow(icon: "paintbrush.fill", title: String(localized: "Theme"), selection: $selectedTheme, options: themes, color: .purple)
                                 
                                 Divider().padding(.leading, 56).opacity(0.3)
                                 
-                                SettingsPickerRow(icon: "globe", title: "Language", selection: $selectedLanguage, options: languages, color: .blue)
+                                SettingsPickerRow(icon: "globe", title: String(localized: "Language"), selection: $selectedLanguage, options: languages, color: .blue)
                             }
                             
                             // MARK: - Canvas & Graphics
-                            SettingsSection(title: "Canvas & Graphics") {
+                            SettingsSection(title: String(localized: "Canvas & Graphics")) {
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack {
-                                        Label("Grid Visibility", systemImage: "grid")
+                                        Label(String(localized: "Grid Visibility"), systemImage: "grid")
                                             .font(.system(size: 16, weight: .medium))
                                         Spacer()
                                         Text("\(Int(gridOpacity * 100))%")
@@ -63,12 +63,12 @@ struct SettingsView: View {
                                 
                                 Divider().padding(.leading, 56).opacity(0.3)
                                 
-                                SettingsPickerRow(icon: "waveform.path", title: "Connection Style", selection: $connectionStyle, options: styles, color: .orange)
+                                SettingsPickerRow(icon: "waveform.path", title: String(localized: "Connection Style"), selection: $connectionStyle, options: styles, color: .orange)
                                 
                                 Divider().padding(.leading, 56).opacity(0.3)
                                 
                                 Toggle(isOn: $spatialGlowEnabled) {
-                                    Label("Spatial Glow", systemImage: "sun.max.fill")
+                                    Label(String(localized: "Spatial Glow"), systemImage: "sun.max.fill")
                                         .font(.system(size: 16, weight: .medium))
                                 }
                                 .padding(.horizontal, 16)
@@ -77,9 +77,9 @@ struct SettingsView: View {
                             }
                             
                             // MARK: - Haptics
-                            SettingsSection(title: "Haptics") {
+                            SettingsSection(title: String(localized: "Haptics")) {
                                 Toggle(isOn: $hapticsEnabled) {
-                                    Label("Tactile Feedback", systemImage: "sensor.touch.fill")
+                                    Label(String(localized: "Tactile Feedback"), systemImage: "sensor.touch.fill")
                                         .font(.system(size: 16, weight: .medium))
                                 }
                                 .padding(.horizontal, 16)
@@ -89,7 +89,7 @@ struct SettingsView: View {
                                 if hapticsEnabled {
                                     Divider().padding(.leading, 56).opacity(0.3)
                                     
-                                    SettingsPickerRow(icon: "shredder.fill", title: "Intensity", selection: $hapticsIntensity, options: intensities, color: .green)
+                                    SettingsPickerRow(icon: "shredder.fill", title: String(localized: "Intensity"), selection: $hapticsIntensity, options: intensities, color: .green)
                                 }
                             }
                         }
@@ -98,10 +98,10 @@ struct SettingsView: View {
                         
                         // MARK: - Footer
                         VStack(spacing: 8) {
-                            Text("ENGINE CONFIGURATION")
+                            Text(String(localized: "ENGINE CONFIGURATION"))
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(.secondary)
-                            Text("Real-time synchronization active.")
+                            Text(String(localized: "Real-time synchronization active."))
                                 .font(.system(size: 10))
                                 .foregroundStyle(.tertiary)
                         }
@@ -111,7 +111,7 @@ struct SettingsView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Text("Settings")
+                    Text(String(localized: "Settings"))
                         .font(.system(size: 24, weight: .black, design: .rounded))
                         .foregroundStyle(.primary)
                 }
@@ -157,7 +157,7 @@ private struct SettingsPickerRow: View {
             Spacer()
             Picker(title, selection: $selection) {
                 ForEach(options, id: \.self) { option in
-                    Text(option).tag(option)
+                    Text(String(localized: String.LocalizationValue(option))).tag(option)
                 }
             }
             .pickerStyle(.menu)
