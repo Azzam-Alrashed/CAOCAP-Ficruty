@@ -89,8 +89,10 @@ public class ProjectStore {
                         migratedNodes[i].action = .navigateHome
                     } else if migratedNodes[i].title == "New Project" {
                         migratedNodes[i].action = .createNewProject
-                    } else if migratedNodes[i].title == "Settings" || migratedNodes[i].title == "Profile" {
+                    } else if migratedNodes[i].title == "Settings" {
                         migratedNodes[i].action = .openSettings
+                    } else if migratedNodes[i].title == "Profile" {
+                        migratedNodes[i].action = .openProfile
                     }
                 }
             }

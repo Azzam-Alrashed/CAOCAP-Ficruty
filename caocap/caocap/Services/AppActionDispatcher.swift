@@ -18,6 +18,7 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case proSubscription = "pro_subscription"
     case signIn = "sign_in"
     case openSettings = "open_settings"
+    case openProfile = "open_profile"
     case help = "help"
 
     public var id: String { rawValue }
@@ -168,6 +169,14 @@ public final class AppActionDispatcher: AppActionPerforming {
             allowsAutonomousExecution: true
         ),
         AppActionDefinition(
+            id: .openProfile,
+            title: "Open Profile",
+            icon: "person.fill",
+            category: .assistant,
+            isMutating: false,
+            allowsAutonomousExecution: true
+        ),
+        AppActionDefinition(
             id: .help,
             title: "Help & Documentation",
             icon: "questionmark.circle",
@@ -188,6 +197,7 @@ public final class AppActionDispatcher: AppActionPerforming {
     private var proSubscriptionHandler: (() -> Void)?
     private var signInHandler: (() -> Void)?
     private var openSettingsHandler: (() -> Void)?
+    private var openProfileHandler: (() -> Void)?
     private var helpHandler: (() -> Void)?
 
     public init() {}
@@ -204,6 +214,7 @@ public final class AppActionDispatcher: AppActionPerforming {
         proSubscription: (() -> Void)? = nil,
         signIn: (() -> Void)? = nil,
         openSettings: (() -> Void)? = nil,
+        openProfile: (() -> Void)? = nil,
         help: (() -> Void)? = nil
     ) {
         self.goHomeHandler = goHome
@@ -217,6 +228,7 @@ public final class AppActionDispatcher: AppActionPerforming {
         self.proSubscriptionHandler = proSubscription
         self.signInHandler = signIn
         self.openSettingsHandler = openSettings
+        self.openProfileHandler = openProfile
         self.helpHandler = help
     }
 
@@ -270,6 +282,8 @@ public final class AppActionDispatcher: AppActionPerforming {
             handler = signInHandler
         case .openSettings:
             handler = openSettingsHandler
+        case .openProfile:
+            handler = openProfileHandler
         case .help:
             handler = helpHandler
         }

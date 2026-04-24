@@ -6,6 +6,7 @@ public enum NodeAction: String, Codable, Equatable {
     case retryOnboarding
     case createNewProject
     case openSettings
+    case openProfile
 }
 
 public enum NodeType: String, Codable, Equatable {

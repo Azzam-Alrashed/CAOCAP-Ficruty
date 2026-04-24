@@ -11,7 +11,7 @@ public struct HomeProvider {
                 subtitle: "Manage your account and preferences.",
                 icon: "person.crop.circle.fill",
                 theme: .blue,
-                action: .openSettings
+                action: .openProfile
             ),
             SpatialNode(
                 id: UUID(),

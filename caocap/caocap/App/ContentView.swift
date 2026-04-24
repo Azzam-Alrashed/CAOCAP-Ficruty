@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var showingPurchaseSheet = false
     @State private var showingSignIn = false
     @State private var showingSettings = false
+    @State private var showingProfile = false
     @State private var currentScale: CGFloat = 1.0
     @Environment(\.undoManager) var undoManager
     @Environment(\.colorScheme) var colorScheme
@@ -85,17 +86,18 @@ struct ContentView: View {
                 .presentationBackground(Color(hex: "050505"))
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsView(onSignIn: {
+            SettingsView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView(onSignIn: {
                 showingSignIn = true
             }, onPro: {
                 showingPurchaseSheet = true
             })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground {
-                    Color.black.opacity(0.95)
-                        .background(.ultraThinMaterial)
-                }
         }
         .onAppear {
             configureActionDispatcher()
@@ -127,6 +129,8 @@ struct ContentView: View {
             router.createNewProject()
         case .openSettings:
             _ = actionDispatcher.perform(.openSettings, source: .user)
+        case .openProfile:
+            _ = actionDispatcher.perform(.openProfile, source: .user)
         }
     }
 
@@ -157,6 +161,9 @@ struct ContentView: View {
             },
             openSettings: {
                 showingSettings = true
+            },
+            openProfile: {
+                showingProfile = true
             }
         )
     }
