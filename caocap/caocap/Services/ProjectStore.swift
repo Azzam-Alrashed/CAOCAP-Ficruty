@@ -93,6 +93,8 @@ public class ProjectStore {
                         migratedNodes[i].action = .openSettings
                     } else if migratedNodes[i].title == "Profile" {
                         migratedNodes[i].action = .openProfile
+                    } else if migratedNodes[i].title == "Projects" {
+                        migratedNodes[i].action = .openProjectExplorer
                     }
                 }
             }

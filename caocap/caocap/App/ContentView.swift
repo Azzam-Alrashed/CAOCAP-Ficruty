@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showingSignIn = false
     @State private var showingSettings = false
     @State private var showingProfile = false
+    @State private var showingProjectExplorer = false
     @State private var currentScale: CGFloat = 1.0
     @Environment(\.undoManager) var undoManager
     @Environment(\.colorScheme) var colorScheme
@@ -80,6 +81,11 @@ struct ContentView: View {
                         .background(.ultraThinMaterial)
                 }
         }
+        .sheet(isPresented: $showingProjectExplorer) {
+            ProjectExplorerView(onSelect: { fileName in
+                router.navigate(to: .project(fileName))
+            })
+        }
         .sheet(isPresented: $showingPurchaseSheet) {
             PurchaseView()
                 .presentationDragIndicator(.hidden)
@@ -131,6 +137,8 @@ struct ContentView: View {
             _ = actionDispatcher.perform(.openSettings, source: .user)
         case .openProfile:
             _ = actionDispatcher.perform(.openProfile, source: .user)
+        case .openProjectExplorer:
+            _ = actionDispatcher.perform(.openProjectExplorer, source: .user)
         }
     }
 
@@ -164,6 +172,9 @@ struct ContentView: View {
             },
             openProfile: {
                 showingProfile = true
+            },
+            openProjectExplorer: {
+                showingProjectExplorer = true
             }
         )
     }

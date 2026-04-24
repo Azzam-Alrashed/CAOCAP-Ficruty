@@ -7,6 +7,7 @@ public enum NodeAction: String, Codable, Equatable {
     case createNewProject
     case openSettings
     case openProfile
+    case openProjectExplorer
 }
 
 public enum NodeType: String, Codable, Equatable {

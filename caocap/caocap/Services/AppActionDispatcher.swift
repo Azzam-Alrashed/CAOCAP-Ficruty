@@ -19,6 +19,7 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case signIn = "sign_in"
     case openSettings = "open_settings"
     case openProfile = "open_profile"
+    case openProjectExplorer = "open_project_explorer"
     case help = "help"
 
     public var id: String { rawValue }
@@ -177,6 +178,14 @@ public final class AppActionDispatcher: AppActionPerforming {
             allowsAutonomousExecution: true
         ),
         AppActionDefinition(
+            id: .openProjectExplorer,
+            title: "Project Explorer",
+            icon: "folder.fill",
+            category: .project,
+            isMutating: false,
+            allowsAutonomousExecution: true
+        ),
+        AppActionDefinition(
             id: .help,
             title: "Help & Documentation",
             icon: "questionmark.circle",
@@ -198,6 +207,7 @@ public final class AppActionDispatcher: AppActionPerforming {
     private var signInHandler: (() -> Void)?
     private var openSettingsHandler: (() -> Void)?
     private var openProfileHandler: (() -> Void)?
+    private var openProjectExplorerHandler: (() -> Void)?
     private var helpHandler: (() -> Void)?
 
     public init() {}
@@ -215,6 +225,7 @@ public final class AppActionDispatcher: AppActionPerforming {
         signIn: (() -> Void)? = nil,
         openSettings: (() -> Void)? = nil,
         openProfile: (() -> Void)? = nil,
+        openProjectExplorer: (() -> Void)? = nil,
         help: (() -> Void)? = nil
     ) {
         self.goHomeHandler = goHome
@@ -229,6 +240,7 @@ public final class AppActionDispatcher: AppActionPerforming {
         self.signInHandler = signIn
         self.openSettingsHandler = openSettings
         self.openProfileHandler = openProfile
+        self.openProjectExplorerHandler = openProjectExplorer
         self.helpHandler = help
     }
 
@@ -284,6 +296,8 @@ public final class AppActionDispatcher: AppActionPerforming {
             handler = openSettingsHandler
         case .openProfile:
             handler = openProfileHandler
+        case .openProjectExplorer:
+            handler = openProjectExplorerHandler
         case .help:
             handler = helpHandler
         }

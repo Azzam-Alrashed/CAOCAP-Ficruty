@@ -19,7 +19,8 @@ public struct HomeProvider {
                 title: "Projects",
                 subtitle: "View and organize your work.",
                 icon: "folder.fill",
-                theme: .purple
+                theme: .purple,
+                action: .openProjectExplorer
             ),
             SpatialNode(
                 id: UUID(),
