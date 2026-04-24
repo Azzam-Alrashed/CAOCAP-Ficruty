@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Renders smooth, curved arrows between connected nodes.
 struct ConnectionLayer: View {
+    @AppStorage("connection_style") private var connectionStyle = "Dashed"
     let nodes: [SpatialNode]
     let dragOffsets: [UUID: CGSize]
     let viewport: ViewportState
@@ -52,11 +53,31 @@ struct ConnectionLayer: View {
         
         path.addCurve(to: to, control1: cp1, control2: cp2)
         
-        let stroke = StrokeStyle(lineWidth: 3 * scale, lineCap: .round, lineJoin: .round, dash: [10 * scale, 10 * scale])
-        context.stroke(path, with: .color(themeColor.opacity(0.4)), style: stroke)
+        
+        let stroke: StrokeStyle
+        let color: Color
+        
+        switch connectionStyle {
+        case "Solid":
+            stroke = StrokeStyle(lineWidth: 2 * scale, lineCap: .round, lineJoin: .round)
+            color = themeColor.opacity(0.6)
+        case "Neon":
+            stroke = StrokeStyle(lineWidth: 3 * scale, lineCap: .round, lineJoin: .round)
+            color = themeColor
+        default: // Dashed
+            stroke = StrokeStyle(lineWidth: 3 * scale, lineCap: .round, lineJoin: .round, dash: [10 * scale, 10 * scale])
+            color = themeColor.opacity(0.4)
+        }
+        
+        var arrowContext = context
+        if connectionStyle == "Neon" {
+            arrowContext.addFilter(.shadow(color: themeColor, radius: 4 * scale))
+        }
+        
+        arrowContext.stroke(path, with: .color(color), style: stroke)
         
         // Draw an arrowhead at the end
-        drawArrowhead(context: context, at: to, direction: calculateDirection(from: cp2, to: to), color: themeColor.opacity(0.4), scale: scale)
+        drawArrowhead(context: arrowContext, at: to, direction: calculateDirection(from: cp2, to: to), color: color, scale: scale)
     }
     
     private func drawArrowhead(context: GraphicsContext, at point: CGPoint, direction: CGFloat, color: Color, scale: CGFloat) {

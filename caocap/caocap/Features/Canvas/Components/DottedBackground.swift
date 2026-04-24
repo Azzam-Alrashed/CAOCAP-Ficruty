@@ -2,6 +2,7 @@ import SwiftUI
 
 /// A highly optimized canvas view that renders a procedural dotted grid.
 struct DottedBackground: View {
+    @AppStorage("grid_opacity") private var gridOpacity: Double = 0.1
     @Environment(\.colorScheme) var colorScheme
     let offset: CGSize
     let scale: CGFloat
@@ -12,7 +13,7 @@ struct DottedBackground: View {
     var body: some View {
         Canvas { context, size in
             let scaledSpacing = dotSpacing * scale
-            let dotColor = colorScheme == .dark ? Color.white.opacity(0.5) : Color.black.opacity(0.5)
+            let dotColor = colorScheme == .dark ? Color.white.opacity(gridOpacity * 5) : Color.black.opacity(gridOpacity * 5)
             
             let centerX = size.width / 2
             let centerY = size.height / 2

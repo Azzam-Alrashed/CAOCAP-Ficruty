@@ -30,11 +30,21 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct caocapApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @AppStorage("app_theme") private var selectedTheme = "System"
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(delegate.authManager)
+                .preferredColorScheme(colorScheme)
+        }
+    }
+    
+    private var colorScheme: ColorScheme? {
+        switch selectedTheme {
+        case "Light": return .light
+        case "Dark": return .dark
+        default: return nil
         }
     }
 }

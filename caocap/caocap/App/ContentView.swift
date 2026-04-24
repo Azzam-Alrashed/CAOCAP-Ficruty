@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var currentScale: CGFloat = 1.0
     @Environment(\.undoManager) var undoManager
     @Environment(\.colorScheme) var colorScheme
+    @AppStorage("app_theme") private var selectedTheme = "System"
 
     var body: some View {
         ZStack {
@@ -62,6 +63,7 @@ struct ContentView: View {
             CommandPaletteView(viewModel: commandPalette)
         }
         .background(Color.black.ignoresSafeArea())
+        .preferredColorScheme(currentColorScheme)
         .sheet(isPresented: $coCaptain.isPresented) {
             CoCaptainView(viewModel: coCaptain)
                 .presentationDetents([.medium, .large])
@@ -120,6 +122,14 @@ struct ContentView: View {
         .onChange(of: router.currentWorkspace) {
             router.activeStore.undoManager = undoManager
             coCaptain.store = router.activeStore
+        }
+    }
+    
+    private var currentColorScheme: ColorScheme? {
+        switch selectedTheme {
+        case "Light": return .light
+        case "Dark": return .dark
+        default: return nil
         }
     }
 

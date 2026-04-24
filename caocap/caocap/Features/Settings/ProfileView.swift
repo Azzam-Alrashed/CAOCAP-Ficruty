@@ -4,6 +4,7 @@ import FirebaseAuth
 struct ProfileView: View {
     @Environment(AuthenticationManager.self) private var authManager
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("app_theme") private var selectedTheme = "System"
     
     var onSignIn: (() -> Void)? = nil
     var onPro: (() -> Void)? = nil
@@ -178,6 +179,15 @@ struct ProfileView: View {
             } message: {
                 Text("This action cannot be undone. All your projects, nodes, and subscription data will be permanently deleted from our servers.")
             }
+            .preferredColorScheme(currentColorScheme)
+        }
+    }
+    
+    private var currentColorScheme: ColorScheme? {
+        switch selectedTheme {
+        case "Light": return .light
+        case "Dark": return .dark
+        default: return nil
         }
     }
 }
