@@ -178,10 +178,15 @@ struct PurchaseView: View {
                         VStack(spacing: 8) {
                             Text("Subscription automatically renews unless auto-renew is turned off at least 24-hours before the end of the current period. Payment will be charged to your iTunes Account at confirmation of purchase. Account will be charged for renewal within 24-hours prior to the end of the current period. Subscriptions may be managed and auto-renewal may be turned off by going to your Account Settings after purchase.")
                                 .multilineTextAlignment(.center)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary.opacity(0.8))
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color.primary.opacity(0.03))
+                                )
                         }
-                        .padding(.horizontal, 30)
+                        .padding(.horizontal, 20)
                         .padding(.top, 10)
                     }
                     .padding(.bottom, 60)

@@ -173,7 +173,14 @@
       }
     },
     "and" : {
-
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "و"
+          }
+        }
+      }
     },
     "App configuration and tools." : {
       "extractionState" : "manual",
@@ -330,7 +337,14 @@
       }
     },
     "By continuing, you agree to our" : {
-
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بمتابعتك، فإنك توافق على"
+          }
+        }
+      }
     },
     "By continuing, you agree to our Terms of Service and Privacy Policy." : {
       "extractionState" : "manual",
