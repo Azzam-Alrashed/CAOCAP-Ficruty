@@ -1,12 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    " and " : {
-
-    },
-    "." : {
-
-    },
     "·" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -178,6 +172,9 @@
         }
       }
     },
+    "and" : {
+
+    },
     "App configuration and tools." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -332,7 +329,7 @@
         }
       }
     },
-    "By continuing, you agree to our " : {
+    "By continuing, you agree to our" : {
 
     },
     "By continuing, you agree to our Terms of Service and Privacy Policy." : {
