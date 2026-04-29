@@ -1,6 +1,8 @@
 import SwiftUI
 import StoreKit
 
+/// StoreKit paywall for CAOCAP Pro. The view owns presentation state while
+/// `SubscriptionManager` owns products, entitlements, and transactions.
 struct PurchaseView: View {
     @Environment(\.dismiss) var dismiss
     @State private var manager = SubscriptionManager.shared
@@ -247,6 +249,8 @@ struct PurchaseView: View {
         }
     }
     
+    /// Uses StoreKit's localized price when available, with launch-copy
+    /// fallbacks so the paywall remains readable while products load.
     private func productPrice(for id: String) -> String {
         manager.products.first(where: { $0.id == id })?.displayPrice ?? (id.localizedCaseInsensitiveContains("monthly") ? "$9.99" : "$79.99")
     }
@@ -262,6 +266,8 @@ struct PurchaseView: View {
         return LocalizationManager.shared.localizedString(key)
     }
     
+    /// Routes subscribed users to Apple's subscription management page and
+    /// starts a StoreKit purchase for non-subscribed users.
     private func purchaseAction() {
         if manager.isSubscribed {
             // Redirect to App Store Manage Subscriptions
@@ -286,14 +292,14 @@ struct PurchaseView: View {
                 isPurchasing = false
                 
                 if transaction != nil {
-                    // Success!
+                    // A verified transaction is the only successful purchase path.
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     withAnimation { showSuccess = true }
                     try? await Task.sleep(nanoseconds: 1_500_000_000)
                     dismiss()
                 } else {
-                    // Transaction was nil (cancelled or pending)
-                    // We stay silent here as per plan
+                    // StoreKit reports cancellation and pending approval as nil;
+                    // neither should be presented as a purchase failure.
                 }
             } catch {
                 isPurchasing = false

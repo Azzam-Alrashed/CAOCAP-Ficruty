@@ -2,6 +2,8 @@ import Foundation
 import StoreKit
 import Observation
 
+/// Owns StoreKit product loading, purchase state, restoration, and transaction
+/// updates for CAOCAP Pro.
 @MainActor
 @Observable
 public class SubscriptionManager {
@@ -30,7 +32,8 @@ public class SubscriptionManager {
     private let updatesCanceller = TaskCanceller()
     
     init() {
-        // Start listening for transactions
+        // Keep entitlement state fresh for renewals, refunds, upgrades, and
+        // purchases completed outside the current paywall session.
         updatesCanceller.task = Task { [weak self] in
             for await result in Transaction.updates {
                 await self?.handle(transactionResult: result)
@@ -38,6 +41,8 @@ public class SubscriptionManager {
         }
     }
     
+    /// Loads StoreKit products once per manager lifetime. The paywall can show
+    /// fallback prices while this request is pending or unavailable.
     public func fetchProducts() async {
         guard products.isEmpty else { return }
         isLoading = true
@@ -50,6 +55,8 @@ public class SubscriptionManager {
         }
     }
     
+    /// Starts a StoreKit purchase and returns a verified transaction only when
+    /// access should be granted immediately.
     public func purchase(_ product: Product) async throws -> Transaction? {
         let result = try await product.purchase()
         
@@ -66,6 +73,8 @@ public class SubscriptionManager {
         }
     }
     
+    /// Rebuilds the current entitlement set from StoreKit's verified active
+    /// transactions, ignoring revoked purchases.
     public func updatePurchasedProducts() async {
         var newPurchasedProductIDs = Set<String>()
         
@@ -80,11 +89,14 @@ public class SubscriptionManager {
         self.purchasedProductIDs = newPurchasedProductIDs
     }
     
+    /// Triggers App Store account sync, then refreshes local entitlement state.
     public func restorePurchases() async throws {
         try await AppStore.sync()
         await updatePurchasedProducts()
     }
     
+    /// Handles transaction updates delivered after initial purchase, including
+    /// renewals and revocations.
     private func handle(transactionResult: VerificationResult<Transaction>) async {
         guard case .verified(let transaction) = transactionResult else { return }
         
@@ -97,6 +109,7 @@ public class SubscriptionManager {
         await transaction.finish()
     }
     
+    /// StoreKit verification is the trust boundary for granting Pro access.
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified:
