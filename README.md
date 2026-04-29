@@ -3,12 +3,14 @@
    <img width="200" alt="CAOCAP-Ficruty" src="https://github.com/user-attachments/assets/379cf647-5d89-48c5-85c8-5d83e851e298" />
 </div>
 
-# CAOCAP Ficruty — The Spatial IDE
+# CAOCAP Ficruty — MY-IDEA
 
 > *"The most dangerous thought you can have as a creative person is to think you know what you're doing."*
 > — Bret Victor, [The Future of Programming](https://youtu.be/8pTEmbeENF4)
 
-**Ficruty is a spatial, agentic code editor built natively for iOS/iPadOS.** It replaces the traditional text-file mental model with an infinite canvas where your software requirements, HTML, CSS, JavaScript, and live preview exist as interconnected spatial nodes — all compiling and running in real-time.
+**CAOCAP is my integrated development environment agent for turning ideas into software.**
+
+Ficruty is built natively for iOS/iPadOS as the workspace where that agent comes to life: your software requirements, HTML, CSS, JavaScript, and live preview can exist on an infinite canvas as interconnected nodes — all compiling and running in real-time.
 
 ---
 
