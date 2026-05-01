@@ -32,8 +32,11 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
     public var action: NodeAction?
     public var htmlContent: String?
     public var textContent: String?
+    /// Persisted readiness state for .srs nodes. Derived by SRSReadinessEvaluator
+    /// and stored so the canvas can display it without re-parsing text.
+    public var srsReadinessState: SRSReadinessState?
     
-    public init(id: UUID = UUID(), type: NodeType = .standard, position: CGPoint, title: String, subtitle: String? = nil, icon: String? = nil, theme: NodeTheme = .blue, nextNodeId: UUID? = nil, connectedNodeIds: [UUID]? = nil, action: NodeAction? = nil, htmlContent: String? = nil, textContent: String? = nil) {
+    public init(id: UUID = UUID(), type: NodeType = .standard, position: CGPoint, title: String, subtitle: String? = nil, icon: String? = nil, theme: NodeTheme = .blue, nextNodeId: UUID? = nil, connectedNodeIds: [UUID]? = nil, action: NodeAction? = nil, htmlContent: String? = nil, textContent: String? = nil, srsReadinessState: SRSReadinessState? = nil) {
         self.id = id
         self.type = type
         self.position = position
@@ -46,6 +49,7 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
         self.action = action
         self.htmlContent = htmlContent
         self.textContent = textContent
+        self.srsReadinessState = srsReadinessState
     }
 
     public var displayTitle: String {

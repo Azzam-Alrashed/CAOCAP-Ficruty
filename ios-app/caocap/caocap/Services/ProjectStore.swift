@@ -260,6 +260,7 @@ public class ProjectStore {
     }
     
     /// Updates a specific node's text content.
+    /// For SRS nodes, also evaluates and persists the new readiness state.
     /// - Parameters:
     ///   - id: The UUID of the node to update.
     ///   - text: The new text content.
@@ -267,7 +268,8 @@ public class ProjectStore {
     public func updateNodeTextContent(id: UUID, text: String, persist: Bool = true) {
         if let index = nodes.firstIndex(where: { $0.id == id }) {
             let oldText = nodes[index].textContent ?? ""
-            
+            let oldReadiness = nodes[index].srsReadinessState
+
             // Register Undo
             // UndoManager always calls back on the main thread;
             // assumeIsolated bridges the nonisolated closure to @MainActor.
@@ -277,8 +279,15 @@ public class ProjectStore {
                 }
             }
             undoStackChanged += 1
-            
+
             nodes[index].textContent = text
+
+            // Keep SRS readiness state in sync for .srs nodes.
+            if nodes[index].type == .srs {
+                let evaluator = SRSReadinessEvaluator()
+                nodes[index].srsReadinessState = evaluator.evaluate(text: text, currentState: oldReadiness)
+            }
+
             if persist {
                 requestSave()
             }

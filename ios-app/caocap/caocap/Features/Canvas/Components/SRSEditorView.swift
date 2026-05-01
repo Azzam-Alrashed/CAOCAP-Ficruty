@@ -31,7 +31,7 @@ struct SRSEditorView: View {
     }
 
     private var analysis: SRSAnalysis {
-        SRSAnalysis(text: text)
+        SRSAnalysis(text: text, currentState: node.srsReadinessState)
     }
 
     private var topBar: some View {
@@ -52,7 +52,7 @@ struct SRSEditorView: View {
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
 
-                    Text(analysis.readinessTitle)
+                    Text(analysis.readinessState.displayTitle)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -91,9 +91,9 @@ struct SRSEditorView: View {
     private var readinessPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Label(analysis.readinessTitle, systemImage: analysis.readinessIcon)
+                Label(analysis.readinessState.displayTitle, systemImage: analysis.readinessState.icon)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(analysis.readinessState == .stale ? .orange : .primary)
 
                 Spacer()
 
@@ -171,7 +171,7 @@ struct SRSEditorView: View {
 
                 Spacer(minLength: 8)
 
-                Text(analysis.nextNudge)
+                Text(analysis.readinessState.nextAction)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -196,11 +196,13 @@ private struct SRSAnalysis {
     let wordCount: Int
     let completedSectionsSet: Set<SRSScaffoldSection>
     let missingSections: [SRSScaffoldSection]
+    let readinessState: SRSReadinessState
 
-    init(text: String) {
+    init(text: String, currentState: SRSReadinessState? = nil) {
         self.wordCount = text.split(whereSeparator: \.isWhitespace).count
         self.missingSections = SRSScaffold.missingSections(in: text)
         self.completedSectionsSet = Set(SRSScaffoldSection.allCases).subtracting(missingSections)
+        self.readinessState = SRSReadinessEvaluator().evaluate(text: text, currentState: currentState)
     }
 
     var completedSections: Int {
@@ -214,42 +216,6 @@ private struct SRSAnalysis {
     var completionRatio: Double {
         guard totalSections > 0 else { return 0 }
         return Double(completedSections) / Double(totalSections)
-    }
-
-    var readinessTitle: String {
-        if wordCount == 0 {
-            return "Ready for intent"
-        }
-
-        if missingSections.isEmpty {
-            return "Implementation-ready"
-        }
-
-        if completedSections < 3 {
-            return "Intent sketch"
-        }
-
-        return "SRS taking shape"
-    }
-
-    var readinessIcon: String {
-        if missingSections.isEmpty {
-            return "checkmark.seal.fill"
-        }
-
-        if wordCount == 0 {
-            return "sparkles"
-        }
-
-        return "slider.horizontal.3"
-    }
-
-    var nextNudge: String {
-        guard let next = missingSections.first else {
-            return "Ready for CoCaptain."
-        }
-
-        return "Next: \(next.title)"
     }
 }
 
