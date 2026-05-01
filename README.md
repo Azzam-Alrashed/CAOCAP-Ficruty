@@ -1,16 +1,16 @@
 <div style="display: flex; align-items: center; gap: 32px; margin-bottom: 16px;">
    <img width="200" alt="Azzam-Alrashed" src="https://github.com/user-attachments/assets/5ebe3f09-2bad-4aa3-9b30-2d88159b242d" />
-   <img width="200" alt="CAOCAP-Ficruty" src="https://github.com/user-attachments/assets/379cf647-5d89-48c5-85c8-5d83e851e298" />
+   <img width="200" alt="CAOCAP-CAOCAP" src="https://github.com/user-attachments/assets/379cf647-5d89-48c5-85c8-5d83e851e298" />
 </div>
 
-# CAOCAP Ficruty — MY-IDEA
+# CAOCAP — MY-IDEA-OS
 
 > *"The most dangerous thought you can have as a creative person is to think you know what you're doing."*
 > — Bret Victor, [The Future of Programming](https://youtu.be/8pTEmbeENF4)
 
-**CAOCAP is my integrated development environment agent for turning ideas into software.**
+**CAOCAP is my integrated development environment agentic operating system for turning ideas into software.**
 
-Ficruty is built natively for iOS/iPadOS as the workspace where that agent comes to life: your software requirements, HTML, CSS, JavaScript, and live preview can exist on an infinite canvas as interconnected nodes — all compiling and running in real-time.
+CAOCAP is built natively for iOS/iPadOS as the workspace where that agent comes to life: your software requirements, HTML, CSS, JavaScript, and live preview can exist on an infinite canvas as interconnected nodes — all compiling and running in real-time.
 
 ---
 
@@ -23,13 +23,13 @@ Ficruty is built natively for iOS/iPadOS as the workspace where that agent comes
 
 I am not here to advocate for a specific niche or a "new way" to program. I am here to relentlessly challenge how software is built. If a boundary exists that limits a developer's creativity, I want to push it. If an experience is broken, I want to fix it.
 
-Ficruty is the pursuit of the ultimate developer experience, by any means necessary.
+CAOCAP is the pursuit of the ultimate developer experience, by any means necessary.
 
 ---
 
 ## What It Does
 
-When you create a new project in Ficruty, you don't open a file. You open a **spatial workspace** with five interconnected nodes already wired together:
+When you create a new project in CAOCAP, you don't open a file. You open a **spatial workspace** with five interconnected nodes already wired together:
 
 ```
 [SRS] ──────────── [HTML] ──── [Live Preview]
@@ -49,7 +49,7 @@ When you create a new project in Ficruty, you don't open a file. You open a **sp
 ---
 
 ## The CoCaptain 🧠
-Ficruty isn't just spatial; it's **agentic**. The **CoCaptain** is your AI sidekick that understands the entire spatial graph.
+CAOCAP isn't just spatial; it's **agentic**. The **CoCaptain** is your AI sidekick that understands the entire spatial graph.
 
 - **Context-Aware Intelligence**: CoCaptain reads the SRS requirements, HTML structure, CSS styles and JS logic via the `ProjectContextBuilder` to provide grounded coding assistance.
 - **Agentic Control (Vibe Coding)**: Ask CoCaptain to "fix the layout" or "add a dark mode," and it can generate precise `nodeEdits` or trigger `AppActions` (like "Create New Node").
@@ -59,9 +59,9 @@ Ficruty isn't just spatial; it's **agentic**. The **CoCaptain** is your AI sidek
 ---
 
 ## The Philosophy
-Ficruty is a technical pursuit of the "Forgotten Future" described by **Bret Victor** in [The Future of Programming](https://youtu.be/8pTEmbeENF4). The premise: in 1973, the future of programming was spatial, direct, and immediate. We ended up in a world of text files and compilers instead.
+CAOCAP is a technical pursuit of the "Forgotten Future" described by **Bret Victor** in [The Future of Programming](https://youtu.be/8pTEmbeENF4). The premise: in 1973, the future of programming was spatial, direct, and immediate. We ended up in a world of text files and compilers instead.
 
-Ficruty is the correction.
+CAOCAP is the correction.
 
 ---
 
@@ -105,7 +105,7 @@ See [ROADMAP.md](ROADMAP.md) for the full breakdown.
 
 ## Repository Layout
 
-Ficruty is organized as a public product monorepo.
+CAOCAP is organized as a public product monorepo.
 
 | Directory | Purpose |
 |---|---|
@@ -118,14 +118,14 @@ Ficruty is organized as a public product monorepo.
 
 ## Getting Started
 
-Ficruty requires **Xcode 15+** and an iOS 17+ simulator or device.
+CAOCAP requires **Xcode 15+** and an iOS 17+ simulator or device.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Azzam-Alrashed/CAOCAP-Ficruty.git
+git clone https://github.com/Azzam-Alrashed/CAOCAP-CAOCAP.git
 
 # 2. Open in Xcode
-open CAOCAP-Ficruty/ios-app/caocap/caocap.xcodeproj
+open CAOCAP-CAOCAP/ios-app/caocap/caocap.xcodeproj
 
 # 3. Select a target and run (Cmd+R)
 ```
@@ -185,7 +185,7 @@ open CAOCAP-Ficruty/ios-app/caocap/caocap.xcodeproj
 
 ## Contributing
 
-Ficruty is in active early-stage development ("War Room" mode). I prioritize **architectural stability** and **long-term vision** over rapid feature growth.
+CAOCAP is in active early-stage development ("War Room" mode). I prioritize **architectural stability** and **long-term vision** over rapid feature growth.
 
 - **Discuss First**: For major changes, open an issue to align with the project philosophy before writing code.
 - **Standards**: `@Observable` (iOS 17+) for state, `async/await` for concurrency, no blocking `@MainActor` I/O.
