@@ -171,6 +171,138 @@ struct CoCaptainAgentTests {
     }
 
     @MainActor
+    @Test func coordinatorDoesNotExecuteInvalidSafeActionBeforeRetry() async throws {
+        let dispatcher = TestActionDispatcher()
+        let llm = TestLLMClient(
+            responses: [
+                """
+                I will create a node.
+
+                ```cocaptain-actions
+                {
+                  "assistantMessage": "I will create a node.",
+                  "safeActions": [{"actionId":"create_node"}],
+                  "pendingActions": [],
+                  "nodeEdits": []
+                }
+                ```
+                """,
+                """
+                I prepared the action for review.
+
+                ```cocaptain-actions
+                {
+                  "assistantMessage": "I prepared the action for review.",
+                  "safeActions": [],
+                  "pendingActions": [{"actionId":"create_node"}],
+                  "nodeEdits": []
+                }
+                ```
+                """
+            ]
+        )
+        let coordinator = CoCaptainAgentCoordinator(llmClient: llm)
+
+        let result = try await coordinator.run(
+            userMessage: "create a node",
+            store: makeStore(),
+            dispatcher: dispatcher
+        ) { _ in }
+
+        #expect(dispatcher.executedActionIDs.isEmpty)
+        #expect(llm.receivedMessages.count == 2)
+        #expect(llm.receivedMessages.last?.contains("move it to `pendingActions`") == true)
+        #expect(result.reviewBundle?.items.count == 1)
+    }
+
+    @MainActor
+    @Test func coordinatorReturnsValidationReviewWhenRetryPayloadIsStillInvalid() async throws {
+        let dispatcher = TestActionDispatcher()
+        let llm = TestLLMClient(
+            response:
+                """
+                I will use an unknown action.
+
+                ```cocaptain-actions
+                {
+                  "assistantMessage": "I will use an unknown action.",
+                  "safeActions": [{"actionId":"launch_rocket"}],
+                  "pendingActions": [],
+                  "nodeEdits": []
+                }
+                ```
+                """
+        )
+        let coordinator = CoCaptainAgentCoordinator(llmClient: llm)
+
+        let result = try await coordinator.run(
+            userMessage: "create something",
+            store: makeStore(),
+            dispatcher: dispatcher
+        ) { _ in }
+
+        #expect(dispatcher.executedActionIDs.isEmpty)
+        #expect(result.executionSummary == nil)
+        #expect(result.reviewBundle?.items.first?.status == .conflicted)
+        #expect(result.reviewBundle?.items.first?.preview.contains("Unknown safe action id `launch_rocket`.") == true)
+    }
+
+    @MainActor
+    @Test func coordinatorRetriesEmptyNodeEditOperations() async throws {
+        let dispatcher = TestActionDispatcher()
+        let llm = TestLLMClient(
+            responses: [
+                """
+                I prepared an edit.
+
+                ```cocaptain-actions
+                {
+                  "assistantMessage": "I prepared an edit.",
+                  "safeActions": [],
+                  "pendingActions": [],
+                  "nodeEdits": [{
+                    "role": "html",
+                    "summary": "Update HTML.",
+                    "operations": []
+                  }]
+                }
+                ```
+                """,
+                """
+                I prepared a valid HTML edit.
+
+                ```cocaptain-actions
+                {
+                  "assistantMessage": "I prepared a valid HTML edit.",
+                  "safeActions": [],
+                  "pendingActions": [],
+                  "nodeEdits": [{
+                    "role": "html",
+                    "summary": "Update HTML.",
+                    "operations": [{
+                      "type": "replace_all",
+                      "content": "<h1>Fixed</h1>"
+                    }]
+                  }]
+                }
+                ```
+                """
+            ]
+        )
+        let coordinator = CoCaptainAgentCoordinator(llmClient: llm)
+
+        let result = try await coordinator.run(
+            userMessage: "update the HTML",
+            store: makeStore(),
+            dispatcher: dispatcher
+        ) { _ in }
+
+        #expect(llm.receivedMessages.count == 2)
+        #expect(llm.receivedMessages.last?.contains("must include at least one operation") == true)
+        #expect(result.reviewBundle?.items.first?.status == .pending)
+    }
+
+    @MainActor
     @Test func applyReviewItemConflictsWhenNodeEditedAfterSuggestion() {
         let store = makeStore()
         let vm = CoCaptainViewModel()
@@ -296,10 +428,16 @@ struct CoCaptainAgentTests {
 
 @MainActor
 private final class TestLLMClient: CoCaptainLLMClient {
-    let response: String
+    private let responses: [String]
+    private var streamCount = 0
+    var receivedMessages: [String] = []
 
     init(response: String) {
-        self.response = response
+        self.responses = [response]
+    }
+
+    init(responses: [String]) {
+        self.responses = responses
     }
 
     func resetChat() {}
@@ -310,7 +448,11 @@ private final class TestLLMClient: CoCaptainLLMClient {
         expectsStructuredResponse: Bool,
         availableActions: [AppActionDefinition]
     ) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
+        receivedMessages.append(userMessage)
+        let response = responses[min(streamCount, responses.count - 1)]
+        streamCount += 1
+
+        return AsyncThrowingStream { continuation in
             continuation.yield(response)
             continuation.finish()
         }

@@ -8,6 +8,7 @@ CoCaptain is the agentic assistant for Ficruty. It reads the current spatial pro
 - `CoCaptainViewModel` owns presentation state, timeline items, streaming task lifetime, direct command handling, and review item application.
 - `CoCaptainAgentCoordinator` orchestrates the model run: build context, stream text, parse structured actions, execute safe actions, and build review bundles.
 - `CoCaptainAgentParser` extracts the trailing structured payload from a `cocaptain-actions` fenced block.
+- `CoCaptainAgentValidator` validates parsed payloads before any app action can execute.
 - `CoCaptainAgentModels` defines timeline, review, action, and node edit domain models.
 
 Supporting services live outside this feature:
@@ -24,9 +25,10 @@ Supporting services live outside this feature:
 3. Otherwise, `CoCaptainAgentCoordinator` builds project context from the active `ProjectStore`.
 4. `LLMService` streams text back into the current assistant bubble.
 5. `CoCaptainAgentParser` hides the structured fenced block from visible text.
-6. Safe actions are executed immediately through `AppActionDispatcher`.
-7. Mutating app actions and node edits become `ReviewBundleItem` entries.
-8. Applying a review item revalidates the base node text before writing changes to `ProjectStore`.
+6. `CoCaptainAgentValidator` checks action IDs, action safety, node edit shape, and required agentic work.
+7. Safe actions are executed immediately through `AppActionDispatcher` only after validation passes.
+8. Mutating app actions and node edits become `ReviewBundleItem` entries.
+9. Applying a review item revalidates the base node text before writing changes to `ProjectStore`.
 
 The core contract is human-in-the-loop code editing. Do not auto-apply node edits without explicit user approval.
 
@@ -49,9 +51,15 @@ Rules:
 
 - The parser uses the last `cocaptain-actions` fence in the response.
 - Malformed JSON falls back to visible text with no payload.
-- `safeActions` should only contain actions that can run autonomously.
-- `pendingActions` are shown for review before execution.
+- `safeActions` may only contain available, non-mutating, autonomous actions.
+- `pendingActions` are shown for review before execution and are required for mutating or non-autonomous app actions.
 - `nodeEdits` target `NodeRole` values and `NodePatchOperation` arrays.
+- Node edits require a non-empty summary and at least one operation.
+- Exact operations require a non-empty target.
+
+Invalid structured payloads are not partially executed. The coordinator retries once with validation feedback. If the retry is still invalid, the user sees a conflicted review item rather than a silent no-op or unsafe action.
+
+The fenced JSON block is the current compatibility format for streaming chat. The preferred long-term path is Gemini function calling for app actions and schema-constrained structured JSON output for node edit review bundles.
 
 If this payload changes, update parser/coordinator tests and the prompt contract in `LLMService`.
 
@@ -70,6 +78,7 @@ Preserve this conflict guard when refactoring review state.
 - Add tests when changing parser fences, action classification, review item states, patch behavior, or retry behavior.
 - Do not leak raw structured payload text into the visible chat timeline.
 - Be careful with cancellation: closing the sheet cancels streaming and removes empty assistant messages.
+- Keep validation near the coordinator boundary. SwiftUI views should render review state, not decide whether model output is safe.
 
 ## Verification Checklist
 
@@ -86,6 +95,8 @@ Useful test coverage for this feature:
 
 - parser success, malformed JSON fallback, and trailing fence behavior.
 - coordinator safe action execution and review bundle generation.
+- validator rejection for unknown actions, unsafe safe actions, unavailable pending actions, and empty node edit operations.
 - node edit conflict handling when base text changes.
 - direct command handling for autonomous vs review-required actions.
 - retry behavior when agentic work is requested but no structured payload is returned.
+- retry behavior when the structured payload is present but invalid.

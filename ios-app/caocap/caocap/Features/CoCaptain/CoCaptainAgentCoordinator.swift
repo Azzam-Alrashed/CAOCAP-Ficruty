@@ -27,17 +27,20 @@ public final class CoCaptainAgentCoordinator {
     private let contextBuilder: ProjectContextBuilder
     private let patchEngine: NodePatchEngine
     private let parser: CoCaptainAgentParser
+    private let validator: CoCaptainAgentValidator
 
     public init(
         llmClient: (any CoCaptainLLMClient)? = nil,
         contextBuilder: ProjectContextBuilder = ProjectContextBuilder(),
         patchEngine: NodePatchEngine = NodePatchEngine(),
-        parser: CoCaptainAgentParser = CoCaptainAgentParser()
+        parser: CoCaptainAgentParser = CoCaptainAgentParser(),
+        validator: CoCaptainAgentValidator = CoCaptainAgentValidator()
     ) {
         self.llmClient = llmClient ?? LLMService.shared
         self.contextBuilder = contextBuilder
         self.patchEngine = patchEngine
         self.parser = parser
+        self.validator = validator
     }
 
     public func resetChat() {
@@ -106,21 +109,56 @@ public final class CoCaptainAgentCoordinator {
         let parsed = parser.parse(responseText)
         let payload = expectsStructuredResponse ? parsed.payload : nil
 
-        // Build/edit requests should produce executable work. If the model only
-        // chatted back, retry once with a stronger contract before falling back.
-        if expectsStructuredResponse,
-           payload == nil,
-           allowAgenticRetry,
-           shouldRequireAgenticWork(for: userMessage) {
-            return try await runOnce(
-                userMessage: agenticRetryMessage(for: userMessage),
-                context: context,
-                expectsStructuredResponse: true,
-                store: store,
-                dispatcher: dispatcher,
-                onVisibleText: onVisibleText,
-                allowAgenticRetry: false
-            )
+        let requiresAgenticWork = shouldRequireAgenticWork(for: userMessage)
+
+        if expectsStructuredResponse {
+            // Build/edit requests should produce executable work. If the model only
+            // chatted back, retry once with a stronger contract before falling back.
+            if payload == nil, allowAgenticRetry, requiresAgenticWork {
+                return try await runOnce(
+                    userMessage: agenticRetryMessage(
+                        for: userMessage,
+                        validationIssues: ["Missing machine-readable `cocaptain-actions` block."]
+                    ),
+                    context: context,
+                    expectsStructuredResponse: true,
+                    store: store,
+                    dispatcher: dispatcher,
+                    onVisibleText: onVisibleText,
+                    allowAgenticRetry: false
+                )
+            }
+
+            if let payload {
+                let validation = validator.validate(
+                    payload: payload,
+                    dispatcher: dispatcher,
+                    requiresAgenticWork: requiresAgenticWork
+                )
+
+                if !validation.isValid {
+                    if allowAgenticRetry {
+                        return try await runOnce(
+                            userMessage: agenticRetryMessage(
+                                for: userMessage,
+                                validationIssues: validation.issues
+                            ),
+                            context: context,
+                            expectsStructuredResponse: true,
+                            store: store,
+                            dispatcher: dispatcher,
+                            onVisibleText: onVisibleText,
+                            allowAgenticRetry: false
+                        )
+                    }
+
+                    return CoCaptainAgentRunResult(
+                        visibleText: parsed.visibleText,
+                        executionSummary: nil,
+                        reviewBundle: validationReviewBundle(issues: validation.issues)
+                    )
+                }
+            }
         }
 
         let executionSummary = executeSafeActions(payload?.safeActions ?? [], dispatcher: dispatcher)
@@ -158,18 +196,41 @@ public final class CoCaptainAgentCoordinator {
         return triggers.contains { lowercased.contains($0) }
     }
 
-    private func agenticRetryMessage(for userMessage: String) -> String {
-        """
-        The previous response did NOT include the machine-readable `cocaptain-actions` block. 
+    private func agenticRetryMessage(for userMessage: String, validationIssues: [String]) -> String {
+        let issueList = validationIssues.map { "- \($0)" }.joined(separator: "\n")
+
+        return """
+        The previous response did not satisfy the machine-readable CoCaptain action contract.
+
+        Validation issues:
+        \(issueList)
         
         CRITICAL: 
         1. Do NOT just provide code in markdown chat. 
         2. You MUST include a `cocaptain-actions` fenced block.
-        3. Put the full implementation in `nodeEdits` using `replace_all` for html, css, and javascript nodes.
+        3. Put code/content implementation in `nodeEdits`.
+        4. Put mutating or non-autonomous app actions in `pendingActions`, never `safeActions`.
+        5. Use `safeActions` only for available, non-mutating, autonomous app actions.
+        6. For full builds or games, use `replace_all` for html, css, and javascript nodes.
         
-        User's build request was:
+        Original user request:
         \(userMessage)
         """
+    }
+
+    private func validationReviewBundle(issues: [String]) -> ReviewBundleItem {
+        ReviewBundleItem(
+            title: LocalizationManager.shared.localizedString("CoCaptain action needs revision"),
+            items: [
+                PendingReviewItem(
+                    targetLabel: LocalizationManager.shared.localizedString("CoCaptain action contract"),
+                    summary: LocalizationManager.shared.localizedString("The assistant response could not be executed safely."),
+                    preview: issues.joined(separator: "\n"),
+                    status: .conflicted,
+                    source: .nodeEdit(role: .srs, operations: [], baseText: "")
+                )
+            ]
+        )
     }
 
     /// Executes only actions that the model marked as safe. Mutating or

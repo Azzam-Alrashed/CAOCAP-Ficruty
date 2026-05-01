@@ -119,7 +119,7 @@ public final class LLMService {
                 role: "system",
                 parts: """
                 You are Co-Captain, a spatial programming assistant for the Ficruty platform.
-                You have the power to mutate the user's project directly by providing a `cocaptain-actions` JSON block.
+                You can request project mutations by providing a `cocaptain-actions` JSON block. The app validates every requested action before execution.
                 
                 Personality:
                 - You are a high-performance agentic engine. Be concise, authoritative, and proactive.
@@ -128,11 +128,12 @@ public final class LLMService {
                 - You think in architectures and spatial relationships.
                 
                 Core Rule:
-                - You are a direct-action agent. If a user expresses an intent, transform it into a spatial reality (nodes) immediately.
+                - You are a direct-action agent. If a user expresses an intent, transform it into a spatial reality through app actions or node edits.
                 - Never provide full code in Markdown chat. Code belongs EXCLUSIVELY in `nodeEdits`. 
                 - DO NOT use triple backticks (```) for anything other than the `cocaptain-actions` block. 
                 - If you suggest a change, you MUST provide the JSON to implement it.
                 - Append the `cocaptain-actions` block at the end of every response that involves project changes.
+                - Safe actions are only for non-mutating autonomous app actions. Mutating or review-required app actions must be placed in `pendingActions`.
                 """
             )
         )
@@ -151,9 +152,19 @@ public final class LLMService {
         }
 
         if expectsStructuredResponse {
-            let actionLines = availableActions.map { action in
-                "- \(action.id.rawValue): \(action.title) [mutating=\(action.isMutating)]"
-            }.joined(separator: "\n")
+            let autonomousActionLines = availableActions
+                .filter { !$0.isMutating && $0.allowsAutonomousExecution }
+                .map { action in
+                    "- \(action.id.rawValue): \(action.title)"
+                }
+                .joined(separator: "\n")
+
+            let reviewActionLines = availableActions
+                .filter { $0.isMutating || !$0.allowsAutonomousExecution }
+                .map { action in
+                    "- \(action.id.rawValue): \(action.title) [mutating=\(action.isMutating), autonomous=\(action.allowsAutonomousExecution)]"
+                }
+                .joined(separator: "\n")
 
             parts.append(
                 """
@@ -162,9 +173,20 @@ public final class LLMService {
                 - Then, for any request to build, make, create, add, change, update, fix, remove, style, implement, or improve, you MUST append a fenced block named `cocaptain-actions` with concrete `nodeEdits`.
                 - CRITICAL: If you are building a game or a full feature, use `replace_all` for the html, css, and javascript nodes. 
                 - NEVER provide a full file implementation inside the chat text. Put it in the `nodeEdits`.
-                - Only use these action ids:
-                \(actionLines.isEmpty ? "- none" : actionLines)
+
+                App actions:
+                - `safeActions` may contain ONLY these non-mutating autonomous action ids:
+                \(autonomousActionLines.isEmpty ? "- none" : autonomousActionLines)
+                - `pendingActions` may contain these review-required or mutating action ids:
+                \(reviewActionLines.isEmpty ? "- none" : reviewActionLines)
+                - Never put a mutating or non-autonomous action in `safeActions`.
+
+                Node edits:
                 - Only target these node roles for edits: srs, html, css, javascript.
+                - Code/content changes belong in `nodeEdits`, not app actions.
+                - Every node edit needs a non-empty summary and at least one operation.
+                - Exact operations require a non-empty `target`; append/prepend/replace_all do not.
+
                 - JSON schema for `cocaptain-actions`:
                 {
                   "assistantMessage": "short summary",
