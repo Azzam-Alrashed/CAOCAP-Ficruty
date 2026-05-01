@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct CoCaptainView: View {
     var viewModel: CoCaptainViewModel
@@ -77,7 +78,28 @@ struct CoCaptainView: View {
                     }
 
                     HStack(alignment: .bottom, spacing: 8) {
-                        Button(action: {}) {
+                        Menu {
+                            Button {
+                                sendQuickPrompt("Summarize the current canvas and point out the most important next step.")
+                            } label: {
+                                Label("Summarize Canvas", systemImage: "doc.text.magnifyingglass")
+                            }
+                            .disabled(viewModel.isThinking)
+
+                            Button {
+                                sendQuickPrompt("Review the current canvas for obvious issues, missing pieces, or polish opportunities.")
+                            } label: {
+                                Label("Review Canvas", systemImage: "checklist")
+                            }
+                            .disabled(viewModel.isThinking)
+
+                            Button {
+                                sendQuickPrompt("Suggest three useful next improvements for this project.")
+                            } label: {
+                                Label("Suggest Next Steps", systemImage: "sparkles")
+                            }
+                            .disabled(viewModel.isThinking)
+                        } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 26))
                                 .foregroundColor(.blue)
@@ -89,6 +111,10 @@ struct CoCaptainView: View {
                             TextField("Ask Co-Captain...", text: $text, axis: .vertical)
                                 .lineLimit(1...5)
                                 .focused($isFocused)
+                                .submitLabel(.send)
+                                .onSubmit {
+                                    sendCurrentMessage()
+                                }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                         }
@@ -106,10 +132,8 @@ struct CoCaptainView: View {
                         Button(action: {
                             if viewModel.isThinking {
                                 viewModel.stopStreaming()
-                            } else if canSend {
-                                viewModel.sendMessage(text.trimmingCharacters(in: .whitespacesAndNewlines))
-                                text = ""
-                                isFocused = false
+                            } else {
+                                sendCurrentMessage()
                             }
                         }) {
                             ZStack {
@@ -175,6 +199,23 @@ struct CoCaptainView: View {
                 proxy.scrollTo(lastItem.id, anchor: .bottom)
             }
         }
+    }
+
+    private func sendCurrentMessage() {
+        let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty, !viewModel.isThinking else { return }
+
+        viewModel.sendMessage(prompt)
+        text = ""
+        isFocused = false
+    }
+
+    private func sendQuickPrompt(_ prompt: String) {
+        guard !viewModel.isThinking else { return }
+
+        text = ""
+        isFocused = false
+        viewModel.sendMessage(prompt)
     }
 }
 
@@ -423,7 +464,7 @@ struct ChatBubbleView: View {
             }
 
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
-                Text(message.attributedText)
+                ChatBubbleText(message: message)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
@@ -459,7 +500,6 @@ struct ChatBubbleView: View {
                         }
                     )
                     .foregroundColor(message.isUser ? .white : .primary)
-                    .font(.system(size: 15, weight: .medium))
             }
 
             if message.isUser {
@@ -478,6 +518,24 @@ struct ChatBubbleView: View {
             }
         }
         .transition(.asymmetric(insertion: .push(from: .bottom).combined(with: .opacity), removal: .opacity))
+    }
+}
+
+struct ChatBubbleText: View {
+    let message: ChatBubbleItem
+
+    var body: some View {
+        Text(message.isUser ? AttributedString(message.text) : message.markdownText)
+            .font(.system(size: 15, weight: .medium))
+            .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+            .contextMenu {
+                Button {
+                    UIPasteboard.general.string = message.text
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+            }
     }
 }
 

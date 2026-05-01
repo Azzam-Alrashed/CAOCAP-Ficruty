@@ -167,8 +167,8 @@ public struct ChatBubbleItem: Identifiable, Hashable {
         self.isUser = isUser
     }
 
-    public var attributedText: AttributedString {
-        if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+    public var markdownText: AttributedString {
+        if let attributed = try? AttributedString(markdown: text) {
             return attributed
         } else {
             return AttributedString(text)

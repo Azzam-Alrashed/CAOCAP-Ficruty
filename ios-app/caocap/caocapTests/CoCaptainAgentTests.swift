@@ -65,6 +65,24 @@ struct CoCaptainAgentTests {
         }
     }
 
+    @Test func chatBubbleMarkdownPreservesVisibleContent() {
+        let bubble = ChatBubbleItem(
+            text: """
+            **Next steps**
+
+            - Tighten layout
+            - Improve contrast
+            """,
+            isUser: false
+        )
+
+        let renderedText = String(bubble.markdownText.characters)
+
+        #expect(renderedText.contains("Next steps"))
+        #expect(renderedText.contains("Tighten layout"))
+        #expect(renderedText.contains("Improve contrast"))
+    }
+
     @MainActor
     @Test func commandIntentResolverMatchesEnglishProjectCommands() throws {
         let resolver = CommandIntentResolver()

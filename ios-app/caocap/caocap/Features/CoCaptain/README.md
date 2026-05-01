@@ -73,6 +73,7 @@ Preserve this conflict guard when refactoring review state.
 ## Editing Guidance
 
 - Keep UI rendering in `CoCaptainView`; keep timeline and async state in `CoCaptainViewModel`.
+- Assistant chat bubbles may render Markdown for readable explanations, but raw structured payloads must stay hidden.
 - Keep model orchestration in `CoCaptainAgentCoordinator`.
 - Keep payload parsing deterministic and tolerant of malformed model output.
 - Prefer adding new app capabilities through `AppActionDispatcher` and `AppActionID`.
@@ -86,6 +87,8 @@ Preserve this conflict guard when refactoring review state.
 ## Verification Checklist
 
 - Send a normal chat message and confirm streaming text appears.
+- Confirm assistant Markdown renders cleanly and message text can be selected or copied.
+- Open the input plus menu and confirm quick prompts send once.
 - Send a direct navigation command and confirm safe actions execute or review appears as expected.
 - Ask for a code change and confirm review items are created rather than auto-applied.
 - Apply a node edit and confirm the target node updates plus Live Preview recompiles.
