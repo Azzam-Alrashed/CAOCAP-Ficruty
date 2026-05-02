@@ -20,9 +20,13 @@ struct InfiniteCanvasView: View {
     /// presence also marks the canvas as non-persistent onboarding mode.
     var onNodeAction: ((NodeAction) -> Void)? = nil
     
-    init(store: ProjectStore, currentScale: Binding<CGFloat>, onNodeAction: ((NodeAction) -> Void)? = nil) {
+    /// Optional coordinator for guided onboarding steps.
+    var onboardingCoordinator: OnboardingCoordinator? = nil
+    
+    init(store: ProjectStore, currentScale: Binding<CGFloat>, onboardingCoordinator: OnboardingCoordinator? = nil, onNodeAction: ((NodeAction) -> Void)? = nil) {
         self.store = store
         self._currentScale = currentScale
+        self.onboardingCoordinator = onboardingCoordinator
         self.onNodeAction = onNodeAction
         
         // Onboarding is a guided route, not a user project, so it always starts
@@ -87,6 +91,13 @@ struct InfiniteCanvasView: View {
                                 } else {
                                     selectedNode = node
                                 }
+                                
+                                // ONBOARDING: Check for tapNode gate
+                                if let step = onboardingCoordinator?.currentStep, 
+                                   step.gate == .tapNode, 
+                                   step.spotlightNodeId == node.id {
+                                    onboardingCoordinator?.advance()
+                                }
                             }
                             .highPriorityGesture(
                                 DragGesture(minimumDistance: 5)
@@ -134,6 +145,11 @@ struct InfiniteCanvasView: View {
                         guard !isDraggingNode else { return }
                         viewport.handleDragEnded()
                         persistViewportIfNeeded()
+                        
+                        // ONBOARDING: Check for pan gate
+                        if let step = onboardingCoordinator?.currentStep, step.gate == .pan {
+                            onboardingCoordinator?.advance()
+                        }
                     }
                 )
             )
@@ -166,9 +182,34 @@ struct InfiniteCanvasView: View {
                         viewport.handleMagnificationEnded()
                         currentScale = viewport.scale
                         persistViewportIfNeeded()
+                        
+                        // ONBOARDING: Check for zoom gate
+                        if let step = onboardingCoordinator?.currentStep, step.gate == .zoom {
+                            onboardingCoordinator?.advance()
+                        }
                     }
             )
             .environment(\.layoutDirection, .leftToRight)
+            .overlay {
+                // Layer 4: Onboarding Focus Ring
+                if let step = onboardingCoordinator?.currentStep {
+                    let spotlightPos: CGPoint = {
+                        if let nodeId = step.spotlightNodeId, 
+                           let node = store.nodes.first(where: { $0.id == nodeId }) {
+                            // Node position is in canvas space (offset from center).
+                            // Screen pos = center + viewportOffset + (nodePos * viewportScale)
+                            return CGPoint(
+                                x: center.x + viewport.offset.width + (node.position.x * viewport.scale),
+                                y: center.y + viewport.offset.height + (node.position.y * viewport.scale)
+                            )
+                        }
+                        return center // Fallback to screen center
+                    }()
+                    
+                    FocusRingOverlay(step: step, screenPosition: spotlightPos)
+                        .allowsHitTesting(false)
+                }
+            }
         }
         .background(backgroundColor)
         .edgesIgnoringSafeArea(.all)
@@ -177,6 +218,23 @@ struct InfiniteCanvasView: View {
         }
         .onAppear {
             currentScale = viewport.scale
+            
+            // ONBOARDING: Handle .none gate (auto-advance)
+            checkAutoAdvance()
+        }
+        .onChange(of: onboardingCoordinator?.currentStepIndex) {
+            checkAutoAdvance()
+        }
+    }
+    
+    private func checkAutoAdvance() {
+        if let step = onboardingCoordinator?.currentStep, step.gate == .none {
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                if onboardingCoordinator?.currentStep?.id == step.id {
+                    onboardingCoordinator?.advance()
+                }
+            }
         }
     }
     

@@ -20,8 +20,9 @@ struct ContentView: View {
     @State private var currentScale: CGFloat = 1.0
     @Environment(\.undoManager) var undoManager
     @Environment(\.colorScheme) var colorScheme
-    @AppStorage("app_theme") private var selectedTheme = "System"
+    @State private var selectedTheme = "System"
     @State private var isLaunching = true
+    @State private var onboardingCoordinator = OnboardingCoordinator()
 
     var body: some View {
         ZStack {
@@ -32,9 +33,14 @@ struct ContentView: View {
                 })
                 .id("home_canvas")
             case .onboarding:
-                InfiniteCanvasView(store: router.onboardingStore, currentScale: $currentScale, onNodeAction: { action in
-                    handleNodeAction(action)
-                })
+                InfiniteCanvasView(
+                    store: router.onboardingStore,
+                    currentScale: $currentScale,
+                    onboardingCoordinator: onboardingCoordinator,
+                    onNodeAction: { action in
+                        handleNodeAction(action)
+                    }
+                )
                 .id("onboarding_canvas")
             case .project(let fileName):
                 InfiniteCanvasView(store: router.activeStore, currentScale: $currentScale, onNodeAction: { action in
@@ -135,11 +141,19 @@ struct ContentView: View {
             coCaptain.store = router.activeStore
             coCaptain.actionDispatcher = actionDispatcher
 
+            onboardingCoordinator.load(steps: OnboardingProvider.steps)
+
             // Dismiss launch screen after animation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            Task {
+                try? await Task.sleep(for: .seconds(2.5))
                 withAnimation(.easeInOut(duration: 0.5)) {
                     isLaunching = false
                 }
+            }
+        }
+        .onChange(of: onboardingCoordinator.isComplete) { _, isComplete in
+            if isComplete {
+                handleNodeAction(.navigateHome)
             }
         }
         .onChange(of: router.currentWorkspace) {

@@ -7,6 +7,7 @@ public struct OnboardingManifest: Codable, Equatable {
     public let projectName: String
     public let initialViewportScale: CGFloat
     public let nodes: [SpatialNode]
+    public let steps: [OnboardingStep]?
 }
 
 public struct OnboardingProvider {
@@ -23,6 +24,10 @@ public struct OnboardingProvider {
 
     public static var manifestoNodes: [SpatialNode] {
         manifest.nodes
+    }
+
+    public static var steps: [OnboardingStep] {
+        manifest.steps ?? []
     }
 
     public static func decodeManifest(from data: Data) throws -> OnboardingManifest {
@@ -55,8 +60,26 @@ public struct OnboardingProvider {
             version: 0,
             projectName: "Onboarding",
             initialViewportScale: 1.0,
-            nodes: fallbackNodes
+            nodes: fallbackNodes,
+            steps: fallbackSteps
         )
+    }
+
+    private static var fallbackSteps: [OnboardingStep] {
+        return [
+            OnboardingStep(
+                label: "Welcome! Try panning the canvas to look around.",
+                gate: .pan
+            ),
+            OnboardingStep(
+                label: "Great. Now pinch to zoom in or out.",
+                gate: .zoom
+            ),
+            OnboardingStep(
+                label: "Tap a node to see its details, or use the green arrow to enter Home.",
+                gate: .none
+            )
+        ]
     }
 
     private static var fallbackNodes: [SpatialNode] {
