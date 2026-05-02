@@ -56,4 +56,29 @@ struct ProjectMutationTests {
         #expect(store.nodes.count == 1)
         #expect(store.nodes.first?.id == node1.id)
     }
+
+    @Test func undoingNodeDeletionRestoresCleanedConnections() throws {
+        let sourceId = UUID()
+        let targetId = UUID()
+
+        var sourceNode = SpatialNode(id: sourceId, type: .code, position: .zero, title: "Source")
+        sourceNode.nextNodeId = targetId
+        sourceNode.connectedNodeIds = [targetId]
+
+        let targetNode = SpatialNode(id: targetId, type: .code, position: .zero, title: "Target")
+        let store = ProjectStore(
+            fileName: "test_del_undo_connections.json",
+            initialNodes: [sourceNode, targetNode]
+        )
+        let undoManager = UndoManager()
+        store.undoManager = undoManager
+
+        store.deleteNode(id: targetId)
+        undoManager.undo()
+
+        let restoredSource = try #require(store.nodes.first(where: { $0.id == sourceId }))
+        #expect(store.nodes.map(\.id) == [sourceId, targetId])
+        #expect(restoredSource.nextNodeId == targetId)
+        #expect(restoredSource.connectedNodeIds == [targetId])
+    }
 }

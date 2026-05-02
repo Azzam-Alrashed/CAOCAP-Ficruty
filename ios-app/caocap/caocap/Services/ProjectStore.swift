@@ -437,14 +437,12 @@ public class ProjectStore {
             return
         }
         
-        let removedNode = nodes[index]
+        let nodesBeforeDeletion = nodes
         
         // Register Undo
         undoManager?.registerUndo(withTarget: self) { target in
             MainActor.assumeIsolated {
-                // To restore a node properly, we'd need to restore its connections too.
-                // For now, we restore the node itself.
-                target.nodes.append(removedNode) // Simplification: append instead of original index for now
+                target.nodes = nodesBeforeDeletion
                 if persist {
                     target.requestSave()
                 }
