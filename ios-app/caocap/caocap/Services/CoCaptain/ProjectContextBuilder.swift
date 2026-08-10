@@ -10,15 +10,11 @@ import Foundation
 public struct ProjectContextBuilder {
     /// Controls how much implementation detail is included in canvas context.
     public enum DetailLevel: Hashable {
-        /// Full Mini-App source plus Firebase wiring rules for edit turns.
+        /// Full Mini-App source for edit turns.
         case implementation
-        /// SRS/code summaries without Firebase wiring or config payloads.
+        /// SRS/code summaries without large implementation payloads.
         case product
     }
-
-    /// Maximum characters allowed for the Firebase config section of a prompt.
-    /// Config objects can be large JSON; truncation keeps the prompt within model limits.
-    private static let maxFirebaseConfigChars = 4_000
 
     /// Characters of code/SRS shown for a slimmed (non-selected) Mini-App when
     /// the model can fetch full text on demand via `read_node_section`.
@@ -36,9 +32,8 @@ public struct ProjectContextBuilder {
 
     /// Builds a full-project context string from every node on the canvas.
     ///
-    /// The returned string includes a node inventory listing, per-Mini-App
-    /// SRS + code sections (with character budgets), and the Firebase wiring
-    /// rules so the agent always has them in context.
+    /// The returned string includes a node inventory listing and per-Mini-App
+    /// SRS + code sections (with character budgets).
     @MainActor
     public func buildPromptContext(
         from store: ProjectStore,
@@ -54,8 +49,7 @@ public struct ProjectContextBuilder {
             "Node Count: \(store.nodes.count)",
             "Mini-App Count: \(miniApps.count)",
             "Node Graph:\n\(inventory)",
-            miniAppSections.isEmpty ? nil : "Mini-Apps:\n\n" + miniAppSections.joined(separator: "\n\n---\n\n"),
-            detailLevel == .implementation ? ProjectContextBuilder.firebaseWiringRulesBulletList() : nil
+            miniAppSections.isEmpty ? nil : "Mini-Apps:\n\n" + miniAppSections.joined(separator: "\n\n---\n\n")
         ]
         .compactMap { $0 }
         .joined(separator: "\n\n")
@@ -91,8 +85,7 @@ public struct ProjectContextBuilder {
             selectedNode.agentState.memorySummary.map { "Node Agent Memory:\n\($0)" },
             "Selected Node Context:\n\(miniAppContext(for: selectedNode, selected: true, detailLevel: detailLevel))",
             linkedSections.isEmpty ? nil : "Linked Neighbor Nodes:\n\n\(linkedSections.joined(separator: "\n\n"))",
-            "Project Inventory:\n\(nodeInventory(store.nodes))",
-            detailLevel == .implementation ? ProjectContextBuilder.firebaseWiringRulesBulletList() : nil
+            "Project Inventory:\n\(nodeInventory(store.nodes))"
         ]
         .compactMap { $0 }
         .joined(separator: "\n\n")
@@ -117,6 +110,7 @@ public struct ProjectContextBuilder {
         selected: Bool,
         detailLevel: DetailLevel
     ) -> String {
+        _ = detailLevel
         guard node.type == .miniApp, let miniApp = node.miniApp else {
             if node.type == .subCanvas {
                 return "- \(node.title) [subCanvas] links to file: \(node.linkedCanvasFileName ?? "[None]")"
@@ -137,40 +131,14 @@ public struct ProjectContextBuilder {
             ? Self.sectionSummary(miniApp.srsText, limit: srsLimit)
             : Self.trimmed(miniApp.srsText, limit: srsLimit)
 
-        if detailLevel == .product {
-            return """
-            - \(node.title) [miniApp] id: \(node.id.uuidString)
-              SRS Readiness: \(miniApp.srsReadinessState.contextLabel)
-              SRS:
-            \(Self.indent(srsBlock, spaces: 4))
-
-              Code:
-            \(Self.indent(codeBlock, spaces: 4))
-            """
-        }
-
-        let firebaseConfig = miniApp.firebaseConfigText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let firebaseStatus = FirebasePreviewBootstrap.injectableFirebaseConfig(for: miniApp) == nil ? "not ready" : "ready"
-        let firestorePath = miniApp.firebaseFirestorePath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        // Full config payloads only accompany a fully-detailed (selected or
-        // full-budget) node; slim entries keep the small status lines only.
-        let firebaseConfigBlock = slim ? nil : """
-
-          Firebase Config:
-        \(Self.indent(firebaseConfig.isEmpty ? "(empty)" : Self.formatFirebaseConfigForPrompt(firebaseConfig), spaces: 4))
-        """
-
         return """
         - \(node.title) [miniApp] id: \(node.id.uuidString)
           SRS Readiness: \(miniApp.srsReadinessState.contextLabel)
-          Firebase: \(firebaseStatus)
-          Firestore Default Path: \(firestorePath.isEmpty ? "(none set)" : firestorePath)
           SRS:
         \(Self.indent(srsBlock, spaces: 4))
 
           Code:
-        \(Self.indent(codeBlock, spaces: 4))\(firebaseConfigBlock ?? "")
+        \(Self.indent(codeBlock, spaces: 4))
         """
     }
 
@@ -201,34 +169,6 @@ public struct ProjectContextBuilder {
             ids.insert(node.id)
         }
         return nodes.filter { ids.contains($0.id) }
-    }
-
-    /// Attempts to pretty-print raw Firebase config JSON so it's easier for
-    /// the model to read; falls back to the raw string if parsing fails.
-    private static func formatFirebaseConfigForPrompt(_ raw: String) -> String {
-        guard let data = raw.data(using: .utf8) else {
-            return trimmed(raw, limit: maxFirebaseConfigChars)
-        }
-        if let obj = try? JSONSerialization.jsonObject(with: data),
-           JSONSerialization.isValidJSONObject(obj),
-           let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
-           let str = String(data: pretty, encoding: .utf8) {
-            return trimmed(str, limit: maxFirebaseConfigChars)
-        }
-        return trimmed(raw, limit: maxFirebaseConfigChars)
-    }
-
-    private static func firebaseWiringRulesBulletList() -> String {
-        """
-        Mini-App Firebase wiring rules for CoCaptain:
-        - Firebase config lives inside each Mini-App, not in a separate Firebase node.
-        - The Mini-App preview injects valid config and sets `window.__caocapFirestore` plus `window.__caocapFirestoreDefaultPath`.
-        - Do not call `initializeApp` again in Mini-App code; use `window.__caocapFirestore` after null checks.
-        - For code edits, emit `node_edit` with `role="miniApp"` and `section="code"` targeting the Mini-App nodeId.
-        - For SRS edits, emit `node_edit` with `role="miniApp"` and `section="srs"` targeting the Mini-App nodeId.
-        - Firestore compat: `db.collection('segment')` accepts one collection id. For nested paths, chain `collection().doc().collection()`.
-        - Remind the user that Firestore Security Rules must allow intended client reads/writes.
-        """
     }
 
     private static func trimmed(_ text: String, limit: Int) -> String {

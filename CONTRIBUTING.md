@@ -34,17 +34,6 @@ Maintain the domain-driven, feature-based structure:
    - Include screenshots or videos for UI changes.
    - Ensure the project builds successfully before submitting.
 
-## Mini-App Publish (local development)
-
-Publishing Mini-Apps to GitHub Pages requires a GitHub OAuth app that is not committed to the repo.
-
-1. Copy `ios-app/caocap/caocap/Resources/Config/Secrets.plist.example` to `Secrets.plist` in the same folder.
-2. Create a [GitHub OAuth App](https://github.com/settings/developers) with authorization callback URL `caocap://`.
-3. Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to `Secrets.plist` (never put real keys in `Secrets.plist.example`).
-4. Rebuild the app so `Secrets.plist` is copied into the app bundle.
-
-`Secrets.plist` is gitignored. Do not commit real tokens.
-
 ## The "Vibe Coding" Way
 
 CAOCAP is built in high-bandwidth development sessions. We value:

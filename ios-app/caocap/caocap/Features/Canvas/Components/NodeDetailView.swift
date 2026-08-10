@@ -42,8 +42,6 @@ private enum MiniAppTool: String, Identifiable {
     case srs
     /// HTML/JS source code editor.
     case code
-    /// Firebase Web SDK configuration editor.
-    case firebase
     /// CoCaptain agent chat panel.
     case agent
     /// Node identity and agent profile settings form.
@@ -55,10 +53,9 @@ private enum MiniAppTool: String, Identifiable {
         switch previewTool {
         case .srs: self = .srs
         case .code: self = .code
-        case .firebase: self = .firebase
         case .agent: self = .agent
         case .settings: self = .settings
-        case .publish, .backToCanvas: return nil
+        case .backToCanvas: return nil
         }
     }
 }
@@ -74,7 +71,6 @@ private struct MiniAppPreviewShell: View {
     @Environment(\.dismiss) private var dismiss
     /// Drives which tool sheet is currently presented.
     @State private var activeTool: MiniAppTool?
-    @State private var showingPublish = false
 
     /// Live-refreshed node so any background store mutation (e.g. CoCaptain applying
     /// a patch) is immediately reflected in the preview without dismissing the sheet.
@@ -109,18 +105,12 @@ private struct MiniAppPreviewShell: View {
             commandPalette?.miniAppPreviewContext = nil
             commandPalette?.setPresented(false)
         }
-        .sheet(isPresented: $showingPublish) {
-            MiniAppPublishView(node: currentNode, store: store)
-                .presentationDragIndicator(.visible)
-        }
         .sheet(item: $activeTool) { tool in
             switch tool {
             case .srs:
                 SRSEditorView(node: currentNode, store: store)
             case .code:
                 CodeEditorView(node: currentNode, store: store)
-            case .firebase:
-                FirebaseConfigNodeEditorView(node: currentNode, store: store)
             case .agent:
                 NavigationStack {
                     NodeAgentChatView(
@@ -143,8 +133,6 @@ private struct MiniAppPreviewShell: View {
 
     private func handlePreviewToolSelection(_ tool: MiniAppPreviewTool) {
         switch tool {
-        case .publish:
-            showingPublish = true
         case .backToCanvas:
             dismiss()
         default:

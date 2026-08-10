@@ -1,7 +1,7 @@
 import Lottie
 import SwiftUI
 
-/// Full-screen confetti celebration reused for publish and daily challenges.
+/// Full-screen confetti celebration used for daily challenges.
 struct ConfettiCelebrationView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -23,6 +23,3 @@ struct ConfettiCelebrationView: View {
         return LottieAnimation.named("confetti")
     }
 }
-
-/// Backward-compatible alias for publish flows.
-typealias PublishConfettiView = ConfettiCelebrationView

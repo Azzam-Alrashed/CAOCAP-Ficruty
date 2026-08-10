@@ -14,7 +14,6 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case goRoot = "go_root"
     case goBack = "go_back"
     case createNode = "create_node"
-    case createFirebaseNode = "create_firebase_node"
     case summonCoCaptain = "summon_cocaptain"
     case summonCopilotVoice = "summon_copilot_voice"
     case summonCopilotVideo = "summon_copilot_video"
@@ -169,14 +168,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             category: .project,
             isMutating: true,
             allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .createFirebaseNode,
-            title: "Create Mini-App",
-            icon: "app.connected.to.app.below.fill",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: true
         ),
         AppActionDefinition(
             id: .summonCoCaptain,

@@ -6,10 +6,8 @@ import OSLog
 public enum MiniAppPreviewTool: String, CaseIterable, Identifiable {
     case srs
     case code
-    case firebase
     case agent
     case settings
-    case publish
     case backToCanvas
 
     public var id: String { rawValue }
@@ -18,10 +16,8 @@ public enum MiniAppPreviewTool: String, CaseIterable, Identifiable {
         switch self {
         case .srs: return "SRS"
         case .code: return "Code"
-        case .firebase: return "Firebase"
         case .agent: return "Agent"
         case .settings: return "Settings"
-        case .publish: return "Publish"
         case .backToCanvas: return "Back to Canvas"
         }
     }
@@ -30,10 +26,8 @@ public enum MiniAppPreviewTool: String, CaseIterable, Identifiable {
         switch self {
         case .srs: return "doc.text"
         case .code: return "chevron.left.forwardslash.chevron.right"
-        case .firebase: return "flame"
         case .agent: return "sparkles"
         case .settings: return "gearshape"
-        case .publish: return "square.and.arrow.up"
         case .backToCanvas: return "arrow.uturn.backward"
         }
     }
@@ -125,7 +119,6 @@ public class CommandPaletteViewModel {
 
     private static let hiddenCreationActionIDs: Set<AppActionID> = [
         .createNode,
-        .createFirebaseNode,
         .createSubCanvas
     ]
 

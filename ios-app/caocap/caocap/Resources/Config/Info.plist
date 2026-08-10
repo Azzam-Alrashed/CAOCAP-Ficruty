@@ -12,16 +12,6 @@
 				<string>com.googleusercontent.apps.415791627092-d0otm8q4nfcdq32cvm8jkknh0s8vmh9j</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.caocap.publish</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>caocap</string>
-			</array>
-		</dict>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

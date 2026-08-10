@@ -22,7 +22,7 @@ public struct NodeCreationCatalog {
             id: .miniApp,
             title: "Create Mini-App",
             icon: NodeType.miniApp.defaultIcon,
-            keywords: ["mini-app", "mini app", "app", "preview", "srs", "code", "firebase"]
+            keywords: ["mini-app", "mini app", "app", "preview", "srs", "code"]
         ),
         NodeCreationOption(
             id: .subCanvas,

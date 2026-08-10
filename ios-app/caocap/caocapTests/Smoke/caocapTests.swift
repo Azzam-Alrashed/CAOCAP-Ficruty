@@ -67,16 +67,16 @@ struct caocapTests {
     @MainActor
     @Test func dispatcherAllowsExplicitlyAutonomousWorkspaceMutations() {
         let dispatcher = AppActionDispatcher()
-        var createdFirebaseNode = false
+        var organized = false
 
-        dispatcher.register(.createFirebaseNode) {
-            createdFirebaseNode = true
+        dispatcher.register(.organizeNodes) {
+            organized = true
         }
 
-        let result = dispatcher.perform(.createFirebaseNode, source: .agentAutomatic)
+        let result = dispatcher.perform(.organizeNodes, source: .agentAutomatic)
 
         #expect(result.executed)
-        #expect(createdFirebaseNode)
+        #expect(organized)
     }
 
     @MainActor

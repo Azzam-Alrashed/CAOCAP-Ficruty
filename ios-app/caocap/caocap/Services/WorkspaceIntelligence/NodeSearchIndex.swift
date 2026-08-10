@@ -26,8 +26,7 @@ public struct NodeSearchIndex {
                 let titleLower = node.title.lowercased()
                 let miniAppContent = [
                     node.miniApp?.srsText,
-                    node.miniApp?.codeText,
-                    node.miniApp?.firebaseConfigText
+                    node.miniApp?.codeText
                 ]
                     .compactMap { $0 }
                     .joined(separator: "\n")

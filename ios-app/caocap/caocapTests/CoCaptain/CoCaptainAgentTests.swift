@@ -43,9 +43,8 @@ struct CoCaptainAgentTests {
     }
 
     @MainActor
-    @Test func productContextOmitsFirebaseImplementationDetails() throws {
+    @Test func productContextIncludesSRSWithoutLegacyFirebaseWiring() throws {
         let store = makeStore()
-        store.nodes[0].miniApp?.firebaseConfigText = #"{"apiKey":"test"}"#
 
         let context = ProjectContextBuilder().buildPromptContext(from: store, detailLevel: .product)
 
@@ -227,22 +226,6 @@ struct CoCaptainAgentTests {
         #expect(SpatialNode(position: .zero, title: "New Logic").role == .custom)
     }
 
-    @Test func livePreviewCompilerInjectsFirebaseWhenMiniAppConfigPresent() throws {
-        let miniApp = SpatialNode(
-            type: .miniApp,
-            position: .zero,
-            title: "Mini-App",
-            theme: .blue,
-            miniApp: MiniAppState(
-                codeText: "<html><head></head><body><p>x</p></body></html>",
-                firebaseConfigText: #"{"apiKey":"testKey","authDomain":"t.firebaseapp.com","projectId":"tid","storageBucket":"t.appspot.com","messagingSenderId":"1","appId":"1:1:web:abc"}"#
-            )
-        )
-        let compilation = try #require(LivePreviewCompiler().compile(nodes: [miniApp]))
-        #expect(compilation.html.contains("__caocap_fb_b64"))
-        #expect(compilation.html.contains("firebase-app-compat.js"))
-    }
-
     @Test func livePreviewCompilerUsesFirstMiniAppWhenMultipleExist() throws {
         let nodes = [
             SpatialNode(type: .miniApp, position: .zero, title: "Mini-App", miniApp: MiniAppState(codeText: "<html><body><h1>Combined</h1></body></html>")),
@@ -253,26 +236,6 @@ struct CoCaptainAgentTests {
 
         #expect(compilation.html.contains("Combined"))
         #expect(!compilation.html.contains("Ignored"))
-    }
-
-    @Test func livePreviewCompilerInjectsFirebaseIntoMiniAppCode() throws {
-        let nodes = [
-            SpatialNode(
-                type: .miniApp,
-                position: .zero,
-                title: "Mini-App",
-                miniApp: MiniAppState(
-                    codeText: "<html><head></head><body><h1>Combined</h1></body></html>",
-                    firebaseConfigText: #"{"apiKey":"testKey","authDomain":"t.firebaseapp.com","projectId":"tid","storageBucket":"t.appspot.com","messagingSenderId":"1","appId":"1:1:web:abc"}"#
-                )
-            )
-        ]
-
-        let compilation = try #require(LivePreviewCompiler().compile(nodes: nodes))
-
-        #expect(compilation.html.contains("__caocap_fb_b64"))
-        #expect(compilation.html.contains("firebase-app-compat.js"))
-        #expect(compilation.html.contains("data-caocap-fb-diag"))
     }
 
     @Test func livePreviewCompilerInjectsViewportMetaWhenMissing() throws {
@@ -2491,7 +2454,6 @@ struct CoCaptainAgentTests {
     @MainActor
     @Test func askModeUsesProductContextAndAskPromptPosture() async throws {
         let store = makeStore()
-        store.nodes[0].miniApp?.firebaseConfigText = #"{"apiKey":"test"}"#
         let llm = TestLLMClient(response: "Try clarifying the main user goal first.")
         let coordinator = CoCaptainAgentCoordinator(llmClient: llm)
         let turnPlan = CoCaptainTurnPlan(purpose: .standard, mode: .ask)

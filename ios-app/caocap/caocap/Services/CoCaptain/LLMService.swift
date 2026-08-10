@@ -423,10 +423,6 @@ public final class LLMService {
         - When the user says "title", "headline", or "heading", they mean the visible page heading (the `h1`), not the browser tab `<title>` tag.
         - If a change request is vague or could mean several different things, do NOT guess and do NOT reject it. Ask exactly one clarifying question with 2-4 short, concrete options a beginner can pick from.
         - Phrase options as outcomes ("Make the text bigger"), never as technical choices ("Adjust font-size CSS").
-
-        Firebase / Firestore (Mini-App Preview):
-        - When the user asks to link JavaScript to Firebase, save/persist/sync data to Firestore, or connect the app to the backend, read the Mini-App context block about `window.__caocapFirestore` and `window.__caocapFirestoreDefaultPath`.
-        - Implement persistence with Mini-App `section="code"` node edits using the Firestore compat instance on `window.__caocapFirestore` (never invent a second `initializeApp` in JS). Firebase config lives inside the Mini-App's Firebase tool, not in a separate node.
         """
     }
 
@@ -604,14 +600,6 @@ public final class LLMService {
                 """
                 : ""
 
-            // Agent mode always gets implementation-level Firebase guidance when
-            // structured tools are on. Ask/Plan modes never reach this block.
-            let firebasePersistenceInstructions = chatMode == .agent
-                ? """
-                - For Firebase/Firestore persistence, edit the Mini-App **code section** (inline JavaScript): use `window.__caocapFirestore` (and optional `window.__caocapFirestoreDefaultPath`) as described in canvas context; use compat-style `collection`/`doc`/`set`/`add`/`update` calls after null-checks.
-                """
-                : ""
-
             // Wire-format-specific wording. With the node-edit tools enabled,
             // the XML schema block is omitted entirely; the XML parser stays
             // in place as a silent fallback for models that still emit it.
@@ -705,7 +693,6 @@ public final class LLMService {
                 \(readToolInstructions)
                 \(nodeIDRule)
                 - Code/content changes belong in node edits, not app actions.
-                \(firebasePersistenceInstructions)
                 - Every node edit needs a non-empty summary and at least one operation.
                 - Exact operations require a non-empty `target`; append/prepend/replace_all do not.
                 - Targets are resolved flexibly: generic words like "title", "headline", or "heading" automatically resolve to the page's main `h1` heading, so pass the user's own words as the target instead of guessing between `<title>` and `<h1>`.

@@ -84,8 +84,7 @@ public enum NodeType: String, Codable, Equatable, Hashable, CaseIterable {
 }
 
 /// All mutable content owned by a Mini-App node: the SRS specification text,
-/// its derived readiness state, the generated HTML/CSS/JS source code, and
-/// optional Firebase integration settings.
+/// its derived readiness state, and the generated HTML/CSS/JS source code.
 public struct MiniAppState: Codable, Equatable, Hashable {
     /// Markdown-formatted Software Requirements Specification authored by the user.
     public var srsText: String
@@ -95,49 +94,17 @@ public struct MiniAppState: Codable, Equatable, Hashable {
     public var codeText: String
     /// Last successfully compiled HTML bundle. `nil` if the code has never been compiled.
     public var compiledHTML: String?
-    /// Raw Firebase configuration JSON or snippet pasted by the user.
-    public var firebaseConfigText: String
-    /// Optional Firestore collection/document path used when the mini-app integrates with Firestore.
-    public var firebaseFirestorePath: String?
-    /// Live HTTPS URL after publishing to GitHub Pages.
-    public var publishURL: String?
-    /// GitHub username that owns the published repository.
-    public var githubRepoOwner: String?
-    /// GitHub repository name used for publish.
-    public var githubRepoName: String?
-    /// GitHub repository numeric id used for republish identity.
-    public var githubRepoId: Int?
-    /// Timestamp of the most recent successful publish.
-    public var publishedAt: Date?
-    /// Whether the published GitHub repository is private.
-    public var isPublishRepoPrivate: Bool?
 
     public init(
         srsText: String = SRSScaffold.defaultText,
         srsReadinessState: SRSReadinessState? = nil,
         codeText: String = "",
-        compiledHTML: String? = nil,
-        firebaseConfigText: String = "",
-        firebaseFirestorePath: String? = nil,
-        publishURL: String? = nil,
-        githubRepoOwner: String? = nil,
-        githubRepoName: String? = nil,
-        githubRepoId: Int? = nil,
-        publishedAt: Date? = nil,
-        isPublishRepoPrivate: Bool? = nil
+        compiledHTML: String? = nil
     ) {
         self.srsText = srsText
         self.srsReadinessState = srsReadinessState ?? .empty
         self.codeText = codeText
         self.compiledHTML = compiledHTML
-        self.firebaseConfigText = firebaseConfigText
-        self.firebaseFirestorePath = firebaseFirestorePath
-        self.publishURL = publishURL
-        self.githubRepoOwner = githubRepoOwner
-        self.githubRepoName = githubRepoName
-        self.githubRepoId = githubRepoId
-        self.publishedAt = publishedAt
-        self.isPublishRepoPrivate = isPublishRepoPrivate
     }
 }
 

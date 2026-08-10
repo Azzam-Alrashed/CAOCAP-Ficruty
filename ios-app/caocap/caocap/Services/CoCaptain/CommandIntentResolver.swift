@@ -70,18 +70,6 @@ public struct CommandIntentResolver {
                 "عقدة جديدة",
                 "سوي عقدة"
             ]
-        case .createFirebaseNode:
-            return [
-                "create firebase node",
-                "new firebase node",
-                "add firebase",
-                "firebase node",
-                "backend node",
-                "firestore node",
-                "انشاء عقدة فايربيس",
-                "فايربيس",
-                "عقدة فايربيس"
-            ]
         case .summonCoCaptain:
             return [
                 "summon cocaptain",

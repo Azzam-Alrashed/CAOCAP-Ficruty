@@ -651,9 +651,6 @@ final class AppSessionCoordinator {
         actionDispatcher.register(.createNode) { [weak self] in
             self?.createNode(type: .miniApp)
         }
-        actionDispatcher.register(.createFirebaseNode) { [weak self] in
-            self?.createNode(type: .miniApp)
-        }
         actionDispatcher.register(.summonCoCaptain) { [weak self] in
             guard let self else { return }
             self.coCaptain.configureProjectSession(store: self.router.activeStore, dispatcher: self.actionDispatcher)

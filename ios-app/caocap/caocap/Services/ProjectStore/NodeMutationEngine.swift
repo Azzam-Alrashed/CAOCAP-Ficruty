@@ -64,8 +64,7 @@ final class NodeMutationEngine {
             case .miniApp:
                 nodes[index].miniApp = nodes[index].miniApp ?? MiniAppState(
                     srsReadinessState: SRSReadinessEvaluator().evaluate(text: SRSScaffold.defaultText, currentState: nil),
-                    codeText: ProjectTemplateProvider.defaultCode,
-                    firebaseConfigText: FirebasePreviewBootstrap.placeholderConfigJSON()
+                    codeText: ProjectTemplateProvider.defaultCode
                 )
             case .standard:
                 nodes[index].miniApp = nil
@@ -142,31 +141,6 @@ final class NodeMutationEngine {
         }
     }
 
-    /// Replaces the Firebase Web config JSON embedded in a Mini-App node and
-    /// triggers a live preview recompile so the new credentials take effect immediately.
-    public func updateMiniAppFirebaseConfig(nodes: inout [SpatialNode], id: UUID, text: String, persist: Bool = true) {
-        if let index = nodes.firstIndex(where: { $0.id == id }) {
-            ensureMiniAppState(for: &nodes[index])
-            let oldText = nodes[index].miniApp?.firebaseConfigText ?? ""
-
-            undoManager?.registerUndo(withTarget: self) { target in
-                MainActor.assumeIsolated {
-                    target.onPerformUndoMutation? { currentNodes in
-                        target.updateMiniAppFirebaseConfig(nodes: &currentNodes, id: id, text: oldText, persist: persist)
-                    }
-                }
-            }
-            undoStackChanged += 1
-
-            nodes[index].miniApp?.firebaseConfigText = text
-            onCompileLivePreview?(&nodes)
-
-            if persist {
-                onRequestSave?(true)
-            }
-        }
-    }
-    
     /// Replaces the agent execution state of a node (e.g. `.thinking`, `.idle`).
     /// Does not register an undo entry — agent state is considered transient.
     public func updateNodeAgentState(nodes: inout [SpatialNode], id: UUID, agentState: NodeAgentState, persist: Bool = true) {
@@ -252,8 +226,7 @@ final class NodeMutationEngine {
         let linkedFileName: String? = type == .subCanvas ? CanvasFileNaming.newCanvasFileName() : nil
         let miniApp = type == .miniApp ? MiniAppState(
             srsReadinessState: SRSReadinessEvaluator().evaluate(text: SRSScaffold.defaultText, currentState: nil),
-            codeText: ProjectTemplateProvider.defaultCode,
-            firebaseConfigText: FirebasePreviewBootstrap.placeholderConfigJSON()
+            codeText: ProjectTemplateProvider.defaultCode
         ) : nil
         let offset = onViewportChange?() ?? .zero
 
@@ -424,53 +397,6 @@ final class NodeMutationEngine {
         }
     }
 
-    /// Updates the Firestore collection/document path embedded in a Mini-App node.
-    /// Triggers a live preview recompile so the new path is reflected immediately.
-    public func updateNodeFirebaseFirestorePath(nodes: inout [SpatialNode], id: UUID, path: String?, persist: Bool = true) {
-        if let index = nodes.firstIndex(where: { $0.id == id }) {
-            ensureMiniAppState(for: &nodes[index])
-            let oldPath = nodes[index].miniApp?.firebaseFirestorePath
-            undoManager?.registerUndo(withTarget: self) { target in
-                MainActor.assumeIsolated {
-                    target.onPerformUndoMutation? { currentNodes in
-                        target.updateNodeFirebaseFirestorePath(nodes: &currentNodes, id: id, path: oldPath, persist: persist)
-                    }
-                }
-            }
-            undoStackChanged += 1
-            nodes[index].miniApp?.firebaseFirestorePath = path
-            if persist {
-                onRequestSave?(true)
-            }
-            onCompileLivePreview?(&nodes)
-        }
-    }
-
-    /// Persists GitHub Pages publish metadata for a Mini-App node after a successful publish.
-    public func updateMiniAppPublishMetadata(
-        nodes: inout [SpatialNode],
-        id: UUID,
-        publishURL: String,
-        githubRepoOwner: String,
-        githubRepoName: String,
-        githubRepoId: Int,
-        isPrivate: Bool,
-        publishedAt: Date = Date(),
-        persist: Bool = true
-    ) {
-        guard let index = nodes.firstIndex(where: { $0.id == id }) else { return }
-        ensureMiniAppState(for: &nodes[index])
-        nodes[index].miniApp?.publishURL = publishURL
-        nodes[index].miniApp?.githubRepoOwner = githubRepoOwner
-        nodes[index].miniApp?.githubRepoName = githubRepoName
-        nodes[index].miniApp?.githubRepoId = githubRepoId
-        nodes[index].miniApp?.isPublishRepoPrivate = isPrivate
-        nodes[index].miniApp?.publishedAt = publishedAt
-        if persist {
-            onRequestSave?(true)
-        }
-    }
-
     /// Lazily bootstraps a `MiniAppState` on a `.miniApp` node if it is missing.
     /// Guards against operating on non-Mini-App node types.
     private func ensureMiniAppState(for node: inout SpatialNode) {
@@ -478,8 +404,7 @@ final class NodeMutationEngine {
         if node.miniApp == nil {
             node.miniApp = MiniAppState(
                 srsReadinessState: SRSReadinessEvaluator().evaluate(text: SRSScaffold.defaultText, currentState: nil),
-                codeText: ProjectTemplateProvider.defaultCode,
-                firebaseConfigText: FirebasePreviewBootstrap.placeholderConfigJSON()
+                codeText: ProjectTemplateProvider.defaultCode
             )
         }
     }
