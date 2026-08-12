@@ -407,11 +407,16 @@ final class AppSessionCoordinator {
     }
 
     func centerActiveCanvas() {
+        let fitScale = viewport.scaleToFitSpaceSketch(in: containerSize)
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            viewport.flyTo(nodePosition: .zero, containerSize: containerSize)
-            currentScale = 1.0
+            viewport.flyTo(
+                nodePosition: .zero,
+                containerSize: containerSize,
+                targetScale: fitScale
+            )
+            currentScale = fitScale
         }
-        router.activeStore.updateViewport(offset: .zero, scale: 1.0)
+        router.activeStore.updateViewport(offset: .zero, scale: fitScale)
     }
 
     func ensureActionsConfigured() {

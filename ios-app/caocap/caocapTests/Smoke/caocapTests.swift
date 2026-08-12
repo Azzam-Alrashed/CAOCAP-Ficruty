@@ -46,6 +46,13 @@ struct caocapTests {
         #expect(viewport.lastOffset == CGSize(width: 50, height: 12))
     }
 
+    @Test func spaceSketchFitScaleUsesSmallestCanvasDimension() {
+        let viewport = ViewportState()
+
+        #expect(viewport.scaleToFitSpaceSketch(in: CGSize(width: 400, height: 850)) == 0.2)
+        #expect(viewport.scaleToFitSpaceSketch(in: CGSize(width: 1_366, height: 1_024)) == 0.512)
+    }
+
     @Test func defaultProjectStartsWithCleanCanvas() {
         #expect(ProjectTemplateProvider.defaultNodes.isEmpty)
     }

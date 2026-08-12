@@ -5,6 +5,7 @@ import Observation
 /// object rather than reimplementing coordinate transforms locally.
 @Observable
 public class ViewportState {
+    public static let spaceSketchSize = CGSize(width: 2000, height: 2000)
     /// The current visual offset of the canvas.
     public var offset: CGSize = .zero
     
@@ -27,6 +28,15 @@ public class ViewportState {
         self.lastOffset = offset
         self.scale = scale
         self.lastScale = scale
+    }
+
+    public func scaleToFitSpaceSketch(in containerSize: CGSize) -> CGFloat {
+        guard containerSize.width > 0, containerSize.height > 0 else { return 1.0 }
+        let scale = min(
+            containerSize.width / Self.spaceSketchSize.width,
+            containerSize.height / Self.spaceSketchSize.height
+        )
+        return min(max(scale, minScale), maxScale)
     }
     
     /// Updates the current offset based on the translation of an active drag gesture.

@@ -66,10 +66,21 @@ struct InfiniteCanvasView: View {
                             PerformanceSignposts.event(PerformanceSignposts.Name.canvasGesture)
                         }
                 )
+                .onAppear {
+                    if viewport.offset == .zero, viewport.scale == 1.0 {
+                        let fitScale = viewport.scaleToFitSpaceSketch(in: geometry.size)
+                        viewport.flyTo(
+                            nodePosition: .zero,
+                            containerSize: geometry.size,
+                            targetScale: fitScale
+                        )
+                        persistViewport()
+                    }
+                    currentScale = viewport.scale
+                }
         }
         .background(colorScheme == .dark ? Color(white: 0.05) : Color(white: 0.95))
         .ignoresSafeArea()
-        .onAppear { currentScale = viewport.scale }
     }
 
     private func persistViewport() {
