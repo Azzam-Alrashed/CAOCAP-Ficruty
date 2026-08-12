@@ -55,68 +55,6 @@ struct caocapTests {
     }
 
     @MainActor
-    @Test func dispatcherAllowsExplicitlyAutonomousWorkspaceMutations() {
-        let dispatcher = AppActionDispatcher()
-        var organized = false
-
-        dispatcher.register(.organizeNodes) {
-            organized = true
-        }
-
-        let result = dispatcher.perform(.organizeNodes, source: .agentAutomatic)
-
-        #expect(result.executed)
-        #expect(organized)
-    }
-
-    @MainActor
-    @Test func dispatcherBlocksNonAutonomousNodeCreationFromAgentAutomatic() {
-        let dispatcher = AppActionDispatcher()
-        var createdNode = false
-
-        dispatcher.register(.createNode) {
-            createdNode = true
-        }
-
-        let result = dispatcher.perform(.createNode, source: .agentAutomatic)
-
-        #expect(!result.executed)
-        #expect(!createdNode)
-    }
-
-    @MainActor
-    @Test func caocapExportCopiesProjectFile() async throws {
-        let store = ProjectStore(
-            fileName: "onboarding-export-test-\(UUID().uuidString).json",
-            projectName: "Export Test",
-            initialNodes: [
-                SpatialNode(
-                    type: .miniApp,
-                    position: .zero,
-                    title: "Mini-App",
-                    miniApp: MiniAppState(
-                        codeText: ProjectTemplateProvider.defaultCode
-                    )
-                )
-            ]
-        )
-        store.save()
-        await store.prepareForDataReset()
-
-        let exportURL = try await #require(ExportService.export(from: store, format: .caocap))
-        defer { try? FileManager.default.removeItem(at: exportURL) }
-
-        var isDirectory: ObjCBool = false
-        #expect(FileManager.default.fileExists(atPath: exportURL.path, isDirectory: &isDirectory))
-        #expect(!isDirectory.boolValue)
-        #expect(exportURL.pathExtension == "caocap")
-
-        let attributes = try FileManager.default.attributesOfItem(atPath: exportURL.path)
-        let fileSize = attributes[.size] as? UInt64 ?? 0
-        #expect(fileSize > 0)
-    }
-    
-    @MainActor
     @Test func onboardingCoordinatorResetAndStart() async throws {
         let onboarding = OnboardingCoordinator()
         onboarding.isCompleted = true

@@ -50,76 +50,6 @@ public struct CommandIntentResolver {
                 "عد للخلف",
                 "ارجع للخلف"
             ]
-        case .createNode:
-            return [
-                "create mini-app",
-                "create mini app",
-                "new mini-app",
-                "new mini app",
-                "add mini-app",
-                "add mini app",
-                "create node",
-                "create a node",
-                "new node",
-                "add node",
-                "add a node",
-                "انشاء عقدة",
-                "انشاء عقدة جديدة",
-                "أضف عقدة",
-                "اضف عقدة",
-                "عقدة جديدة",
-                "سوي عقدة"
-            ]
-        case .deleteNode:
-            return [
-                "delete node",
-                "remove node",
-                "حذف عقدة",
-                "احذف عقدة",
-                "ازل عقدة"
-            ]
-        case .renameNode:
-            return [
-                "rename node",
-                "rename",
-                "اعادة تسمية",
-                "غير الاسم",
-                "غير اسم العقدة"
-            ]
-        case .updateNodeSubtitle:
-            return [
-                "update subtitle",
-                "change subtitle",
-                "node subtitle",
-                "تغيير العنوان الفرعي",
-                "غير العنوان الفرعي"
-            ]
-        case .updateNodeIcon:
-            return [
-                "update icon",
-                "change icon",
-                "node icon",
-                "تغيير الايقونة",
-                "غير الايقونة"
-            ]
-        case .connectNodes:
-            return [
-                "connect nodes",
-                "link nodes",
-                "connect",
-                "ربط العقد",
-                "اربط العقد",
-                "وصل العقد"
-            ]
-        case .disconnectNodes:
-            return [
-                "disconnect nodes",
-                "unlink nodes",
-                "disconnect",
-                "فك الربط",
-                "افصل العقد",
-                "الغ ربط"
-            ]
         case .summonCoCaptain:
             return [
                 "summon cocaptain",
@@ -156,13 +86,6 @@ public struct CommandIntentResolver {
                 "اعد",
                 "اعد اخر تغيير"
             ]
-        case .openFile:
-            return [
-                "open file",
-                "choose file",
-                "افتح ملف",
-                "اختر ملف"
-            ]
         case .toggleGrid:
             return [
                 "toggle grid",
@@ -171,17 +94,6 @@ public struct CommandIntentResolver {
                 "الشبكة",
                 "اظهر الشبكة",
                 "اخف الشبكة"
-            ]
-        case .shareCanvas:
-            return [
-                "share canvas",
-                "share project",
-                "share",
-                "مشاركة اللوحة",
-                "مشاركة المشروع",
-                "شارك اللوحة",
-                "شارك المشروع",
-                "مشاركة"
             ]
         case .proSubscription:
             return [
@@ -234,25 +146,6 @@ public struct CommandIntentResolver {
                 "مركز المساعدة",
                 "التوثيق"
             ]
-        case .moveNode:
-            return ["move node", "تحريك", "انقل"]
-        case .themeNode:
-            return ["change theme", "theme", "تغيير المظهر", "تغيير الثيم"]
-        case .transformNode:
-            return ["change type", "transform", "تغيير النوع", "تحويل"]
-        case .organizeNodes:
-            return [
-                "organize nodes",
-                "organize",
-                "arrange nodes",
-                "arrange",
-                "magic wand",
-                "clean up",
-                "ترتيب العقد",
-                "رتب العقد",
-                "نظم العقد",
-                "ترتيب"
-            ]
         case .openSnapshotBrowser:
             return [
                 "open snapshot browser",
@@ -274,24 +167,6 @@ public struct CommandIntentResolver {
                 "قائمة الاجراءات",
                 "عرض قائمة الإجراءات",
                 "عرض قائمة الاجراءات"
-            ]
-        case .createSubCanvas:
-            return [
-                "create sub canvas",
-                "create subcanvas",
-                "new sub canvas",
-                "new subcanvas",
-                "add sub canvas",
-                "add subcanvas",
-                "create nested canvas",
-                "new nested canvas",
-                "انشاء مساحة فرعية",
-                "مساحة فرعية جديدة",
-                "أضف مساحة فرعية",
-                "اضف مساحة فرعية",
-                "سوي مساحة فرعية",
-                "انشاء لوحة فرعية",
-                "لوحة فرعية جديدة"
             ]
         case .openWhatsApp:
             return [

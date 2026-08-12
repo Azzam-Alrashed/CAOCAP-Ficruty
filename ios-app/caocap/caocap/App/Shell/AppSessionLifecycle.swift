@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Attaches session lifecycle handlers: workspace sync, onboarding, undo bridge, and geometry.
 struct AppSessionLifecycle: ViewModifier {
@@ -26,9 +25,6 @@ struct AppSessionLifecycle: ViewModifier {
                     await SubscriptionManager.shared.refreshEntitlements()
                 }
             }
-            .onChange(of: session.commandPalette.isPresented) { _, isPresented in
-                session.handleCommandPalettePresentationChange(isPresented: isPresented)
-            }
             .onChange(of: session.coCaptain.isPresented) { _, isPresented in
                 session.handleCoCaptainPresentationChange(isPresented: isPresented)
             }
@@ -50,18 +46,8 @@ struct AppSessionLifecycle: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .performRedo)) { _ in
                 session.performRedo(undoManager: undoManager)
             }
-            .onPreferenceChange(NodeSizePreferenceKey.self) { value in
-                session.updateNodeSizes(value)
-            }
             .onChange(of: geometry.size) { _, newSize in
                 session.updateContainerSize(newSize)
-            }
-            .fileImporter(
-                isPresented: $session.showingFileImporter,
-                allowedContentTypes: [.json, UTType(filenameExtension: "caocap")].compactMap { $0 },
-                allowsMultipleSelection: false
-            ) { result in
-                session.importProject(from: result)
             }
             .environment(session.onboarding)
     }

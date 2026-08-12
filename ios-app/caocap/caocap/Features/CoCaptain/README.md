@@ -15,7 +15,7 @@ Supporting services live outside this feature:
 - `ProjectContextBuilder` serializes the canvas graph (titles, types, ids, links, positions) for the model.
 - `CoCaptainConversationStore` persists project-scoped timelines, active conversation selection, and reading position in a versioned local sidecar keyed by canvas file name.
 - `LLMService` routes and streams from Firebase AI Logic or local LiteRT-LM; `LocalGemmaModelManager` owns the downloaded model and local sessions. On-device Gemma is available on the iPhone 15 Pro family and newer iPhones, plus M-series iPads; unsupported devices use Gemini cloud.
-- `AppActionDispatcher` performs high-level app actions, including graph mutations (`create_node`, `delete_node`, `rename_node`, `update_node_subtitle`, `update_node_icon`, `connect_nodes`, `disconnect_nodes`).
+- `AppActionDispatcher` performs available non-node app actions.
 
 ## Agent Flow
 
@@ -86,7 +86,7 @@ The model is instructed to use Gemini function calling:
 - `request_app_action(actionId, executionMode, …args)` — navigation and graph mutations. Mutating actions use `executionMode=pending`.
 - `ask_clarifying_question(prompt, options[])` — one short question with 2–4 outcome-phrased options.
 
-Legacy `propose_node_edit` calls are dropped with a diagnostic. Prefer graph AppActions such as `rename_node`, `delete_node`, `connect_nodes`, and `create_node` (optional `type` / `title` / `x` / `y`).
+Legacy node-edit calls are unavailable while the orchestration workflow editor is rebuilt.
 
 ### XML block (fallback, and the first-release format for local LiteRT-LM)
 
@@ -103,9 +103,6 @@ The model may include one trailing XML block:
     <action id="go_root" />
   </safe_actions>
   <pending_actions>
-    <action id="rename_node" nodeId="…" title="New title" />
-    <action id="create_node" title="Cafe Menu" x="40" y="-20" />
-    <action id="connect_nodes" fromNodeId="…" toNodeId="…" kind="next" />
   </pending_actions>
 </cocaptain_actions>
 ```
@@ -159,7 +156,7 @@ Review cards with a target node include **View on Canvas**, which flies the work
 - Keep project conversation persistence in `CoCaptainConversationStore`; do not add large chat timelines or attachments to `ProjectSnapshot`.
 - Keep validation near the coordinator boundary. SwiftUI views should render review state, not decide whether model output is safe.
 - Keep raw model wire formats behind output adapters. The coordinator should consume directives, not Firebase/Gemini-specific response parts.
-- Keep canvas mutations in `request_app_action` pending actions (`rename_node`, `delete_node`, `connect_nodes`, etc.). Do not reintroduce Mini-App code-section edit contracts.
+- Do not reintroduce legacy node mutation actions; the next workflow system will define a new contract.
 - Keep free-tier quota enforcement in `LLMService`/`TokenUsageLimiter`; CoCaptain UI should only surface quota state when a hard limit blocks a request, then route upgrades through a product CTA. Review bundles are reserved for workspace changes and assistant-proposed app actions.
 
 ## Verification Checklist

@@ -171,29 +171,7 @@ public final class CoCaptainAgentCoordinator {
         onVisibleText: @escaping (String) -> Void
     ) async throws -> CoCaptainAgentRunResult {
         let resolvedTurnPlan = turnPlan ?? CoCaptainTurnPlan(purpose: purpose, mode: .agent)
-        let contextDetailLevel = resolvedTurnPlan.contextDetailLevel
-        let contextBuilder = contextBuilder ?? ProjectContextBuilder()
-        let context = store.map { store in
-            switch scope {
-            case .project:
-                if !contextFocusNodeIDs.isEmpty {
-                    return contextFocusNodeIDs.map { focusID in
-                        contextBuilder.buildNodePromptContext(
-                        from: store,
-                        nodeID: focusID,
-                        detailLevel: contextDetailLevel
-                    )
-                    }.joined(separator: "\n\n--- Mentioned node context ---\n\n")
-                }
-                return contextBuilder.buildPromptContext(from: store, detailLevel: contextDetailLevel)
-            case .node(let nodeID):
-                return contextBuilder.buildNodePromptContext(
-                    from: store,
-                    nodeID: nodeID,
-                    detailLevel: contextDetailLevel
-                )
-            }
-        }
+        let context: String? = nil
         let policy = resolvedTurnPlan.effectivePolicy
 
         do {

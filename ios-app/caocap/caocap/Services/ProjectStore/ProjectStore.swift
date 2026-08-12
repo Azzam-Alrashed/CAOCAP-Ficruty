@@ -8,8 +8,6 @@ import SwiftUI
 @Observable
 @MainActor
 public class ProjectStore {
-    public static let experimentalAgentPipesEnabledKey = "experimental_agent_pipes_enabled"
-
     /// The display name of the project.
     public var projectName: String = "Untitled Project"
     
@@ -37,15 +35,6 @@ public class ProjectStore {
     private let persistence: ProjectPersistenceService
     private let saveController: ProjectSaveController
     private let checkpointManager: CheckpointManager
-    private let mutationEngine = NodeMutationEngine()
-    private let agentPipeline = AgentPipelineEngine()
-    
-    
-    /// Tracks active background agents working on specific nodes.
-    public var activeAgentStates: [UUID: AgentExecutionState] {
-        agentPipeline.executionStates(for: nodes)
-    }
-    
     /// The current version of the project file schema. Incremented when
     /// structural changes are made to nodes or the project envelope.
     public static let currentSchemaVersion = ProjectPersistenceService.currentSchemaVersion
@@ -67,29 +56,7 @@ public class ProjectStore {
             persistence: persistence
         )
         self.checkpointManager = CheckpointManager(persistence: persistence)
-        wireMutationEngineCallbacks()
         load(initialNodes: initialNodes, initialViewportScale: initialViewportScale)
-    }
-
-    /// Wires the NodeMutationEngine's side-effect callbacks back into ProjectStore.
-    /// Must be called once after all stored properties are initialized.
-    private func wireMutationEngineCallbacks() {
-        mutationEngine.onRequestSave = { [weak self] showIndicator in
-            self?.requestSave(showIndicator: showIndicator)
-        }
-        mutationEngine.onTriggerDownstreamAgents = { [weak self] id, nodes in
-            self?.triggerDownstreamAgents(from: id, nodes: nodes)
-        }
-        mutationEngine.onViewportChange = { [weak self] in
-            self?.viewportOffset ?? .zero
-        }
-        // This is the critical callback: allows undo closures in NodeMutationEngine
-        // to mutate ProjectStore.nodes and trigger saves.
-        mutationEngine.onPerformUndoMutation = { [weak self] mutation in
-            guard let self else { return }
-            mutation(&self.nodes)
-            self.undoStackChanged += 1
-        }
     }
 
     
@@ -160,14 +127,6 @@ public class ProjectStore {
         )
     }
     
-    /// Autonomously triggers agents on downstream nodes when an upstream node updates.
-    public func triggerDownstreamAgents(from sourceNodeID: UUID) {
-        triggerDownstreamAgents(from: sourceNodeID, nodes: nodes)
-    }
-
-    private func triggerDownstreamAgents(from sourceNodeID: UUID, nodes: [SpatialNode]) {
-        agentPipeline.triggerDownstreamAgents(from: sourceNodeID, nodes: nodes, store: self)
-    }
 
     /// Creates a durable checkpoint of the current project state.
     public func createCheckpoint(label: String = "Manual Checkpoint") {
@@ -220,110 +179,11 @@ public class ProjectStore {
     }
     
     /// A reference to the system UndoManager, injected by the view layer.
-    public var undoManager: UndoManager? = nil {
-        didSet { mutationEngine.undoManager = undoManager }
-    }
+    public var undoManager: UndoManager? = nil
     
     /// Incremented whenever the undo stack changes to force UI updates.
     public var undoStackChanged: Int = 0
     
-    /// Updates a specific node's position.
-    /// - Parameters:
-    ///   - id: The UUID of the node to update.
-    ///   - position: The new position.
-    ///   - persist: If true, triggers a debounced save to disk.
-    public func updateNodePosition(id: UUID, position: CGPoint, persist: Bool = true) {
-        if let index = nodes.firstIndex(where: { $0.id == id }) {
-            let oldPosition = nodes[index].position
-            
-            // Register Undo
-            // UndoManager always calls back on the main thread;
-            // assumeIsolated bridges the nonisolated closure to @MainActor.
-            undoManager?.registerUndo(withTarget: self) { target in
-                MainActor.assumeIsolated {
-                    target.updateNodePosition(id: id, position: oldPosition, persist: persist)
-                }
-            }
-            undoStackChanged += 1
-            
-            nodes[index].position = position
-            if persist {
-                requestSave()
-            }
-        }
-    }
-
-    /// Updates a specific node's agent profile.
-    /// - Parameters:
-    ///   - id: The UUID of the node to update.
-    ///   - profile: The new agent profile.
-    ///   - persist: If true, triggers a debounced save to disk.
-    public func updateNodeAgentProfile(id: UUID, profile: AgentProfile, persist: Bool = true) {
-        if let index = nodes.firstIndex(where: { $0.id == id }) {
-            let oldProfile = nodes[index].agentProfile
-            
-            // Register Undo
-            undoManager?.registerUndo(withTarget: self) { target in
-                MainActor.assumeIsolated {
-                    target.updateNodeAgentProfile(id: id, profile: oldProfile, persist: persist)
-                }
-            }
-            undoStackChanged += 1
-            
-            nodes[index].agentProfile = profile
-            if persist {
-                save()
-            }
-        }
-    }
-
-    /// Updates a specific node's theme.
-    /// - Parameters:
-    ///   - id: The UUID of the node to update.
-    ///   - theme: The new theme.
-    ///   - persist: If true, triggers a debounced save to disk.
-    public func updateNodeTheme(id: UUID, theme: NodeTheme, persist: Bool = true) {
-        if let index = nodes.firstIndex(where: { $0.id == id }) {
-            let oldTheme = nodes[index].theme
-            
-            // Register Undo
-            undoManager?.registerUndo(withTarget: self) { target in
-                MainActor.assumeIsolated {
-                    target.updateNodeTheme(id: id, theme: oldTheme, persist: persist)
-                }
-            }
-            undoStackChanged += 1
-            
-            nodes[index].theme = theme
-            if persist {
-                requestSave()
-            }
-        }
-    }
-
-    /// Changes a node's fundamental type.
-    /// - Parameters:
-    ///   - id: The UUID of the node to transform.
-    ///   - type: The target NodeType.
-    ///   - persist: If true, triggers a debounced save to disk.
-    public func updateNodeType(id: UUID, type: NodeType, persist: Bool = true) {
-        mutationEngine.updateNodeType(nodes: &nodes, id: id, type: type, persist: persist)
-    }
-    public func updateNodeTextContent(id: UUID, text: String, persist: Bool = true) {
-        mutationEngine.updateNodeTextContent(nodes: &nodes, id: id, text: text, persist: persist)
-    }
-    public func updateMiniAppCode(id: UUID, text: String, persist: Bool = true) {
-        mutationEngine.updateMiniAppCode(nodes: &nodes, id: id, text: text, persist: persist)
-    }
-    public func updateNodeAgentState(id: UUID, agentState: NodeAgentState, persist: Bool = true) {
-        mutationEngine.updateNodeAgentState(nodes: &nodes, id: id, agentState: agentState, persist: persist)
-    }
-    public func appendNodeAgentMessage(id: UUID, message: NodeAgentMessage, persist: Bool = true) {
-        mutationEngine.appendNodeAgentMessage(nodes: &nodes, id: id, message: message, persist: persist)
-    }
-    public func clearNodeAgentMessages(id: UUID, persist: Bool = true) {
-        mutationEngine.clearNodeAgentMessages(nodes: &nodes, id: id, persist: persist)
-    }
     public func updateViewport(offset: CGSize, scale: CGFloat, persist: Bool = true) {
         self.viewportOffset = offset
         self.viewportScale = scale
@@ -339,53 +199,6 @@ public class ProjectStore {
             self.viewportScale = 1.0
         }
         requestSave()
-    }
-
-    /// Updates positions for multiple nodes at once, registering undo/redo.
-    public func updateNodePositions(_ positions: [UUID: CGPoint], animated: Bool = true) {
-        mutationEngine.updateNodePositions(nodes: &nodes, positions, animated: animated)
-    }
-    public func organizeNodes() {
-        mutationEngine.organizeNodes(nodes: &nodes, )
-    }
-    public func addNode(type: NodeType = .miniApp, title: String? = nil, position: CGPoint? = nil) {
-        mutationEngine.addNode(nodes: &nodes, type: type, title: title, position: position)
-    }
-
-    public func connectNodes(
-        fromID: UUID,
-        toID: UUID,
-        kind: NodeConnectionKind = .next
-    ) {
-        mutationEngine.connectNodes(nodes: &nodes, fromID: fromID, toID: toID, kind: kind)
-    }
-
-    public func disconnectNodes(
-        fromID: UUID,
-        toID: UUID,
-        kind: NodeConnectionKind? = nil
-    ) {
-        mutationEngine.disconnectNodes(nodes: &nodes, fromID: fromID, toID: toID, kind: kind)
-    }
-    /// Restores an app-owned node only when its stable identity is absent,
-    /// preserving any existing user edits to that node.
-    public func ensureNodeExists(_ node: SpatialNode) {
-        guard !nodes.contains(where: { $0.id == node.id }) else { return }
-        nodes.append(node)
-        requestSave(showIndicator: false)
-    }
-
-    public func updateNodeTitle(id: UUID, title: String) {
-        mutationEngine.updateNodeTitle(nodes: &nodes, id: id, title: title)
-    }
-    public func updateNodeSubtitle(id: UUID, subtitle: String?) {
-        mutationEngine.updateNodeSubtitle(nodes: &nodes, id: id, subtitle: subtitle)
-    }
-    public func updateNodeIcon(id: UUID, icon: String?) {
-        mutationEngine.updateNodeIcon(nodes: &nodes, id: id, icon: icon)
-    }
-    public func deleteNode(id: UUID, persist: Bool = true) {
-        mutationEngine.deleteNode(nodes: &nodes, id: id, persist: persist)
     }
 
 }

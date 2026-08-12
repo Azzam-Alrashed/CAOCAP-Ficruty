@@ -421,39 +421,17 @@ public final class LLMService {
     /// The tool definition that exposes local CAOCAP app actions to the LLM.
     private static let requestAppActionDeclaration = FunctionDeclaration(
         name: CoCaptainFunctionCallAgentAdapter.requestAppActionName,
-        description: "Requests a CAOCAP app action. The app validates and either executes or stages the action for user review. Include action-specific string args when needed (nodeId, title, etc.).",
+        description: "Requests an available CAOCAP app action. The app validates and either executes or stages it for user review.",
         parameters: [
             "actionId": .string(description: "The exact app action id to request."),
             "executionMode": .enumeration(
                 values: ["safe", "pending"],
                 description: "`safe` only for non-mutating autonomous actions. `pending` for mutating or review-required actions."
             ),
-            "reason": .string(description: "Short reason for requesting the action."),
-            "nodeId": .string(description: "Target node UUID when the action needs one."),
-            "fromNodeId": .string(description: "Source node UUID for connect/disconnect."),
-            "toNodeId": .string(description: "Destination node UUID for connect/disconnect."),
-            "title": .string(description: "New title for rename_node or create_node."),
-            "subtitle": .string(description: "Subtitle for update_node_subtitle."),
-            "icon": .string(description: "SF Symbol name for update_node_icon."),
-            "type": .string(description: "NodeType raw value for create_node or transform_node."),
-            "theme": .string(description: "NodeTheme raw value for theme_node."),
-            "kind": .string(description: "Connection kind: next or connected."),
-            "x": .string(description: "Canvas X position as a number string."),
-            "y": .string(description: "Canvas Y position as a number string.")
+            "reason": .string(description: "Short reason for requesting the action.")
         ],
         optionalParameters: [
-            "reason",
-            "nodeId",
-            "fromNodeId",
-            "toNodeId",
-            "title",
-            "subtitle",
-            "icon",
-            "type",
-            "theme",
-            "kind",
-            "x",
-            "y"
+            "reason"
         ]
     )
 
@@ -500,11 +478,7 @@ public final class LLMService {
                 case .project:
                     return "You are in the global project CoCaptain scope. You may reason across the full canvas."
                 case .node:
-                    return """
-                    You are in a node-scoped agent session.
-                    - Focus on the selected node in the context.
-                    - Prefer graph AppActions such as rename_node, update_node_subtitle, update_node_icon, theme_node, connect_nodes, delete_node, and move_node with the selected node's id.
-                    """
+                    return "You are in a conversational CoCaptain session. Legacy node tools are unavailable."
                 }
             }()
 
@@ -529,17 +503,7 @@ public final class LLMService {
 
                 - Respond conversationally first (concise).
                 - If the user is only asking a question, asking for advice, or asking for an opinion, do not request app actions.
-                - When the user wants a canvas graph change (create, rename, delete, connect, move, theme, organize, transform), call `request_app_action` with the matching action id and required arguments.
-                - Useful graph actions and args:
-                  - create_node: optional type, title, x, y
-                  - delete_node: nodeId
-                  - rename_node: nodeId, title
-                  - update_node_subtitle: nodeId, subtitle
-                  - update_node_icon: nodeId, icon
-                  - connect_nodes / disconnect_nodes: fromNodeId, toNodeId, optional kind (`next` or `connected`)
-                  - move_node: nodeId, x, y (autonomous / safe)
-                  - theme_node: nodeId, theme
-                  - transform_node: nodeId, type
+                - Only request actions listed below. Legacy canvas node mutation tools are unavailable.
                 - If you are only answering a question, providing advice, or discussing ideas, do NOT call tools. Pure chat is allowed.
 
                 Clarifying questions:

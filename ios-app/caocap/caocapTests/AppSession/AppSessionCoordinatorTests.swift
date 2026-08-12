@@ -31,28 +31,6 @@ struct AppSessionCoordinatorTests {
         #expect(session.router.currentWorkspace == .root)
     }
 
-    @Test func moveNodeActionUpdatesPosition() {
-        let session = AppSessionCoordinator()
-        session.ensureActionsConfigured()
-        let nodeID = UUID()
-        session.router.activeStore.nodes = [
-            SpatialNode(id: nodeID, type: .miniApp, position: .zero, title: "Test")
-        ]
-
-        let result = session.actionDispatcher.perform(
-            .moveNode,
-            source: .user,
-            arguments: [
-                "nodeId": nodeID.uuidString,
-                "x": "120",
-                "y": "80"
-            ]
-        )
-
-        #expect(result.executed)
-        #expect(session.router.activeStore.nodes.first?.position == CGPoint(x: 120, y: 80))
-    }
-
     @Test func filteredPaletteActionsHideRootNavigationAtRoot() {
         let session = AppSessionCoordinator()
         session.router.currentWorkspace = .root
@@ -82,29 +60,6 @@ struct AppSessionCoordinatorTests {
         #expect(session.showingHelp)
     }
 
-    @Test func flyToTargetScaleUsesMeasuredSizeWhenAvailable() {
-        let session = AppSessionCoordinator()
-        let nodeID = UUID()
-        let node = SpatialNode(id: nodeID, type: .miniApp, position: CGPoint(x: 10, y: 20), title: "Mini")
-        session.containerSize = CGSize(width: 400, height: 800)
-        session.nodeSizes[nodeID] = CGSize(width: 200, height: 400)
-
-        let scale = session.flyToTargetScale(for: node, nodeId: nodeID)
-
-        #expect(scale == 1.2)
-    }
-
-    @Test func flyToTargetScaleFallsBackToDefaultMiniAppSize() {
-        let session = AppSessionCoordinator()
-        let nodeID = UUID()
-        let node = SpatialNode(id: nodeID, type: .miniApp, position: .zero, title: "Mini")
-        session.containerSize = CGSize(width: 375, height: 667)
-
-        let scale = session.flyToTargetScale(for: node, nodeId: nodeID)
-
-        #expect(scale == 0.8)
-    }
-
     @Test func bootstrapDismissesLaunchAfterReadyMinimumNotFixedTwoPointFiveSeconds() async {
         let session = AppSessionCoordinator()
         session.launchMinimumVisibleDuration = .milliseconds(20)
@@ -127,20 +82,6 @@ struct AppSessionCoordinatorTests {
 
         try? await Task.sleep(for: .milliseconds(100))
         #expect(!session.isLaunching)
-    }
-
-    @Test func floatingCommandTapDismissesFullscreenMiniApp() {
-        let session = AppSessionCoordinator()
-        session.presentedMiniApp = SpatialNode(
-            type: .miniApp,
-            position: .zero,
-            title: "Hello"
-        )
-
-        session.handleFloatingCommandButtonTap()
-
-        #expect(session.presentedMiniApp == nil)
-        #expect(!session.commandPalette.isPresented)
     }
 
     @Test func floatingCommandTapOpensOmniboxWhenIdle() {

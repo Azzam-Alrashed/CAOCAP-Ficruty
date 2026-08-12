@@ -15,7 +15,7 @@ The Omnibox should not directly mutate app state. It emits `AppActionID` values;
 
 1. The app shell configures `AppActionDispatcher` with concrete handlers.
 2. The command palette receives `AppActionDefinition` values from the dispatcher.
-3. `CommandPaletteViewModel` filters actions by localized title and canonical title, searches canvas nodes via `NodeSearchIndex`, and surfaces creatable node types via `NodeCreationCatalog`.
+3. `CommandPaletteViewModel` filters actions by localized and canonical title.
 4. The user selects an action by tapping, submitting, or keyboard navigation.
 5. If the query matches a listed command, the view model emits the selected `AppActionID` through `onExecute`.
 6. If the query has no listed command matches, the view model emits the trimmed query through `onSubmitPrompt`, and the app shell opens CoCaptain with that prompt.

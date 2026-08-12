@@ -17,7 +17,6 @@ public final class CoCaptainViewModel {
     public var analysisItems: [ProjectSuggestion] = []
     
     @ObservationIgnored
-    private let analyzer = ProjectAnalyzer()
     @ObservationIgnored
     private let logger = Logger(
         subsystem: "com.caocap.app",
@@ -188,15 +187,9 @@ public final class CoCaptainViewModel {
     public func clearHistory() {
         activeReviewSession().clear()
         agentCoordinator.resetChat(scope: scope)
-        if case .node(let nodeID) = scope {
-            items = [CoCaptainViewModel.greetingItem()]
-            store?.clearNodeAgentMessages(id: nodeID)
-            loadPersistedNodeMessages(nodeID: nodeID)
-        } else {
-            items = []
-            shouldReplayConversationContext = false
-            synchronizeActiveConversation()
-        }
+        items = []
+        shouldReplayConversationContext = false
+        synchronizeActiveConversation()
         lastScrollPosition = nil
         lastTurnCompletion = nil
     }
@@ -223,33 +216,7 @@ public final class CoCaptainViewModel {
         }
     }
 
-    public func configureNodeSession(store: ProjectStore, nodeID: UUID, dispatcher: (any AppActionPerforming)? = nil) {
-        let newScope: CoCaptainAgentScope = .node(nodeID)
-        if scope != newScope {
-            if scope == .project {
-                synchronizeActiveConversation()
-            }
-            invalidateActiveTurnForContextChange()
-        }
-
-        self.scope = newScope
-        self.focusedNodeID = nodeID
-        self.store = store
-        self.actionDispatcher = dispatcher
-        bindReviewSessionIfNeeded()
-        loadPersistedNodeMessages(nodeID: nodeID)
-        runAnalysis()
-    }
-
-    /// Nodes available for inline @ mention suggestions (Mini-Apps first, then others).
-    public var pinnableContextNodes: [SpatialNode] {
-        guard scope == .project, let nodes = store?.nodes else { return [] }
-        return nodes.sorted { lhs, rhs in
-            if lhs.type == .miniApp && rhs.type != .miniApp { return true }
-            if lhs.type != .miniApp && rhs.type == .miniApp { return false }
-            return lhs.displayTitle.localizedCaseInsensitiveCompare(rhs.displayTitle) == .orderedAscending
-        }
-    }
+    public var pinnableContextNodes: [SpatialNode] { [] }
 
     public func setPresented(_ presented: Bool) {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -347,15 +314,7 @@ public final class CoCaptainViewModel {
     }
 
     public func runAnalysis() {
-        guard let nodes = store?.nodes else { return }
-        let newSuggestions = analyzer.analyze(nodes: nodes)
-        
-        // Only update if suggestions have changed to avoid UI flickering
-        if newSuggestions != analysisItems {
-            withAnimation(.spring()) {
-                analysisItems = newSuggestions
-            }
-        }
+        analysisItems = []
     }
 
     public func dismissSuggestion(_ suggestion: ProjectSuggestion) {
@@ -1392,19 +1351,7 @@ public final class CoCaptainViewModel {
         )
     }
 
-    private func persistNodeMessageIfNeeded(_ bubble: ChatBubbleItem) {
-        guard case .node(let nodeID) = scope else { return }
-        store?.appendNodeAgentMessage(
-            id: nodeID,
-            message: NodeAgentMessage(
-                id: bubble.id,
-                text: bubble.text,
-                isUser: bubble.isUser,
-                mentions: bubble.mentions,
-                attachments: bubble.attachments
-            )
-        )
-    }
+    private func persistNodeMessageIfNeeded(_ bubble: ChatBubbleItem) {}
 
     private func loadPersistedNodeMessages(nodeID: UUID) {
         guard let node = store?.nodes.first(where: { $0.id == nodeID }) else {

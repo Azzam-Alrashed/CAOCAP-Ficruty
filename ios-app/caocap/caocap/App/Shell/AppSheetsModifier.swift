@@ -58,18 +58,6 @@ struct AppSheetsModifier: ViewModifier {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
-            .sheet(isPresented: $session.showExportSheet) {
-                if let url = session.exportURL {
-                    ActivityView(activityItems: [url])
-                        .presentationDetents([.medium, .large])
-                } else {
-                    VStack(spacing: 20) {
-                        ProgressView()
-                        Text("Preparing Export...")
-                    }
-                    .presentationDetents([.height(200)])
-                }
-            }
             .sheet(isPresented: $session.showingProfile) {
                 ProfileView(onSignIn: {
                     session.showingSignIn = true

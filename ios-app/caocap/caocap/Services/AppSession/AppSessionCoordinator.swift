@@ -14,7 +14,6 @@ final class AppSessionCoordinator {
     var coCaptain = CoCaptainViewModel()
     private(set) var actionDispatcher = AppActionDispatcher()
 
-    var showingFileImporter = false
     var showingPurchaseSheet = false
     var showingUsage = false
     var showingSignIn = false
@@ -28,10 +27,6 @@ final class AppSessionCoordinator {
     var showTutorialGraduationBanner = false
     var showingCopilotCall = false
     var showingCopilotPicker = false
-    /// Fullscreen mini-app preview sheet opened by tapping a mini-app node.
-    var presentedMiniApp: SpatialNode?
-    /// Non-mini-app node inspector sheet opened from the canvas.
-    var selectedNodeDetail: SpatialNode?
     var activeCopilotCallMode: CopilotInteractionMode = .video
     var selectedCopilot: CopilotPersona = UserProfileStore().loadSelectedCopilot()
     @ObservationIgnored var copilotCallViewModel: CopilotCallViewModel?
@@ -40,11 +35,7 @@ final class AppSessionCoordinator {
     var isLaunching = true
     var appUpdateService = AppUpdateService.shared
     var viewport = ViewportState()
-    var nodeSizes: [UUID: CGSize] = [:]
     var containerSize: CGSize = .zero
-    /// Briefly highlights a node after fly-to navigation from CoCaptain or the command palette.
-    var canvasFocusNodeID: UUID?
-    @ObservationIgnored private var canvasFocusClearTask: Task<Void, Never>?
     /// Matches `LaunchScreenView` entrance length so the brand animation can land.
     /// Tests may shorten this to avoid sleeping for the full brand dwell.
     var launchMinimumVisibleDuration: Duration = .milliseconds(1_200)
@@ -52,8 +43,6 @@ final class AppSessionCoordinator {
     var launchMaximumVisibleDuration: Duration = .seconds(2.5)
     @ObservationIgnored private var launchDismissTask: Task<Void, Never>?
 
-    var exportURL: URL?
-    var showExportSheet = false
 
     var intro = IntroCoordinator()
     var personalization = PersonalizationOnboardingCoordinator()
@@ -168,7 +157,6 @@ final class AppSessionCoordinator {
         attachUndoManager(undoManager)
         coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
         syncCommandPaletteActions()
-        commandPalette.nodes = router.activeStore.nodes
         syncViewportWithActiveStore()
     }
 
@@ -265,7 +253,6 @@ final class AppSessionCoordinator {
         }
         viewport = ViewportState()
         currentScale = 1
-        nodeSizes = [:]
         actionsConfigured = false
 
         bindCommandPalette()
@@ -277,10 +264,6 @@ final class AppSessionCoordinator {
         launchDismissTask = nil
         isLaunching = false
         PerformanceSignposts.endLaunch()
-    }
-
-    func updateNodeSizes(_ sizes: [UUID: CGSize]) {
-        nodeSizes = sizes
     }
 
     // MARK: - Undo
@@ -304,21 +287,7 @@ final class AppSessionCoordinator {
         router.activeStore.undoStackChanged += 1
     }
 
-    // MARK: - Node Actions
-
-    func handleSubCanvasNavigation(fileName: String) {
-        presentedMiniApp = nil
-        selectedNodeDetail = nil
-        router.navigateToSubCanvas(fileName: fileName)
-    }
-
     // MARK: - Onboarding + CoCaptain Presentation
-
-    func handleCommandPalettePresentationChange(isPresented: Bool) {
-        if isPresented {
-            commandPalette.nodes = router.activeStore.nodes
-        }
-    }
 
     func handleCoCaptainPresentationChange(isPresented: Bool) {
         if isPresented {
@@ -338,14 +307,6 @@ final class AppSessionCoordinator {
     func dismissPresentedSheets() -> Bool {
         var dismissed = false
 
-        if presentedMiniApp != nil {
-            presentedMiniApp = nil
-            dismissed = true
-        }
-        if selectedNodeDetail != nil {
-            selectedNodeDetail = nil
-            dismissed = true
-        }
         if coCaptain.isPresented {
             coCaptain.setPresented(false)
             dismissed = true
@@ -390,11 +351,6 @@ final class AppSessionCoordinator {
             showingCopilotPicker = false
             dismissed = true
         }
-        if showExportSheet {
-            showExportSheet = false
-            dismissed = true
-        }
-
         return dismissed
     }
 
@@ -404,72 +360,13 @@ final class AppSessionCoordinator {
         commandPalette.setPresented(true)
     }
 
-    // MARK: - File Import
-
-    func importProject(from result: Result<[URL], Error>) {
-        let logger = Logger(subsystem: "com.caocap.app", category: "FileImport")
-        switch result {
-        case .success(let urls):
-            guard let selectedURL = urls.first else { return }
-
-            guard selectedURL.startAccessingSecurityScopedResource() else {
-                logger.error("Failed to start accessing security scoped resource.")
-                return
-            }
-
-            Task { @MainActor [weak self] in
-                defer {
-                    selectedURL.stopAccessingSecurityScopedResource()
-                }
-
-                do {
-                    let newFileName = try await Task.detached(priority: .userInitiated) { () -> String in
-                        let data = try Data(contentsOf: selectedURL)
-                        let decoder = JSONDecoder()
-                        _ = try decoder.decode(ProjectSnapshot.self, from: data)
-
-                        let persistence = ProjectPersistenceService()
-                        let newFileName = CanvasFileNaming.newCanvasFileName()
-                        let targetURL = persistence.fileURL(for: newFileName)
-                        try data.write(to: targetURL, options: .atomic)
-                        return newFileName
-                    }.value
-
-                    logger.info("Successfully imported project to: \(newFileName)")
-
-                    guard let self else { return }
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                        self.router.navigate(to: .project(newFileName))
-                    }
-                } catch {
-                    logger.error("Import failed: \(error.localizedDescription)")
-                }
-            }
-
-        case .failure(let error):
-            logger.error("Document picker failed: \(error.localizedDescription)")
-        }
-    }
-
     // MARK: - Command Palette
 
     func bindCommandPalette() {
         syncCommandPaletteActions()
-        commandPalette.nodes = router.activeStore.nodes
         commandPalette.onExecute = { [weak self] actionID in
             guard let self else { return }
             _ = self.actionDispatcher.perform(actionID, source: .user)
-        }
-        commandPalette.onCreateNode = { [weak self] type in
-            guard let self else { return }
-            self.createNode(type: type)
-            self.commandPalette.nodes = self.router.activeStore.nodes
-        }
-        commandPalette.onFlyToNode = { [weak self] nodeId in
-            self?.focusCanvasNode(nodeId)
-        }
-        coCaptain.onFlyToNode = { [weak self] nodeId in
-            self?.focusCanvasNode(nodeId)
         }
         commandPalette.onSubmitPrompt = { [weak self] prompt in
             self?.submitCoCaptainPrompt(prompt)
@@ -492,27 +389,6 @@ final class AppSessionCoordinator {
             if isRoot && action.id == .goBack { return nil }
             return action.id
         }
-    }
-
-    func flyToTargetScale(for node: SpatialNode, nodeId: UUID) -> CGFloat {
-        guard containerSize != .zero else { return 1.0 }
-
-        let size: CGSize
-        if let measuredSize = nodeSizes[nodeId] {
-            size = measuredSize
-        } else {
-            switch node.type {
-            case .miniApp:
-                size = CGSize(width: 375, height: 667)
-            default:
-                size = CGSize(width: 280, height: 180)
-            }
-        }
-
-        let paddingFactor: CGFloat = 0.8
-        let scaleX = (containerSize.width * paddingFactor) / size.width
-        let scaleY = (containerSize.height * paddingFactor) / size.height
-        return min(min(scaleX, scaleY), 1.2)
     }
 
     // MARK: - Private
@@ -551,37 +427,12 @@ final class AppSessionCoordinator {
     private func configureActions() {
         actionDispatcher.register(.goRoot) { [weak self] in
             guard let self else { return }
-            self.presentedMiniApp = nil
-            self.selectedNodeDetail = nil
             self.router.goRoot()
             self.currentScale = 1.0
         }
         actionDispatcher.register(.goBack) { [weak self] in
             guard let self else { return }
-            self.presentedMiniApp = nil
-            self.selectedNodeDetail = nil
             self.router.goBack()
-        }
-        actionDispatcher.register(.createNode) { [weak self] args in
-            self?.createNode(arguments: args)
-        }
-        actionDispatcher.register(.deleteNode) { [weak self] args in
-            self?.deleteNode(arguments: args)
-        }
-        actionDispatcher.register(.renameNode) { [weak self] args in
-            self?.renameNode(arguments: args)
-        }
-        actionDispatcher.register(.updateNodeSubtitle) { [weak self] args in
-            self?.updateNodeSubtitle(arguments: args)
-        }
-        actionDispatcher.register(.updateNodeIcon) { [weak self] args in
-            self?.updateNodeIcon(arguments: args)
-        }
-        actionDispatcher.register(.connectNodes) { [weak self] args in
-            self?.connectNodes(arguments: args)
-        }
-        actionDispatcher.register(.disconnectNodes) { [weak self] args in
-            self?.disconnectNodes(arguments: args)
         }
         actionDispatcher.register(.summonCoCaptain) { [weak self] in
             guard let self else { return }
@@ -599,21 +450,8 @@ final class AppSessionCoordinator {
             guard let self else { return }
             self.performRedo(undoManager: self.activeUndoManager)
         }
-        actionDispatcher.register(.openFile) { [weak self] in
-            self?.showingFileImporter = true
-        }
         actionDispatcher.register(.toggleGrid) { [weak self] in
             self?.toggleGrid()
-        }
-        actionDispatcher.register(.shareCanvas) { [weak self] in
-            guard let self else { return }
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if let url = await ExportService.export(from: self.router.activeStore, format: .caocap) {
-                    self.exportURL = url
-                    self.showExportSheet = true
-                }
-            }
         }
         actionDispatcher.register(.proSubscription) { [weak self] in
             self?.presentPurchaseSheet()
@@ -648,27 +486,8 @@ final class AppSessionCoordinator {
         actionDispatcher.register(.openSnapshotBrowser) { [weak self] in
             self?.showingSnapshotBrowser = true
         }
-        actionDispatcher.register(.moveNode) { [weak self] args in
-            self?.moveNode(arguments: args)
-        }
-        actionDispatcher.register(.themeNode) { [weak self] args in
-            self?.themeNode(arguments: args)
-        }
-        actionDispatcher.register(.transformNode) { [weak self] args in
-            self?.transformNode(arguments: args)
-        }
-        actionDispatcher.register(.organizeNodes) { [weak self] in
-            guard let self else { return }
-            self.router.activeStore.organizeNodes()
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.85)) {
-                self.viewport.fitTo(nodes: self.router.activeStore.nodes, containerSize: self.containerSize)
-            }
-        }
         actionDispatcher.register(.showActionsList) { [weak self] in
             self?.commandPalette.setPresented(true, mode: .actionsList)
-        }
-        actionDispatcher.register(.createSubCanvas) { [weak self] in
-            self?.router.activeStore.addNode(type: .subCanvas)
         }
     }
 
@@ -714,100 +533,6 @@ final class AppSessionCoordinator {
     /// Opens the purchase sheet, dismissing any covering sheet first when needed.
     func requestPurchaseSheet() {
         presentPurchaseSheet()
-    }
-
-    private func moveNode(arguments args: [String: String]?) {
-        guard let args,
-              let idString = args["nodeId"], let uuid = UUID(uuidString: idString),
-              let xStr = args["x"], let x = Double(xStr),
-              let yStr = args["y"], let y = Double(yStr) else { return }
-        router.activeStore.updateNodePosition(id: uuid, position: CGPoint(x: x, y: y))
-    }
-
-    private func themeNode(arguments args: [String: String]?) {
-        guard let args,
-              let idString = args["nodeId"], let uuid = UUID(uuidString: idString),
-              let themeStr = args["theme"], let theme = NodeTheme(rawValue: themeStr) else { return }
-        router.activeStore.updateNodeTheme(id: uuid, theme: theme)
-    }
-
-    private func transformNode(arguments args: [String: String]?) {
-        guard let args,
-              let idString = args["nodeId"], let uuid = UUID(uuidString: idString),
-              let typeStr = args["type"], let type = NodeType(rawValue: typeStr) else { return }
-
-        router.activeStore.updateNodeType(id: uuid, type: type)
-    }
-
-    private func createNode(arguments args: [String: String]?) {
-        let type = args?["type"].flatMap(NodeType.init(rawValue:)) ?? .miniApp
-        let title = args?["title"]
-        let position: CGPoint?
-        if let xStr = args?["x"], let yStr = args?["y"],
-           let x = Double(xStr), let y = Double(yStr) {
-            position = CGPoint(x: x, y: y)
-        } else {
-            position = nil
-        }
-        router.activeStore.addNode(type: type, title: title, position: position)
-    }
-
-    private func deleteNode(arguments args: [String: String]?) {
-        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString) else { return }
-        router.activeStore.deleteNode(id: uuid)
-    }
-
-    private func renameNode(arguments args: [String: String]?) {
-        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString),
-              let title = args?["title"] else { return }
-        router.activeStore.updateNodeTitle(id: uuid, title: title)
-    }
-
-    private func updateNodeSubtitle(arguments args: [String: String]?) {
-        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString) else { return }
-        router.activeStore.updateNodeSubtitle(id: uuid, subtitle: args?["subtitle"])
-    }
-
-    private func updateNodeIcon(arguments args: [String: String]?) {
-        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString) else { return }
-        router.activeStore.updateNodeIcon(id: uuid, icon: args?["icon"])
-    }
-
-    private func connectNodes(arguments args: [String: String]?) {
-        guard let fromString = args?["fromNodeId"], let fromID = UUID(uuidString: fromString),
-              let toString = args?["toNodeId"], let toID = UUID(uuidString: toString) else { return }
-        let kind = args?["kind"]
-            .flatMap(NodeConnectionKind.init(rawValue:)) ?? .next
-        router.activeStore.connectNodes(fromID: fromID, toID: toID, kind: kind)
-    }
-
-    private func disconnectNodes(arguments args: [String: String]?) {
-        guard let fromString = args?["fromNodeId"], let fromID = UUID(uuidString: fromString),
-              let toString = args?["toNodeId"], let toID = UUID(uuidString: toString) else { return }
-        let kind = args?["kind"].flatMap(NodeConnectionKind.init(rawValue:))
-        router.activeStore.disconnectNodes(fromID: fromID, toID: toID, kind: kind)
-    }
-
-    private func createNode(type: NodeType) {
-        router.activeStore.addNode(type: type)
-    }
-
-    func focusCanvasNode(_ nodeId: UUID) {
-        guard let node = router.activeStore.nodes.first(where: { $0.id == nodeId }) else { return }
-        let targetScale = flyToTargetScale(for: node, nodeId: nodeId)
-        HapticsManager.shared.trigger(.light)
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
-            viewport.flyTo(nodePosition: node.position, containerSize: containerSize, targetScale: targetScale)
-        }
-        canvasFocusNodeID = nodeId
-        canvasFocusClearTask?.cancel()
-        canvasFocusClearTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(2.5))
-            guard let self, !Task.isCancelled else { return }
-            if self.canvasFocusNodeID == nodeId {
-                self.canvasFocusNodeID = nil
-            }
-        }
     }
 
     private func submitCoCaptainPrompt(_ prompt: String) {

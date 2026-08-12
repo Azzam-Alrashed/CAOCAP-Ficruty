@@ -13,9 +13,7 @@ struct ContentView: View {
             ZStack {
                 workspaceCanvas
 
-                if session.commandPalette.miniAppPreviewContext == nil {
-                    CommandPaletteView(viewModel: session.commandPalette)
-                }
+                CommandPaletteView(viewModel: session.commandPalette)
 
                 KeyboardShortcutBridge(
                     onOpenCommandPalette: {
@@ -69,36 +67,14 @@ struct ContentView: View {
                 store: session.router.rootStore,
                 canvasID: "root_canvas",
                 viewport: $session.viewport,
-                currentScale: $session.currentScale,
-                presentedMiniApp: $session.presentedMiniApp,
-                selectedNodeDetail: $session.selectedNodeDetail,
-                canvasFocusNodeID: session.canvasFocusNodeID,
-                commandPalette: session.commandPalette,
-                onNavigateToSubCanvas: { fileName in
-                    session.handleSubCanvasNavigation(fileName: fileName)
-                },
-                onRecoverUnsupportedProject: {
-                    session.router.createFreshMiniAppCanvas()
-                },
-                onFlyToNode: { session.focusCanvasNode($0) }
+                currentScale: $session.currentScale
             )
         case .project(let fileName):
             WorkspaceCanvasView(
                 store: session.router.activeStore,
                 canvasID: "project_canvas_\(fileName)",
                 viewport: $session.viewport,
-                currentScale: $session.currentScale,
-                presentedMiniApp: $session.presentedMiniApp,
-                selectedNodeDetail: $session.selectedNodeDetail,
-                canvasFocusNodeID: session.canvasFocusNodeID,
-                commandPalette: session.commandPalette,
-                onNavigateToSubCanvas: { fileName in
-                    session.handleSubCanvasNavigation(fileName: fileName)
-                },
-                onRecoverUnsupportedProject: {
-                    session.router.createFreshMiniAppCanvas()
-                },
-                onFlyToNode: { session.focusCanvasNode($0) }
+                currentScale: $session.currentScale
             )
         }
     }

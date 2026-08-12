@@ -489,31 +489,7 @@ public final class CoCaptainReviewLifecycle {
         }
 
         private func replacePersistedRecords(with persistedRecords: [Record]) {
-            guard case .node(let nodeID) = scope,
-                  let store,
-                  let nodeIndex = store.nodes.firstIndex(where: { $0.id == nodeID }) else {
-                return
-            }
-
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let encodedRecords = persistedRecords.compactMap { record -> Data? in
-                do {
-                    return try encoder.encode(
-                        CoCaptainPersistedReviewRecord(record: record)
-                    )
-                } catch {
-                    logger.error(
-                        "Could not encode a persisted Review Bundle: \(error.localizedDescription, privacy: .public)"
-                    )
-                    return nil
-                }
-            }
-
-            var agentState = store.nodes[nodeIndex].agentState
-            guard agentState.pendingReviewBundlesData != encodedRecords else { return }
-            agentState.pendingReviewBundlesData = encodedRecords
-            store.updateNodeAgentState(id: nodeID, agentState: agentState)
+            // Node-scoped review persistence was removed with legacy node actions.
         }
     }
 

@@ -13,32 +13,18 @@ public enum AppActionCategory: String, Hashable {
 public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case goRoot = "go_root"
     case goBack = "go_back"
-    case createNode = "create_node"
-    case deleteNode = "delete_node"
-    case renameNode = "rename_node"
-    case updateNodeSubtitle = "update_node_subtitle"
-    case updateNodeIcon = "update_node_icon"
-    case connectNodes = "connect_nodes"
-    case disconnectNodes = "disconnect_nodes"
     case summonCoCaptain = "summon_cocaptain"
     case summonCopilotVideo = "summon_copilot_video"
     case undo = "undo"
     case redo = "redo"
-    case openFile = "open_file"
     case toggleGrid = "toggle_grid"
-    case shareCanvas = "share_canvas"
     case proSubscription = "pro_subscription"
     case signIn = "sign_in"
     case openSettings = "open_settings"
     case openProfile = "open_profile"
-    case moveNode = "move_node"
-    case themeNode = "theme_node"
-    case transformNode = "transform_node"
     case help = "help"
-    case organizeNodes = "organize_nodes"
     case openSnapshotBrowser = "open_snapshot_browser"
     case showActionsList = "show_actions_list"
-    case createSubCanvas = "create_sub_canvas"
     case openWhatsApp = "open_whatsapp"
     case openAppIcon = "open_app_icon"
     case changeCopilot = "change_copilot"
@@ -142,62 +128,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             allowsAutonomousExecution: true
         ),
         AppActionDefinition(
-            id: .createNode,
-            title: "Create Mini-App",
-            icon: "plus.square",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .deleteNode,
-            title: "Delete Node",
-            icon: "trash",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .renameNode,
-            title: "Rename Node",
-            icon: "pencil",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .updateNodeSubtitle,
-            title: "Update Node Subtitle",
-            icon: "text.alignleft",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .updateNodeIcon,
-            title: "Update Node Icon",
-            icon: "star",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .connectNodes,
-            title: "Connect Nodes",
-            icon: "link",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .disconnectNodes,
-            title: "Disconnect Nodes",
-            icon: "link.badge.minus",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
             id: .summonCoCaptain,
             title: "Summon Co-Captain",
             icon: "sparkles",
@@ -230,28 +160,12 @@ public final class AppActionDispatcher: AppActionPerforming {
             allowsAutonomousExecution: true
         ),
         AppActionDefinition(
-            id: .openFile,
-            title: "Open File",
-            icon: "doc.text.magnifyingglass",
-            category: .project,
-            isMutating: false,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
             id: .toggleGrid,
             title: "Toggle Grid",
             icon: "grid",
             category: .navigation,
             isMutating: false,
             allowsAutonomousExecution: true
-        ),
-        AppActionDefinition(
-            id: .shareCanvas,
-            title: "Share Canvas",
-            icon: "square.and.arrow.up",
-            category: .project,
-            isMutating: false,
-            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .proSubscription,
@@ -286,44 +200,12 @@ public final class AppActionDispatcher: AppActionPerforming {
             allowsAutonomousExecution: true
         ),
         AppActionDefinition(
-            id: .moveNode,
-            title: "Move Node",
-            icon: "arrow.up.and.down.and.arrow.left.and.right",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: true
-        ),
-        AppActionDefinition(
-            id: .themeNode,
-            title: "Change Node Theme",
-            icon: "paintbrush.fill",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .transformNode,
-            title: "Transform Node Type",
-            icon: "arrow.triangle.2.circlepath",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
             id: .help,
             title: "Help & Documentation",
             icon: "questionmark.circle",
             category: .assistant,
             isMutating: false,
             allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .organizeNodes,
-            title: "Organize Nodes",
-            icon: "wand.and.stars",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: true
         ),
         AppActionDefinition(
             id: .openSnapshotBrowser,
@@ -340,14 +222,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             category: .navigation,
             isMutating: false,
             allowsAutonomousExecution: true
-        ),
-        AppActionDefinition(
-            id: .createSubCanvas,
-            title: "New Canvas",
-            icon: "folder.fill.badge.plus",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .openWhatsApp,
