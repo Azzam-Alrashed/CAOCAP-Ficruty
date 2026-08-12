@@ -13,15 +13,6 @@ struct ContentView: View {
             ZStack {
                 workspaceCanvas
 
-                if session.showingHUD {
-                    CanvasHUDView(
-                        store: session.router.activeStore,
-                        viewportScale: session.currentScale,
-                        onSignInTapped: { session.showingSignIn = true },
-                        onCheckpointsTapped: { session.showingSnapshotBrowser = true }
-                    )
-                }
-
                 if session.commandPalette.miniAppPreviewContext == nil {
                     CommandPaletteView(viewModel: session.commandPalette)
                 }

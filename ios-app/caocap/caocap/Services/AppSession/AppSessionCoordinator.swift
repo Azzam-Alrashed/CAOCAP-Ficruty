@@ -75,7 +75,6 @@ final class AppSessionCoordinator {
     private enum StorageKey {
         static let gridOpacity = "grid_opacity"
         static let lastGridOpacity = "last_grid_opacity"
-        static let showingHUD = "showing_hud"
     }
 
     var gridOpacity: Double {
@@ -96,11 +95,6 @@ final class AppSessionCoordinator {
             return UserDefaults.standard.double(forKey: StorageKey.lastGridOpacity)
         }
         set { UserDefaults.standard.set(newValue, forKey: StorageKey.lastGridOpacity) }
-    }
-
-    var showingHUD: Bool {
-        get { UserDefaults.standard.bool(forKey: StorageKey.showingHUD) }
-        set { UserDefaults.standard.set(newValue, forKey: StorageKey.showingHUD) }
     }
 
     var coCaptainAvailableDetents: Set<PresentationDetent> {
@@ -536,6 +530,14 @@ final class AppSessionCoordinator {
         currentScale = viewport.scale
     }
 
+    func centerActiveCanvas() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            viewport.flyTo(nodePosition: .zero, containerSize: containerSize)
+            currentScale = 1.0
+        }
+        router.activeStore.updateViewport(offset: .zero, scale: 1.0)
+    }
+
     func ensureActionsConfigured() {
         configureActionsIfNeeded()
     }
@@ -661,10 +663,6 @@ final class AppSessionCoordinator {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.85)) {
                 self.viewport.fitTo(nodes: self.router.activeStore.nodes, containerSize: self.containerSize)
             }
-        }
-        actionDispatcher.register(.toggleHUD) { [weak self] in
-            guard let self else { return }
-            self.showingHUD.toggle()
         }
         actionDispatcher.register(.showActionsList) { [weak self] in
             self?.commandPalette.setPresented(true, mode: .actionsList)

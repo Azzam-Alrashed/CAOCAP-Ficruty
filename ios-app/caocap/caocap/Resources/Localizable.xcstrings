@@ -7145,17 +7145,6 @@
         }
       }
     },
-    "Toggle HUD" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تبديل عرض الواجهة"
-          }
-        }
-      }
-    },
     "Transform" : {
       "comment" : "A section in the context menu of a node that allows the user to change the node's type.",
       "extractionState" : "stale",

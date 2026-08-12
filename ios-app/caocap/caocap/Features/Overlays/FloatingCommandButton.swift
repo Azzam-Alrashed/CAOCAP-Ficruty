@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// **Interaction modes:**
 /// - **Tap** – opens the omnibox (or dismisses an open sheet).
-/// - **Long-press** – expands a radial menu for Home / Chat / Video.
+/// - **Long-press** – expands a radial menu for Center Canvas / Chat / Video.
 /// - **Drag** – repositions the button; on release it snaps to the nearest grid point.
 /// - **Drag while expanded** – gestures toward a bubble to highlight and select it.
 struct FloatingCommandButton: View {
@@ -16,7 +16,7 @@ struct FloatingCommandButton: View {
     @State private var activeAction: CommandAction? = nil
 
     enum CommandAction {
-        case home
+        case centerCanvas
         case chat
         case video
     }
@@ -24,8 +24,8 @@ struct FloatingCommandButton: View {
     @Environment(\.colorScheme) var colorScheme
 
     var onTap: () -> Void
-    /// Navigates to the root canvas (radial Home bubble).
-    var onHome: () -> Void
+    /// Restores the active canvas to its origin at 100% zoom.
+    var onCenterCanvas: () -> Void
     var onSelectMode: (CopilotInteractionMode) -> Void
     var copilot: CopilotPersona = UserProfileStore().loadSelectedCopilot()
 
@@ -223,18 +223,18 @@ struct FloatingCommandButton: View {
                 y: isExpanded ? direction.y * distance : 0
             )
 
-            // Left: Home
+            // Left: Center Canvas
             QuickActionBubble(
-                icon: "house.fill",
+                icon: "scope",
                 color: .primary,
                 isExpanded: isExpanded,
-                isHighlighted: activeAction == .home,
+                isHighlighted: activeAction == .centerCanvas,
                 size: 40,
                 delay: 0.0
             ) {
                 triggerHapticFeedback(.medium)
                 withAnimation(.spring()) { isExpanded = false }
-                onHome()
+                onCenterCanvas()
             }
             .offset(
                 x: isExpanded ? direction.rotated(by: -angle).x * distance : 0,
@@ -268,7 +268,7 @@ struct FloatingCommandButton: View {
         let angle: CGFloat = 45
         let threshold: CGFloat = 40
 
-        let homePos = CGPoint(
+        let centerCanvasPos = CGPoint(
             x: center.x + direction.rotated(by: -angle).x * distance,
             y: center.y + direction.rotated(by: -angle).y * distance
         )
@@ -281,13 +281,13 @@ struct FloatingCommandButton: View {
             y: center.y + direction.rotated(by: angle).y * distance
         )
 
-        let dHome = hypot(location.x - homePos.x, location.y - homePos.y)
+        let dCenterCanvas = hypot(location.x - centerCanvasPos.x, location.y - centerCanvasPos.y)
         let dChat = hypot(location.x - chatPos.x, location.y - chatPos.y)
         let dVideo = hypot(location.x - videoPos.x, location.y - videoPos.y)
 
         let previousAction = activeAction
         let nearest = [
-            (CommandAction.home, dHome, true),
+            (CommandAction.centerCanvas, dCenterCanvas, true),
             (.chat, dChat, true),
             (.video, dVideo, true)
         ]
@@ -304,8 +304,8 @@ struct FloatingCommandButton: View {
     private func executeAction(_ action: CommandAction) {
         triggerHapticFeedback(.medium)
         switch action {
-        case .home:
-            onHome()
+        case .centerCanvas:
+            onCenterCanvas()
         case .chat:
             onSelectMode(.chat)
         case .video:

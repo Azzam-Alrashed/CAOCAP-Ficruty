@@ -162,8 +162,8 @@ struct GlobalFloatingChromeView: View {
                         GlobalFloatingChromeController.makeMainAppWindowKey()
                         session.handleFloatingCommandButtonTap()
                     },
-                    onHome: {
-                        _ = session.actionDispatcher.perform(.goRoot, source: .user)
+                    onCenterCanvas: {
+                        session.centerActiveCanvas()
                     },
                     onSelectMode: { mode in
                         switch mode {

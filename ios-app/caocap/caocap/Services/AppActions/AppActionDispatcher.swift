@@ -37,7 +37,6 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case help = "help"
     case organizeNodes = "organize_nodes"
     case openSnapshotBrowser = "open_snapshot_browser"
-    case toggleHUD = "toggle_hud"
     case showActionsList = "show_actions_list"
     case createSubCanvas = "create_sub_canvas"
     case openWhatsApp = "open_whatsapp"
@@ -331,14 +330,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             title: "Browse Checkpoints",
             icon: "clock.arrow.circlepath",
             category: .project,
-            isMutating: false,
-            allowsAutonomousExecution: true
-        ),
-        AppActionDefinition(
-            id: .toggleHUD,
-            title: "Toggle HUD",
-            icon: "menubar.rectangle",
-            category: .navigation,
             isMutating: false,
             allowsAutonomousExecution: true
         ),
