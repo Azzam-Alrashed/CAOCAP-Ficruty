@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared free-tier / Pro usage summary for Settings and the Omnibox Usage sheet.
+/// Shared free-tier / Pro usage summary for Settings and the Command Line Usage sheet.
 struct FreeTierUsageView: View {
     var showsSectionChrome: Bool = true
     var onUpgrade: (() -> Void)? = nil
@@ -153,7 +153,7 @@ struct FreeTierUsageView: View {
     }
 }
 
-/// Standalone sheet opened from the Omnibox Usage command.
+/// Standalone sheet opened from the Command Line Usage command.
 struct UsageSheetView: View {
     var onUpgrade: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss

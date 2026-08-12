@@ -1,84 +1,31 @@
-# Omnibox Feature
+# Command Line Feature
 
-The Omnibox is CAOCAP's command palette. It gives users a fast way to search available app actions and gives CoCaptain a shared local command vocabulary.
-
-## Ownership
-
-- `CommandPaletteView` renders the modal command surface, search field, result list, and row selection states.
-- `CommandPaletteViewModel` owns query state, filtered actions, selected index, presentation state, action emission, and unmatched-query prompt emission.
-- `AppActionDispatcher` is the central registry and execution boundary for actions.
-- `CommandIntentResolver` maps short natural-language commands to `AppActionID` values without calling the LLM.
-
-The Omnibox should not directly mutate app state. It emits `AppActionID` values; the app shell or dispatcher performs the actual work.
+The Command Line is CAOCAP's terminal-like intent surface. It presents one input with no options or autocomplete list.
 
 ## Command Flow
 
-1. The app shell configures `AppActionDispatcher` with concrete handlers.
-2. The command palette receives `AppActionDefinition` values from the dispatcher.
-3. `CommandPaletteViewModel` filters actions by localized and canonical title.
-4. The user selects an action by tapping, submitting, or keyboard navigation.
-5. If the query matches a listed command, the view model emits the selected `AppActionID` through `onExecute`.
-6. If the query has no listed command matches, the view model emits the trimmed query through `onSubmitPrompt`, and the app shell opens CoCaptain with that prompt.
-7. `AppActionDispatcher.perform(_:source:)` validates source safety and runs configured app actions.
+1. The user enters text and presses Return.
+2. `CommandIntentResolver` checks the text against conservative aliases for registered app actions.
+3. A recognized command, such as `open settings`, executes locally through `AppActionDispatcher`.
+4. Unmatched text is sent to the selected CoPilot as a request.
 
-## Intent Matching
+The view never mutates app state directly. `CommandPaletteViewModel` emits an action ID or CoPilot request, and the app session performs it.
 
-`CommandIntentResolver` supports local phrase matching for commands such as "open settings" or Arabic equivalents. It normalizes case, punctuation, and diacritics, then checks conservative aliases.
+## Safety
 
-Important rules:
-
-- only registered actions can resolve;
-- matching **Go Back** and **Go to Root** actions are pinned ahead of canvas-node
-  and creation results so navigation remains the default queried result;
-- explicit negations such as "do not create a project" return `nil`;
-- single-word aliases require exact matches;
-- multi-word aliases may match inside longer requests;
-- aliases should stay conservative to avoid turning casual chat into app actions.
-
-## Safety Boundary
-
-`AppActionDefinition` has two safety flags:
-
-- `isMutating`: the action changes user data, project structure, or other durable state.
-- `allowsAutonomousExecution`: CoCaptain or another trusted non-user source can run the action without a review item.
-
-Automatic agent calls are blocked when an action is mutating or not marked autonomous. User-triggered commands and reviewed agent actions may continue through the same dispatcher.
-
-Preserve this boundary when adding commands.
-
-## Options Visibility
-
-In search (capsule) mode, the results card defaults to listing available options as soon as the omnibox opens. Users can turn this off in **Settings → Look & Feel → Show Options Immediately**, so options only appear after typing starts. Mini-App preview tools always remain visible when present. Persistence key: `omnibox.showOptionsWhenEmpty` (`@AppStorage`, default `true`).
+`AppActionDispatcher` remains the execution boundary. Agent-triggered actions must satisfy the action's mutation and autonomous-execution rules. User-entered commands execute with the `.user` source.
 
 ## Editing Guidance
 
-- Add new actions to `AppActionID`, `availableActions`, `configure(...)`, and the dispatcher `switch`.
-- Add aliases in `CommandIntentResolver` only when the phrase is unlikely to be ordinary chat.
-- Keep `CommandPaletteView` presentational; search and selection state belong in the view model.
-- Keep side effects out of `CommandPaletteViewModel`; emit IDs or prompts and let the dispatcher/app shell execute.
-- Update CoCaptain tests when changing command aliases, negation behavior, or action safety flags.
-- Replace production `print(...)` diagnostics with `Logger` when touching execution paths.
+- Add app commands to `AppActionID`, `AppActionDispatcher.availableActions`, and the session's dispatcher registrations.
+- Add aliases in `CommandIntentResolver` only when they are unlikely to be ordinary conversation.
+- Keep option lists and autocomplete out of this surface.
+- Keep side effects out of `CommandPaletteViewModel`.
 
-## Verification Checklist
+## Verification
 
-- Open the palette and confirm options appear immediately by default (empty query).
-- In Settings → Look & Feel, turn off **Show Options Immediately** and confirm options only appear after typing.
-- Open the palette and confirm the search field focuses automatically.
-- Type partial localized and canonical action names and confirm filtering works.
-- Move selection up/down and confirm it wraps correctly.
-- Press Return and confirm the selected action executes once.
-- Type an unlisted command, press Return, and confirm CoCaptain opens with that prompt.
-- Tap outside the palette and confirm query/selection reset on close.
-- Try direct commands through CoCaptain, including negated phrases, and confirm safe vs reviewed behavior.
-
-## Test Targets
-
-Useful test coverage for this feature:
-
-- filtering by localized and canonical titles;
-- selection movement and wraparound;
-- confirm selection with empty and non-empty results;
-- unmatched non-empty queries emit trimmed CoCaptain prompts;
-- `CommandIntentResolver` English and Arabic aliases;
-- negation handling;
-- dispatcher blocking of automatic mutating actions;
+- Open the Command Line and confirm only the input is shown.
+- Enter `open settings` and confirm Settings opens.
+- Enter an unmatched request and confirm it opens the selected CoPilot with that request.
+- Tap outside and confirm the Command Line dismisses and clears its input.
+- Confirm dictation still fills the input.

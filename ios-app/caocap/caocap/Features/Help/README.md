@@ -1,13 +1,13 @@
 # Help Feature
 
-In-app help center for tutorials, Omnibox shortcut reference, and getting-started guides.
+In-app help center for tutorials, Command Line shortcut reference, and getting-started guides.
 
 ## Ownership
 
 - `HelpManifest` owns static section content (tutorials, shortcuts, articles).
 - `HelpView` renders the sheet; navigation side effects are passed in as closures from `AppSessionCoordinator`.
 - `HelpArticleView` renders long-form guide pages pushed from the help list.
-- Entry point: Omnibox `AppActionID.help`.
+- Entry point: Command Line `AppActionID.help`.
 
 ## Editing Guidance
 

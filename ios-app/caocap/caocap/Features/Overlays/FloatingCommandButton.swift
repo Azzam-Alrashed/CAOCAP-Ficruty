@@ -4,7 +4,7 @@ import SwiftUI
 /// bottom-trailing corner of the canvas and snaps to a 3×3 edge grid on release.
 ///
 /// **Interaction modes:**
-/// - **Tap** – opens the omnibox (or dismisses an open sheet).
+/// - **Tap** – opens the Command Line (or dismisses an open sheet).
 /// - **Long-press** – expands a radial menu for Center Canvas / Chat / Video.
 /// - **Drag** – repositions the button; on release it snaps to the nearest grid point.
 /// - **Drag while expanded** – gestures toward a bubble to highlight and select it.

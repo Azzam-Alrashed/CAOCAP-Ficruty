@@ -20,7 +20,7 @@ public class LocalizationManager {
         "Nodes of Intent",
         "Agentic Design",
         "Mini-App",
-        "The Command Palette",
+        "The Command Line",
         "Your Journey Begins",
         "Profile",
         "Projects",

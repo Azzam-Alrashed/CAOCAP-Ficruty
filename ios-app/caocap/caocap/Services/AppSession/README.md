@@ -1,6 +1,6 @@
 # App Session
 
-Owns root-level session orchestration for the running app: workspace routing hooks, global sheet flags, command palette binding, and `AppActionDispatcher` registration.
+Owns root-level session orchestration for the running app: workspace routing hooks, global sheet flags, Command Line binding, and `AppActionDispatcher` registration.
 
 ## Ownership
 

@@ -69,7 +69,7 @@ struct caocapApp: App {
             }
 
             CommandMenu("Commands") {
-                Button("Command Palette") {
+                Button("Command Line") {
                     NotificationCenter.default.post(name: .openCommandPalette, object: nil)
                 }
                 .keyboardShortcut("k", modifiers: .command)

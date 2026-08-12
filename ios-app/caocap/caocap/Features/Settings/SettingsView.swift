@@ -16,7 +16,6 @@ struct SettingsView: View {
     @AppStorage("grid_opacity") private var gridOpacity: Double = 0.1
     @AppStorage("connection_style") private var connectionStyle = "Dashed"
     @AppStorage("spatial_glow_enabled") private var spatialGlowEnabled = true
-    @AppStorage("omnibox.showOptionsWhenEmpty") private var showOmniboxOptionsWhenEmpty = false
     @AppStorage("cocaptain.modelName") private var modelName = CoCaptainModelSelectionPolicy.cloudModelName
 
     @State private var localModelManager = LocalGemmaModelManager.shared
@@ -109,16 +108,6 @@ struct SettingsView: View {
                                 
                                 Toggle(isOn: $spatialGlowEnabled) {
                                     Label("Spatial Glow", systemImage: "sun.max.fill")
-                                        .font(.system(size: 16, weight: .medium))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .tint(.orange)
-
-                                Divider().padding(.leading, 56).opacity(0.3)
-
-                                Toggle(isOn: $showOmniboxOptionsWhenEmpty) {
-                                    Label("Show Options Immediately", systemImage: "list.bullet.rectangle")
                                         .font(.system(size: 16, weight: .medium))
                                 }
                                 .padding(.horizontal, 16)

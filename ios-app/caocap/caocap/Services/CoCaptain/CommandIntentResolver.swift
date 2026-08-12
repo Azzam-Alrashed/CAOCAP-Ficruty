@@ -157,17 +157,6 @@ public struct CommandIntentResolver {
                 "سجل التغييرات",
                 "عرض نقاط الاستعادة"
             ]
-        case .showActionsList:
-            return [
-                "show actions list",
-                "show actions",
-                "command palette",
-                "actions list",
-                "قائمة الإجراءات",
-                "قائمة الاجراءات",
-                "عرض قائمة الإجراءات",
-                "عرض قائمة الاجراءات"
-            ]
         case .openWhatsApp:
             return [
                 "open whatsapp",

@@ -14,4 +14,4 @@ The canvas is currently a blank spatial workspace retained for the upcoming AI o
 - Pan and pinch zoom remain responsive and persist after reopening.
 - Center Canvas restores offset `(0,0)` and 100% zoom.
 - A saved project containing legacy nodes still displays a blank canvas.
-- CoCaptain and the omnibox expose no legacy node commands.
+- CoCaptain and the Command Line expose no legacy node commands.

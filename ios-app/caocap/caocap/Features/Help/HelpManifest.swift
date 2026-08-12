@@ -18,7 +18,7 @@ struct HelpArticle: Identifiable, Hashable {
 enum HelpManifest {
     static let supportURL = URL(string: "https://www.azzam.ai/caocap/support")!
 
-    static let omniboxShortcuts: [HelpShortcutItem] = [
+    static let commandLineShortcuts: [HelpShortcutItem] = [
         HelpShortcutItem(id: "settings", titleKey: "Settings", examplePhraseKey: "help.shortcut.settings"),
         HelpShortcutItem(id: "profile", titleKey: "Profile", examplePhraseKey: "help.shortcut.profile"),
         HelpShortcutItem(id: "cocaptain", titleKey: "Summon Co-Captain", examplePhraseKey: "help.shortcut.cocaptain"),
@@ -63,7 +63,7 @@ enum HelpManifest {
             ]
         ),
         HelpArticle(
-            id: "omnibox",
+            id: "command-line",
             titleKey: "help.article.omnibox.title",
             subtitleKey: "help.article.omnibox.subtitle",
             icon: "command",

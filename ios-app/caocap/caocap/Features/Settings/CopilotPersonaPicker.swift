@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Compact CoCaptain / CoStar picker for Settings and the Omnibox change-copilot sheet.
+/// Compact CoCaptain / CoStar picker for Settings and the Command Line change-copilot sheet.
 struct CopilotPersonaPicker: View {
     let selection: CopilotPersona
     var onSelect: (CopilotPersona) -> Void
@@ -70,7 +70,7 @@ struct CopilotPersonaPicker: View {
     }
 }
 
-/// Lightweight sheet wrapper used by the Omnibox `changeCopilot` action.
+/// Lightweight sheet wrapper used by the Command Line `changeCopilot` action.
 struct CopilotPersonaPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     let selection: CopilotPersona

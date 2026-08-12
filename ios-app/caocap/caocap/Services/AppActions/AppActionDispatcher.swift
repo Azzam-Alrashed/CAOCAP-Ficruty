@@ -1,6 +1,6 @@
 import Foundation
 
-/// Top-level grouping for app actions surfaced in the command palette and agent.
+/// Top-level grouping for app actions available to the Command Line and agent.
 public enum AppActionCategory: String, Hashable {
     /// Actions that navigate between workspaces or canvas levels.
     case navigation
@@ -24,7 +24,6 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case openProfile = "open_profile"
     case help = "help"
     case openSnapshotBrowser = "open_snapshot_browser"
-    case showActionsList = "show_actions_list"
     case openWhatsApp = "open_whatsapp"
     case openAppIcon = "open_app_icon"
     case changeCopilot = "change_copilot"
@@ -212,14 +211,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             title: "Browse Checkpoints",
             icon: "clock.arrow.circlepath",
             category: .project,
-            isMutating: false,
-            allowsAutonomousExecution: true
-        ),
-        AppActionDefinition(
-            id: .showActionsList,
-            title: "Show Actions List",
-            icon: "list.bullet.rectangle.portrait",
-            category: .navigation,
             isMutating: false,
             allowsAutonomousExecution: true
         ),

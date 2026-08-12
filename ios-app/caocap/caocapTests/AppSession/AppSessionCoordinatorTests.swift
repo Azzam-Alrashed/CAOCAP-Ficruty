@@ -84,7 +84,7 @@ struct AppSessionCoordinatorTests {
         #expect(!session.isLaunching)
     }
 
-    @Test func floatingCommandTapOpensOmniboxWhenIdle() {
+    @Test func floatingCommandTapOpensCommandLineWhenIdle() {
         let session = AppSessionCoordinator()
 
         session.handleFloatingCommandButtonTap()

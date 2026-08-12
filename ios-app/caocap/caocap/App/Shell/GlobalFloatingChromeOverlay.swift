@@ -5,7 +5,7 @@ import UIKit
 /// explicitly registered chrome frames (FAB, call pill, expanded FAB menu).
 ///
 /// Must not become the key window — otherwise FAB taps steal first-responder
-/// ownership from the main app window and the Omnibox keyboard never appears.
+/// ownership from the main app window and the Command Line keyboard never appears.
 @MainActor
 final class PassthroughChromeWindow: UIWindow {
     /// Screen-space rects that should receive touches. Everything else passes through.

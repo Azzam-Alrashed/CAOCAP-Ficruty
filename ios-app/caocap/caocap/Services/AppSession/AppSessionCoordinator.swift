@@ -354,13 +354,13 @@ final class AppSessionCoordinator {
         return dismissed
     }
 
-    /// FAB tap: dismiss any open sheet, otherwise open the omnibox.
+    /// FAB tap: dismiss any open sheet, otherwise open the Command Line.
     func handleFloatingCommandButtonTap() {
         if dismissPresentedSheets() { return }
         commandPalette.setPresented(true)
     }
 
-    // MARK: - Command Palette
+    // MARK: - Command Line
 
     func bindCommandPalette() {
         syncCommandPaletteActions()
@@ -490,9 +490,6 @@ final class AppSessionCoordinator {
         }
         actionDispatcher.register(.openSnapshotBrowser) { [weak self] in
             self?.showingSnapshotBrowser = true
-        }
-        actionDispatcher.register(.showActionsList) { [weak self] in
-            self?.commandPalette.setPresented(true, mode: .actionsList)
         }
     }
 

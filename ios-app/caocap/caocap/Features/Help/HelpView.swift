@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// In-app help center: tutorials, Omnibox shortcuts, and getting-started guides.
+/// In-app help center: tutorials, Command Line shortcuts, and getting-started guides.
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -12,7 +12,7 @@ struct HelpView: View {
                     header
 
                     SettingsSection("help.section.shortcuts") {
-                        ForEach(HelpManifest.omniboxShortcuts) { shortcut in
+                        ForEach(HelpManifest.commandLineShortcuts) { shortcut in
                             shortcutRow(shortcut)
                         }
                     }
