@@ -4,7 +4,6 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var selectedCopilot: CopilotPersona
-    var miniAppCount: Int = 0
     var onUpgrade: (() -> Void)? = nil
     var onRestartPersonalization: () -> Void = {}
     var onRestartOnboarding: () -> Void = {}
@@ -68,7 +67,6 @@ struct SettingsView: View {
                             }
 
                             FreeTierUsageView(
-                                miniAppCount: miniAppCount,
                                 onUpgrade: onUpgrade
                             )
 

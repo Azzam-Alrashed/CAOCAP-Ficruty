@@ -10,12 +10,6 @@ public enum RootCanvasProvider {
     /// Stable ID for the launch Hello World Mini-App on the root canvas.
     public static let helloWorldMiniAppNodeID = UUID(uuidString: "CA0CA002-0000-4000-8000-000000000001")!
 
-    public static let helloWorldSRS = """
-    # Hello World
-
-    Tap the headline and explore the live preview.
-    """
-
     /// Legacy curated portal / action node IDs (pre single-mini-app root).
     public static let tutorialNodeID = UUID(uuidString: "CA0CA001-0000-4000-8000-000000000001")!
     public static let pacManNodeID = UUID(uuidString: "CA0CA001-0000-4000-8000-000000000002")!
@@ -120,7 +114,7 @@ public enum RootCanvasProvider {
         Set(legacyCuratedNodes.map(\.id))
     }
 
-    /// The former 11-node launch grid, retained so v1–v14 migrations can still compose.
+    /// The former 9-node launch grid, retained so v1–v14 migrations can still compose.
     public static var legacyCuratedNodes: [SpatialNode] {
         [
             SpatialNode(
@@ -151,15 +145,6 @@ public enum RootCanvasProvider {
                 action: .openProfile
             ),
             SpatialNode(
-                id: activityNodeID,
-                position: gridPosition(for: activityNodeID),
-                title: "Activity",
-                subtitle: "Saved changes across all canvases",
-                icon: "chart.bar.xaxis",
-                theme: .cyan,
-                action: .openActivity
-            ),
-            SpatialNode(
                 id: tutorialNodeID,
                 type: .subCanvas,
                 position: gridPosition(for: tutorialNodeID),
@@ -188,15 +173,6 @@ public enum RootCanvasProvider {
                 icon: "square.grid.3x3.fill",
                 theme: .secondary,
                 linkedCanvasFileName: xoFileName
-            ),
-            SpatialNode(
-                id: dailyNodeID,
-                position: gridPosition(for: dailyNodeID),
-                title: "Daily",
-                subtitle: "Today's building challenges",
-                icon: "rosette",
-                theme: .indigo,
-                action: .openDaily
             ),
             SpatialNode(
                 id: whatsAppNodeID,
@@ -236,12 +212,10 @@ public enum RootCanvasProvider {
                 type: .miniApp,
                 position: .zero,
                 title: "Hello World",
-                subtitle: "Tap to run",
+                subtitle: "Tap to open",
                 icon: "play.circle.fill",
                 theme: .blue,
                 miniApp: MiniAppState(
-                    srsText: helloWorldSRS,
-                    srsReadinessState: .implementationReady,
                     codeText: ProjectTemplateProvider.defaultCode
                 )
             )

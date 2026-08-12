@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Opens a canvas node. Mini-App nodes enter a large-sheet running preview with
-/// Mini-App tools available through the shared omnibox.
+/// Opens a canvas node. Mini-App nodes enter a large-sheet shell with Agent /
+/// Settings tools available through the shared omnibox.
 struct NodeDetailView: View {
     /// The canvas node whose detail is being shown. Used as the initial value;
     /// the live version is always read from `store.nodes`.
@@ -22,7 +22,7 @@ struct NodeDetailView: View {
 
     var body: some View {
         if currentNode.type == .miniApp {
-            MiniAppPreviewShell(
+            MiniAppDetailShell(
                 node: currentNode,
                 store: store,
                 commandPalette: commandPalette,
@@ -36,12 +36,8 @@ struct NodeDetailView: View {
     }
 }
 
-/// Identifies which tool sheet should be presented over the live Mini-App preview.
+/// Identifies which tool sheet should be presented over the Mini-App detail shell.
 private enum MiniAppTool: String, Identifiable {
-    /// Software Requirements Specification editor.
-    case srs
-    /// HTML/JS source code editor.
-    case code
     /// CoCaptain agent chat panel.
     case agent
     /// Node identity and agent profile settings form.
@@ -51,8 +47,6 @@ private enum MiniAppTool: String, Identifiable {
 
     init?(_ previewTool: MiniAppPreviewTool) {
         switch previewTool {
-        case .srs: self = .srs
-        case .code: self = .code
         case .agent: self = .agent
         case .settings: self = .settings
         case .backToCanvas: return nil
@@ -60,9 +54,9 @@ private enum MiniAppTool: String, Identifiable {
     }
 }
 
-/// Large-sheet shell that hosts the live Mini-App HTML preview and surfaces all
-/// Mini-App tools through the shared omnibox (opened via the global FAB above sheets).
-private struct MiniAppPreviewShell: View {
+/// Large-sheet shell for Mini-App nodes. Surfaces Agent / Settings / Back through
+/// the shared omnibox (opened via the global FAB above sheets).
+private struct MiniAppDetailShell: View {
     let node: SpatialNode
     let store: ProjectStore
     var commandPalette: CommandPaletteViewModel?
@@ -72,8 +66,6 @@ private struct MiniAppPreviewShell: View {
     /// Drives which tool sheet is currently presented.
     @State private var activeTool: MiniAppTool?
 
-    /// Live-refreshed node so any background store mutation (e.g. CoCaptain applying
-    /// a patch) is immediately reflected in the preview without dismissing the sheet.
     private var currentNode: SpatialNode {
         store.nodes.first(where: { $0.id == node.id }) ?? node
     }
@@ -82,13 +74,20 @@ private struct MiniAppPreviewShell: View {
         ZStack {
             Color(uiColor: .systemBackground).ignoresSafeArea()
 
-            if let html = currentNode.miniApp?.compiledHTML {
-                HTMLWebView(htmlContent: html)
-                    .ignoresSafeArea()
-            } else {
-                Text("No preview to display.")
-                    .foregroundStyle(.secondary)
+            VStack(spacing: 12) {
+                Image(systemName: currentNode.icon ?? "square.stack.3d.up.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(currentNode.theme.color)
+                Text(currentNode.displayTitle)
+                    .font(.title2.weight(.semibold))
+                if let subtitle = currentNode.displaySubtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
+            .padding()
 
             if let commandPalette {
                 CommandPaletteView(viewModel: commandPalette)
@@ -107,10 +106,6 @@ private struct MiniAppPreviewShell: View {
         }
         .sheet(item: $activeTool) { tool in
             switch tool {
-            case .srs:
-                SRSEditorView(node: currentNode, store: store)
-            case .code:
-                CodeEditorView(node: currentNode, store: store)
             case .agent:
                 NavigationStack {
                     NodeAgentChatView(

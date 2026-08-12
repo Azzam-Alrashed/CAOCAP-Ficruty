@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// The primary card-shaped visual representation of a `SpatialNode` on the canvas.
-/// Renders the node's icon, title, subtitle, SRS readiness badge, and — for
-/// Mini-App nodes — a scaled live HTML preview. Applies glass-morphism styling and
+/// Renders the node's icon, title, and subtitle. Applies glass-morphism styling and
 /// animated overlays that reflect the current CoCaptain agent execution state.
 struct NodeView: View, Equatable {
     /// The underlying domain model whose data is displayed.
@@ -88,22 +87,6 @@ struct NodeView: View, Equatable {
                             .fixedSize(horizontal: false, vertical: true)
                             .lineLimit(3)
                     }
-
-                    if node.type == .miniApp, let miniApp = node.miniApp {
-                        let state = miniApp.srsReadinessState
-                        HStack(spacing: 5) {
-                            Image(systemName: state.icon)
-                                .font(.system(size: 10, weight: .semibold))
-                            Text(state.displayTitle)
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundColor(state == .stale ? .orange : themeColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background((state == .stale ? Color.orange : themeColor).opacity(0.12))
-                        .clipShape(Capsule())
-                        .padding(.top, 4)
-                    }
                 }
                 .frame(maxWidth: 240, alignment: .leading)
             }
@@ -114,9 +97,7 @@ struct NodeView: View, Equatable {
             NodePreviewContent(
                 node: node,
                 agentState: agentState,
-                themeColor: themeColor,
-                activityStore: ActivityStore.shared,
-                gamificationStore: GamificationStore.shared
+                themeColor: themeColor
             )
         }
         .padding(.horizontal, node.type == .miniApp ? 12 : 20)
@@ -278,51 +259,21 @@ struct NodeView: View, Equatable {
 }
 
 /// Renders supplementary content beneath the header row of a `NodeView`.
-/// For Mini-App nodes, shows a scaled-down live HTML thumbnail (375×667 ➝ 240px wide).
-/// For sub-canvas nodes, shows a "Tap to open" affordance. Action nodes and plain
-/// nodes render nothing (the header row is sufficient).
+/// Sub-canvas nodes show a "Tap to open" affordance. Mini-App and action nodes
+/// render nothing (the header row is sufficient).
 private struct NodePreviewContent: View {
     let node: SpatialNode
     let agentState: AgentExecutionState
     let themeColor: Color
-    let activityStore: ActivityStore
-    let gamificationStore: GamificationStore
     
     var body: some View {
         Group {
-            if node.action == .openDaily {
-                DailyNodeCardContent(store: gamificationStore)
-            } else if node.action == .openActivity {
-                VStack(alignment: .leading, spacing: 10) {
-                    ActivityHeatmapView(
-                        days: activityStore.days(),
-                        cellSize: 9,
-                        spacing: 3,
-                        accentColor: themeColor
-                    )
-
-                    HStack(spacing: 6) {
-                        Text(activityStore.todayCount, format: .number)
-                            .fontWeight(.bold)
-                        Text("saved today")
-                    }
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.top, 14)
-            } else if node.action != nil {
+            if node.action != nil {
                 EmptyView()
             } else {
                 switch node.type {
                 case .miniApp:
-                    if let html = node.miniApp?.compiledHTML {
-                        HTMLWebView(htmlContent: html)
-                            .frame(width: 375, height: 667)
-                            .scaleEffect(240.0 / 375.0)
-                            .frame(width: 240, height: 427)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                    }
+                    EmptyView()
 
                 case .subCanvas:
                     VStack(alignment: .leading, spacing: 8) {

@@ -58,7 +58,6 @@
 				Features/Auth/README.md,
 				Features/Canvas/README.md,
 				Features/CoCaptain/README.md,
-				Features/Daily/README.md,
 				Features/Help/README.md,
 				Features/Omnibox/README.md,
 				Features/Onboarding/README.md,

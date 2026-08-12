@@ -44,22 +44,12 @@ public struct ProjectAnalyzer {
         )
 
         for miniAppNode in miniApps {
-            let srsText = miniAppNode.miniApp?.srsText.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if srsText.isEmpty {
-                suggestions.append(ProjectSuggestion(
-                    title: "\(miniAppNode.title) SRS is blank",
-                    detail: "Describe this Mini-App idea so CoCaptain can help refine and build it.",
-                    suggestedPrompt: "Help me write the SRS for \(miniAppNode.title).",
-                    severity: .info
-                ))
-            }
-
             let codeText = miniAppNode.miniApp?.codeText ?? ""
             let isCodeEmpty = codeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             if isCodeEmpty {
                 suggestions.append(ProjectSuggestion(
                     title: "\(miniAppNode.title) code is empty",
-                    detail: "CoCaptain can generate a starter app from this Mini-App's SRS.",
+                    detail: "CoCaptain can generate a starter app for this Mini-App.",
                     suggestedPrompt: "Generate a starter single-file HTML/CSS/JS app for \(miniAppNode.title).",
                     severity: .warning
                 ))

@@ -2,11 +2,19 @@ import Foundation
 import SwiftUI
 import os
 
+/// Edge kind for connect/disconnect mutations.
+public enum NodeConnectionKind: String {
+    /// Sequential `nextNodeId` pointer.
+    case next
+    /// Bidirectional-friendly `connectedNodeIds` membership.
+    case connected
+}
+
 /// Performs all mutable node operations on behalf of `ProjectStore`.
 ///
 /// `NodeMutationEngine` is deliberately decoupled from `ProjectStore` so its
-/// mutation logic can be tested in isolation. Side effects (saving, recompiling
-/// the live preview, triggering downstream agents) are routed back to the store
+/// mutation logic can be tested in isolation. Side effects (saving,
+/// triggering downstream agents) are routed back to the store
 /// through a set of closure callbacks that are wired up once during initialisation.
 ///
 /// All methods are `@MainActor`-isolated because they mutate `inout [SpatialNode]`
@@ -25,9 +33,7 @@ final class NodeMutationEngine {
     /// Called when the mutation should trigger a project save. The `Bool` indicates
     /// whether the saving indicator should be shown to the user.
     var onRequestSave: ((Bool) -> Void)?
-    /// Called when node code or Firebase config changes require recompiling the live HTML preview.
-    var onCompileLivePreview: ((inout [SpatialNode]) -> Void)?
-    /// Called when an upstream node's SRS or code changes and connected downstream
+    /// Called when an upstream node's code changes and connected downstream
     /// nodes with auto-trigger enabled should be notified.
     var onTriggerDownstreamAgents: ((UUID, [SpatialNode]) -> Void)?
     /// Returns the current canvas viewport offset so newly created nodes can be
@@ -40,7 +46,7 @@ final class NodeMutationEngine {
     
     /// Changes a node's fundamental type and initialises type-specific state.
     ///
-    /// Switching to `.miniApp` bootstraps a `MiniAppState` with default SRS and code text.
+    /// Switching to `.miniApp` bootstraps a `MiniAppState` with default code text.
     /// Switching to `.subCanvas` generates a new canvas file name if one doesn't exist yet.
     /// Switching to `.standard` clears any `MiniAppState` from the node.
     public func updateNodeType(nodes: inout [SpatialNode], id: UUID, type: NodeType, persist: Bool = true) {
@@ -63,7 +69,6 @@ final class NodeMutationEngine {
             switch type {
             case .miniApp:
                 nodes[index].miniApp = nodes[index].miniApp ?? MiniAppState(
-                    srsReadinessState: SRSReadinessEvaluator().evaluate(text: SRSScaffold.defaultText, currentState: nil),
                     codeText: ProjectTemplateProvider.defaultCode
                 )
             case .standard:
@@ -78,7 +83,6 @@ final class NodeMutationEngine {
             if persist {
                 onRequestSave?(true)
             }
-            onCompileLivePreview?(&nodes)
         }
     }
     
@@ -88,35 +92,7 @@ final class NodeMutationEngine {
         updateMiniAppCode(nodes: &nodes, id: id, text: text, persist: persist)
     }
 
-    /// Updates the Software Requirements Specification (SRS) text for a Mini-App node
-    /// and re-evaluates its readiness state. Also notifies downstream agents.
-    public func updateMiniAppSRS(nodes: inout [SpatialNode], id: UUID, text: String, persist: Bool = true) {
-        if let index = nodes.firstIndex(where: { $0.id == id }) {
-            ensureMiniAppState(for: &nodes[index])
-            let oldText = nodes[index].miniApp?.srsText ?? ""
-            let oldReadiness = nodes[index].miniApp?.srsReadinessState
-
-            undoManager?.registerUndo(withTarget: self) { target in
-                MainActor.assumeIsolated {
-                    target.onPerformUndoMutation? { currentNodes in
-                        target.updateMiniAppSRS(nodes: &currentNodes, id: id, text: oldText, persist: persist)
-                    }
-                }
-            }
-            undoStackChanged += 1
-
-            nodes[index].miniApp?.srsText = text
-            nodes[index].miniApp?.srsReadinessState = SRSReadinessEvaluator().evaluate(text: text, currentState: oldReadiness)
-
-            if persist {
-                onRequestSave?(true)
-            }
-            onTriggerDownstreamAgents?(id, nodes)
-        }
-    }
-
-    /// Replaces the runnable HTML/JS source of a Mini-App node and triggers a
-    /// live preview recompile as well as downstream agent notifications.
+    /// Replaces the source text of a Mini-App node and notifies downstream agents.
     public func updateMiniAppCode(nodes: inout [SpatialNode], id: UUID, text: String, persist: Bool = true) {
         if let index = nodes.firstIndex(where: { $0.id == id }) {
             ensureMiniAppState(for: &nodes[index])
@@ -132,7 +108,6 @@ final class NodeMutationEngine {
             undoStackChanged += 1
 
             nodes[index].miniApp?.codeText = text
-            onCompileLivePreview?(&nodes)
 
             if persist {
                 onRequestSave?(true)
@@ -217,23 +192,32 @@ final class NodeMutationEngine {
     }
     
     /// Creates a new node of the given type and appends it to the canvas.
-    /// The new node is placed at the current viewport centre, given a unique title,
-    /// and appropriate type-specific state is bootstrapped automatically.
-    public func addNode(nodes: inout [SpatialNode], type: NodeType = .miniApp) {
-        let uniqueTitle = generateUniqueTitle(nodes: nodes, base: type.defaultTitle)
+    /// The new node is placed at the current viewport centre (or `position` when
+    /// provided), given a unique title, and type-specific state is bootstrapped.
+    public func addNode(
+        nodes: inout [SpatialNode],
+        type: NodeType = .miniApp,
+        title: String? = nil,
+        position: CGPoint? = nil
+    ) {
+        let baseTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let uniqueTitle = generateUniqueTitle(
+            nodes: nodes,
+            base: (baseTitle?.isEmpty == false) ? baseTitle! : type.defaultTitle
+        )
 
         let subtitle = type.defaultSubtitle
         let linkedFileName: String? = type == .subCanvas ? CanvasFileNaming.newCanvasFileName() : nil
         let miniApp = type == .miniApp ? MiniAppState(
-            srsReadinessState: SRSReadinessEvaluator().evaluate(text: SRSScaffold.defaultText, currentState: nil),
             codeText: ProjectTemplateProvider.defaultCode
         ) : nil
         let offset = onViewportChange?() ?? .zero
+        let resolvedPosition = position ?? CGPoint(x: -offset.width, y: -offset.height)
 
         let newNode = SpatialNode(
             id: UUID(),
             type: type,
-            position: CGPoint(x: -offset.width, y: -offset.height), // Scale is applied in view usually, simplified here based on ProjectStore
+            position: resolvedPosition,
             title: uniqueTitle,
             subtitle: subtitle,
             icon: nodeIcon(for: type),
@@ -254,7 +238,6 @@ final class NodeMutationEngine {
         withAnimation(.spring()) {
             nodes.append(newNode)
         }
-        onCompileLivePreview?(&nodes)
         onRequestSave?(true)
     }
 
@@ -346,6 +329,55 @@ final class NodeMutationEngine {
         nodes[index].icon = trimmed?.isEmpty == true ? nil : trimmed
         onRequestSave?(true)
     }
+
+    /// Links `fromID` → `toID` using `kind` (defaults to `.next`).
+    public func connectNodes(
+        nodes: inout [SpatialNode],
+        fromID: UUID,
+        toID: UUID,
+        kind: NodeConnectionKind = .next
+    ) {
+        guard fromID != toID,
+              nodes.contains(where: { $0.id == fromID }),
+              nodes.contains(where: { $0.id == toID }),
+              let index = nodes.firstIndex(where: { $0.id == fromID }) else { return }
+
+        switch kind {
+        case .next:
+            nodes[index].nextNodeId = toID
+        case .connected:
+            var connections = nodes[index].connectedNodeIds ?? []
+            if !connections.contains(toID) {
+                connections.append(toID)
+            }
+            nodes[index].connectedNodeIds = connections
+        }
+        onRequestSave?(true)
+    }
+
+    /// Removes a link from `fromID` to `toID`. When `kind` is nil, clears both
+    /// `next` and `connected` relationships for that pair.
+    public func disconnectNodes(
+        nodes: inout [SpatialNode],
+        fromID: UUID,
+        toID: UUID,
+        kind: NodeConnectionKind? = nil
+    ) {
+        guard let index = nodes.firstIndex(where: { $0.id == fromID }) else { return }
+        let clearNext = kind == nil || kind == .next
+        let clearConnected = kind == nil || kind == .connected
+
+        if clearNext, nodes[index].nextNodeId == toID {
+            nodes[index].nextNodeId = nil
+        }
+        if clearConnected, let connections = nodes[index].connectedNodeIds {
+            nodes[index].connectedNodeIds = connections.filter { $0 != toID }
+            if nodes[index].connectedNodeIds?.isEmpty == true {
+                nodes[index].connectedNodeIds = nil
+            }
+        }
+        onRequestSave?(true)
+    }
     
     /// Removes a node from the canvas and cleans up all references to it in other
     /// nodes' `nextNodeId` and `connectedNodeIds` fields.
@@ -403,7 +435,6 @@ final class NodeMutationEngine {
         guard node.type == .miniApp else { return }
         if node.miniApp == nil {
             node.miniApp = MiniAppState(
-                srsReadinessState: SRSReadinessEvaluator().evaluate(text: SRSScaffold.defaultText, currentState: nil),
                 codeText: ProjectTemplateProvider.defaultCode
             )
         }

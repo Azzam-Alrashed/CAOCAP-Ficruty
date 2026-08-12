@@ -7,8 +7,8 @@ struct SearchTests {
 
     @Test func searchIndexScoresTitleMatchesHigherThanContent() throws {
         let nodes = [
-            SpatialNode(id: UUID(), type: .miniApp, position: .zero, title: "Login Page", miniApp: MiniAppState(srsText: "Some details about login")),
-            SpatialNode(id: UUID(), type: .miniApp, position: .zero, title: "Other", miniApp: MiniAppState(srsText: "This contains the word login"))
+            SpatialNode(id: UUID(), type: .miniApp, position: .zero, title: "Login Page", miniApp: MiniAppState(codeText: "Some details about login")),
+            SpatialNode(id: UUID(), type: .miniApp, position: .zero, title: "Other", miniApp: MiniAppState(codeText: "This contains the word login"))
         ]
         let index = NodeSearchIndex()
         let results = index.search(query: "login", in: nodes)

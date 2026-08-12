@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// UI state for a copilot voice or screen-share call.
+/// UI state for a copilot screen-share call.
 @MainActor
 @Observable
 final class CopilotCallViewModel {

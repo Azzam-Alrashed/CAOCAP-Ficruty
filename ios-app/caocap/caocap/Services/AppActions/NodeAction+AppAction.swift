@@ -9,8 +9,6 @@ extension NodeAction {
         case .openProfile: return .openProfile
         case .summonCoCaptain: return .summonCoCaptain
         case .proSubscription: return .proSubscription
-        case .openActivity: return .openActivity
-        case .openDaily: return .openDaily
         case .openWhatsApp: return .openWhatsApp
         case .openHelp: return .help
         case .openAppIcon: return .openAppIcon

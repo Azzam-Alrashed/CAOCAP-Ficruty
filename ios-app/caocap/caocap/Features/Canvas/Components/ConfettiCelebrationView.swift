@@ -1,7 +1,7 @@
 import Lottie
 import SwiftUI
 
-/// Full-screen confetti celebration used for daily challenges.
+/// Full-screen confetti celebration used for tutorial graduation.
 struct ConfettiCelebrationView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

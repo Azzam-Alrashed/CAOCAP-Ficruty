@@ -2,14 +2,12 @@ import SwiftUI
 
 /// Shared free-tier / Pro usage summary for Settings and the Omnibox Usage sheet.
 struct FreeTierUsageView: View {
-    let miniAppCount: Int
     var showsSectionChrome: Bool = true
     var onUpgrade: (() -> Void)? = nil
 
     @State private var subscriptionManager = SubscriptionManager.shared
     @State private var tokenStatus = TokenUsageLimiter.shared.status()
 
-    private let miniAppLimit = MiniAppCreationLimiter.freeMiniAppLimit
     private let tokenLimit = TokenUsageLimiter.freeMonthlyTokenLimit
 
     var body: some View {
@@ -54,17 +52,6 @@ struct FreeTierUsageView: View {
                         used: tokenStatus.usedTokens,
                         limit: tokenLimit
                     )
-                )
-
-                Divider().padding(.leading, 56).opacity(0.3)
-
-                usageRow(
-                    icon: "square.stack.3d.up.fill",
-                    color: Color(hex: "3B82F6"),
-                    title: LocalizationManager.shared.localizedString("settings.usage.miniApps.title"),
-                    subtitle: LocalizationManager.shared.localizedString("settings.usage.miniApps.subtitle"),
-                    valueText: "\(miniAppCount) / \(miniAppLimit)",
-                    progress: progress(used: miniAppCount, limit: miniAppLimit)
                 )
 
                 if let onUpgrade {
@@ -168,7 +155,6 @@ struct FreeTierUsageView: View {
 
 /// Standalone sheet opened from the Omnibox Usage command.
 struct UsageSheetView: View {
-    let miniAppCount: Int
     var onUpgrade: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
@@ -176,7 +162,6 @@ struct UsageSheetView: View {
         NavigationStack {
             ScrollView {
                 FreeTierUsageView(
-                    miniAppCount: miniAppCount,
                     showsSectionChrome: false,
                     onUpgrade: onUpgrade
                 )

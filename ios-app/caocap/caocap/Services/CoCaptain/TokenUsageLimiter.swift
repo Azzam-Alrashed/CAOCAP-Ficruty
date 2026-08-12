@@ -26,7 +26,7 @@ public struct TokenUsageLimitError: LocalizedError, Equatable {
     public let requestedTokens: Int
 
     public var errorDescription: String? {
-        "You've reached this month's free CoCaptain usage for chat, voice, and screen-share. Upgrade to Pro to continue, or try again next month."
+        "You've reached this month's free CoCaptain usage for chat and screen-share. Upgrade to Pro to continue, or try again next month."
     }
 }
 
@@ -40,7 +40,7 @@ public final class TokenUsageLimiter {
 
     public static let freeMonthlyTokenLimit = 50_000
     public static let minimumResponseTokenReserve = 1_000
-    /// Minimum remaining budget required to start a Gemini Live voice/screen call.
+    /// Minimum remaining budget required to start a Gemini Live screen-share call.
     public static let liveSessionMinimumReserve = 2_500
     /// Conservative estimated tokens burned per minute of Live audio.
     public static let liveAudioTokensPerMinute = 1_200
@@ -109,7 +109,7 @@ public final class TokenUsageLimiter {
         return .success(())
     }
 
-    /// Guards starting a Gemini Live voice/screen session against the free-tier monthly cap.
+    /// Guards starting a Gemini Live screen-share session against the free-tier monthly cap.
     ///
     /// Uses the session context prompt plus `liveSessionMinimumReserve` so a call cannot
     /// start when the remaining budget is too small for a meaningful Live turn.

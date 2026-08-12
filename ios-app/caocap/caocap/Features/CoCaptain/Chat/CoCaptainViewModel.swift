@@ -854,13 +854,6 @@ public final class CoCaptainViewModel {
         resolveReviewDecision(.reject(itemID: itemID), in: bundleID)
     }
 
-    public func resolveClarification(bundleID: UUID, itemID: UUID, candidateID: UUID) {
-        resolveReviewDecision(
-            .chooseClarification(itemID: itemID, candidateID: candidateID),
-            in: bundleID
-        )
-    }
-
     /// Records the tapped option on a clarifying-question card and sends it as
     /// the user's next message so the conversation continues naturally.
     public func answerClarifyingQuestion(itemID: UUID, option: String) {
@@ -1001,23 +994,6 @@ public final class CoCaptainViewModel {
     ) {
         for effect in effects {
             switch effect {
-            case .nodeEditApplied(let itemID, _, let role, _):
-                HapticsManager.shared.notification(.success)
-                items.append(
-                    CoCaptainTimelineItem(
-                        content: .execution(
-                            ExecutionStatusItem(
-                                summary: LocalizationManager.shared.localizedString(
-                                    "Applied updates to %@.",
-                                    arguments: [role.localizedDisplayName]
-                                ),
-                                allowsUndo: true
-                            )
-                        )
-                    )
-                )
-                onReviewItemApplied?(bundleID, itemID)
-
             case .appActionPerformed(let itemID, let result):
                 HapticsManager.shared.notification(.success)
                 items.append(
@@ -1027,14 +1003,7 @@ public final class CoCaptainViewModel {
                 )
                 onReviewItemApplied?(bundleID, itemID)
 
-            case .learningNote(_, let note):
-                items.append(
-                    CoCaptainTimelineItem(
-                        content: .mentorNote(CoCaptainMentorNoteItem(note: note))
-                    )
-                )
-
-            case .rejected, .clarificationResolved, .conflicted:
+            case .rejected, .conflicted:
                 break
             }
         }
@@ -1414,7 +1383,7 @@ public final class CoCaptainViewModel {
                 content: .productCTA(
                     CoCaptainProductCTAItem(
                         title: LocalizationManager.shared.localizedString("Free CoCaptain usage reached"),
-                        message: LocalizationManager.shared.localizedString("You've used this month's free CoCaptain help — chat, voice, and screen-share. Pro removes the monthly cap."),
+                        message: LocalizationManager.shared.localizedString("You've used this month's free CoCaptain help — chat and screen-share. Pro removes the monthly cap."),
                         primaryButtonTitle: LocalizationManager.shared.localizedString("View Pro"),
                         actionID: .proSubscription
                     )

@@ -68,13 +68,6 @@ struct ReviewBundleView: View {
                             if let nodeID = item.targetNodeID {
                                 viewModel.flyToReviewTarget(nodeID)
                             }
-                        },
-                        onPickCandidate: { candidateID in
-                            viewModel.resolveClarification(
-                                bundleID: bundleID,
-                                itemID: item.id,
-                                candidateID: candidateID
-                            )
                         }
                     )
                 }
@@ -153,14 +146,12 @@ struct ReviewBundleView: View {
     }
 }
 
-/// A detailed card displaying a single proposed code edit, showing the target node,
-/// summary, a diff/preview, and interactive Apply/Reject controls.
+/// A detailed card displaying a single pending review item with Apply/Reject controls.
 struct ReviewCardView: View {
     let item: PendingReviewItem
     let onApply: () -> Void
     let onReject: () -> Void
     var onFlyTo: (() -> Void)? = nil
-    var onPickCandidate: ((UUID) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: CoCaptainChatStyle.standardSpacing) {
@@ -198,29 +189,25 @@ struct ReviewCardView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
-            if item.status == .needsClarification {
-                clarificationPicker
-            } else {
-                if let beforeText = focusedBeforeText {
-                    reviewTextBlock(
-                        title: LocalizationManager.shared.localizedString("Before"),
-                        text: beforeText,
-                        accent: .red,
-                        linePrefix: "−"
-                    )
-                }
-
+            if let beforeText = focusedBeforeText {
                 reviewTextBlock(
-                    title: focusedBeforeText == nil
-                        ? nil
-                        : LocalizationManager.shared.localizedString("After"),
-                    text: item.preview.isEmpty
-                        ? LocalizationManager.shared.localizedString("No preview available.")
-                        : item.preview,
-                    accent: focusedBeforeText == nil ? nil : .green,
-                    linePrefix: focusedBeforeText == nil ? nil : "+"
+                    title: LocalizationManager.shared.localizedString("Before"),
+                    text: beforeText,
+                    accent: .red,
+                    linePrefix: "−"
                 )
             }
+
+            reviewTextBlock(
+                title: focusedBeforeText == nil
+                    ? nil
+                    : LocalizationManager.shared.localizedString("After"),
+                text: item.preview.isEmpty
+                    ? LocalizationManager.shared.localizedString("No preview available.")
+                    : item.preview,
+                accent: focusedBeforeText == nil ? nil : .green,
+                linePrefix: focusedBeforeText == nil ? nil : "+"
+            )
 
             reviewActions
         }
@@ -257,81 +244,28 @@ struct ReviewCardView: View {
             .frame(minHeight: CoCaptainChatStyle.minimumHitSize)
         }
 
-        if item.status == .needsClarification {
-            Button(LocalizationManager.shared.localizedString("Never mind")) {
-                onReject()
-            }
-            .buttonStyle(.bordered)
-            .frame(minHeight: CoCaptainChatStyle.minimumHitSize)
-        } else {
-            Button(LocalizationManager.shared.localizedString("Reject")) {
-                onReject()
-            }
-            .buttonStyle(.bordered)
-            .disabled(item.status != .pending)
-            .frame(minHeight: CoCaptainChatStyle.minimumHitSize)
-
-            Button(LocalizationManager.shared.localizedString("Apply")) {
-                onApply()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(item.status != .pending)
-            .frame(minHeight: CoCaptainChatStyle.minimumHitSize)
+        Button(LocalizationManager.shared.localizedString("Reject")) {
+            onReject()
         }
+        .buttonStyle(.bordered)
+        .disabled(item.status != .pending)
+        .frame(minHeight: CoCaptainChatStyle.minimumHitSize)
+
+        Button(LocalizationManager.shared.localizedString("Apply")) {
+            onApply()
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(item.status != .pending)
+        .frame(minHeight: CoCaptainChatStyle.minimumHitSize)
     }
 
-    /// Tappable candidate choices shown when the edit target matched several
-    /// places. Picking one re-stages the edit locally as a normal pending item.
-    @ViewBuilder
-    private var clarificationPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizationManager.shared.localizedString("Which one did you mean?"))
-                .font(.system(size: 13, weight: .semibold))
-
-            ForEach(item.clarificationCandidates ?? []) { candidate in
-                Button {
-                    onPickCandidate?(candidate.id)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.turn.down.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color.blue)
-                        Text(candidate.label)
-                            .font(.system(size: 13, weight: .medium))
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.blue.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.blue.opacity(0.22), lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .frame(minHeight: 44)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    /// Prefer the focused before-window; fall back to a truncated baseText for legacy items.
     private var focusedBeforeText: String? {
-        if let beforePreview = item.beforePreview?
+        guard let beforePreview = item.beforePreview?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-           !beforePreview.isEmpty {
-            return beforePreview
+              !beforePreview.isEmpty else {
+            return nil
         }
-        guard case .nodeEdit(_, _, _, let baseText) = item.source else { return nil }
-        let trimmed = baseText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return CoCaptainReviewDiffSnippetter.makeSnippets(
-            before: baseText,
-            after: item.preview
-        ).before
+        return beforePreview
     }
 
     @ViewBuilder
@@ -387,7 +321,6 @@ struct ReviewCardView: View {
         case .applied: return .green
         case .conflicted: return .red
         case .rejected: return .secondary
-        case .needsClarification: return .blue
         }
     }
 }

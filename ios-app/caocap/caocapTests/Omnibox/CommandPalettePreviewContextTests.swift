@@ -14,6 +14,7 @@ struct CommandPalettePreviewContextTests {
 
         #expect(viewModel.filteredPreviewTools.count == MiniAppPreviewTool.allCases.count)
         #expect(viewModel.previewToolCount == MiniAppPreviewTool.allCases.count)
+        #expect(viewModel.filteredPreviewTools == [.agent, .settings, .backToCanvas])
     }
 
     @Test func previewToolSelectionInvokesCallbackAndDismissesPalette() {
@@ -27,9 +28,9 @@ struct CommandPalettePreviewContextTests {
         )
         viewModel.setPresented(true)
 
-        viewModel.selectPreviewTool(.code)
+        viewModel.selectPreviewTool(.agent)
 
-        #expect(selectedTool == .code)
+        #expect(selectedTool == .agent)
         #expect(!viewModel.isPresented)
     }
 
@@ -39,9 +40,9 @@ struct CommandPalettePreviewContextTests {
             nodeID: UUID(),
             onSelectTool: { _ in }
         )
-        viewModel.query = "code"
+        viewModel.query = "agent"
 
-        #expect(viewModel.filteredPreviewTools == [.code])
+        #expect(viewModel.filteredPreviewTools == [.agent])
     }
 
     @Test func previewToolsShiftSelectionIndices() {

@@ -23,7 +23,6 @@ public class AppRouter {
     public var projects: [String: ProjectStore] = [:]
     /// Stack of previously visited workspaces, supporting `goBack()` navigation.
     private var navigationStack: [WorkspaceState] = []
-    private let activityRecorder: any ActivityRecording
     
     public let rootStore: ProjectStore
     
@@ -39,8 +38,7 @@ public class AppRouter {
             
             // COLD BOOT FIX: Initialize and cache synchronously to prevent race conditions
             let newStore = ProjectStore(
-                fileName: fileName,
-                activityRecorder: activityRecorder
+                fileName: fileName
             )
             projects[fileName] = newStore
             return newStore
@@ -49,9 +47,7 @@ public class AppRouter {
     
     /// Initializes the router, runs any pending workspace migrations, and creates
     /// the root canvas with its default node template and a zoomed-out initial scale.
-    public init(activityRecorder: (any ActivityRecording)? = nil) {
-        let resolvedActivityRecorder = activityRecorder ?? SessionActivityRecorder()
-        self.activityRecorder = resolvedActivityRecorder
+    public init() {
         CanvasWorkspaceMigration.runIfNeeded()
         CuratedRootCanvasMigration.runIfNeeded()
         self.currentWorkspace = .root
@@ -59,8 +55,7 @@ public class AppRouter {
             fileName: CanvasFileNaming.rootFileName,
             projectName: "Root",
             initialNodes: RootCanvasProvider.nodes,
-            initialViewportScale: RootCanvasProvider.defaultViewportScale,
-            activityRecorder: resolvedActivityRecorder
+            initialViewportScale: RootCanvasProvider.defaultViewportScale
         )
     }
     
@@ -118,8 +113,7 @@ public class AppRouter {
         let store = ProjectStore(
             fileName: fileName,
             projectName: "Mini-App Canvas",
-            initialNodes: ProjectTemplateProvider.defaultNodes,
-            activityRecorder: activityRecorder
+            initialNodes: ProjectTemplateProvider.defaultNodes
         )
         projects[fileName] = store
         navigate(to: .project(fileName), animated: true)

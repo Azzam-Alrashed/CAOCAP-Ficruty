@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// **Interaction modes:**
 /// - **Tap** – opens the omnibox (or dismisses an open sheet).
-/// - **Long-press** – expands a radial menu for Undo / Chat / Video.
+/// - **Long-press** – expands a radial menu for Home / Chat / Video.
 /// - **Drag** – repositions the button; on release it snaps to the nearest grid point.
 /// - **Drag while expanded** – gestures toward a bubble to highlight and select it.
 struct FloatingCommandButton: View {
@@ -16,7 +16,7 @@ struct FloatingCommandButton: View {
     @State private var activeAction: CommandAction? = nil
 
     enum CommandAction {
-        case undo
+        case home
         case chat
         case video
     }
@@ -24,9 +24,8 @@ struct FloatingCommandButton: View {
     @Environment(\.colorScheme) var colorScheme
 
     var onTap: () -> Void
-    /// Undoes the last canvas change (radial Undo bubble).
-    var onUndo: () -> Void
-    var canUndo: Bool = false
+    /// Navigates to the root canvas (radial Home bubble).
+    var onHome: () -> Void
     var onSelectMode: (CopilotInteractionMode) -> Void
     var copilot: CopilotPersona = UserProfileStore().loadSelectedCopilot()
 
@@ -224,19 +223,18 @@ struct FloatingCommandButton: View {
                 y: isExpanded ? direction.y * distance : 0
             )
 
-            // Left: Undo
+            // Left: Home
             QuickActionBubble(
-                icon: "arrow.uturn.backward",
+                icon: "house.fill",
                 color: .primary,
                 isExpanded: isExpanded,
-                isEnabled: canUndo,
-                isHighlighted: activeAction == .undo,
+                isHighlighted: activeAction == .home,
                 size: 40,
                 delay: 0.0
             ) {
                 triggerHapticFeedback(.medium)
                 withAnimation(.spring()) { isExpanded = false }
-                onUndo()
+                onHome()
             }
             .offset(
                 x: isExpanded ? direction.rotated(by: -angle).x * distance : 0,
@@ -270,7 +268,7 @@ struct FloatingCommandButton: View {
         let angle: CGFloat = 45
         let threshold: CGFloat = 40
 
-        let undoPos = CGPoint(
+        let homePos = CGPoint(
             x: center.x + direction.rotated(by: -angle).x * distance,
             y: center.y + direction.rotated(by: -angle).y * distance
         )
@@ -283,13 +281,13 @@ struct FloatingCommandButton: View {
             y: center.y + direction.rotated(by: angle).y * distance
         )
 
-        let dUndo = hypot(location.x - undoPos.x, location.y - undoPos.y)
+        let dHome = hypot(location.x - homePos.x, location.y - homePos.y)
         let dChat = hypot(location.x - chatPos.x, location.y - chatPos.y)
         let dVideo = hypot(location.x - videoPos.x, location.y - videoPos.y)
 
         let previousAction = activeAction
         let nearest = [
-            (CommandAction.undo, dUndo, canUndo),
+            (CommandAction.home, dHome, true),
             (.chat, dChat, true),
             (.video, dVideo, true)
         ]
@@ -306,9 +304,8 @@ struct FloatingCommandButton: View {
     private func executeAction(_ action: CommandAction) {
         triggerHapticFeedback(.medium)
         switch action {
-        case .undo:
-            guard canUndo else { return }
-            onUndo()
+        case .home:
+            onHome()
         case .chat:
             onSelectMode(.chat)
         case .video:

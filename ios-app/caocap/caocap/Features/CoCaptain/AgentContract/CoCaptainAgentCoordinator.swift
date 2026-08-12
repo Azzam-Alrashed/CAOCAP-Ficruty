@@ -8,8 +8,6 @@ import OSLog
 /// lightweight stub without touching `LLMService` or Firebase AI Logic.
 @MainActor
 public protocol CoCaptainLLMClient: AnyObject {
-    /// Whether the active backend can fetch full node sections through tools.
-    var supportsOnDemandCodeReads: Bool { get }
     /// Clears the model's conversation history for the given scope, starting a
     /// fresh chat session. Called when the user taps "Clear" in the chat UI.
     func resetChat(scope: CoCaptainAgentScope)
@@ -27,8 +25,8 @@ public protocol CoCaptainLLMClient: AnyObject {
     ///     via `request_app_action`. Sent as tool declarations in each turn.
     ///   - scope: Whether this turn targets the whole project or a single node.
     ///   - chatMode: Agent / Ask / Plan posture for prompt/context (Ask/Plan are prose-only).
-    ///   - toolExecutor: Answers read-style tool calls inline during the turn,
-    ///     or `nil` when no in-turn tools are available.
+    ///   - toolExecutor: Optional inline tool answers during the turn (unused for
+    ///     retired read tools; kept for protocol compatibility).
     func streamAgentEvents(
         for userMessage: String,
         context: String?,
@@ -42,8 +40,6 @@ public protocol CoCaptainLLMClient: AnyObject {
 }
 
 public extension CoCaptainLLMClient {
-    var supportsOnDemandCodeReads: Bool { true }
-
     func submissionError(for attachments: [CoCaptainAttachment]) -> CoCaptainSubmissionError? {
         nil
     }
@@ -83,7 +79,7 @@ public struct CoCaptainAgentRunResult: Hashable {
     public let payloadMessage: String?
     /// A confirmation item to append when one or more safe actions were executed.
     public let executionSummary: ExecutionStatusItem?
-    /// Validated node edits and pending actions that the review lifecycle can
+    /// Validated pending actions that the review lifecycle can
     /// stage, or `nil` when the model produced no reviewable changes.
     public let reviewDraft: CoCaptainReviewLifecycle.Draft?
     /// A question with tappable answer options to render after the messages,
@@ -114,16 +110,14 @@ public struct CoCaptainAgentRunResult: Hashable {
     }
 }
 
-/// Bridges model output to app behavior while keeping mutating code edits in
+/// Bridges model output to app behavior while keeping mutating app actions in
 /// an explicit review flow.
 @MainActor
 public final class CoCaptainAgentCoordinator {
     private let llmClient: any CoCaptainLLMClient
     private let contextBuilder: ProjectContextBuilder?
-    private let patchEngine: NodePatchEngine
     private let outputAdapter: any CoCaptainAgentOutputAdapting
     private let validator: CoCaptainAgentValidator
-    private let nodeEditToolsEnabled: () -> Bool
 
     /// Creates a coordinator with optional dependency overrides for testing.
     ///
@@ -132,22 +126,18 @@ public final class CoCaptainAgentCoordinator {
     public init(
         llmClient: (any CoCaptainLLMClient)? = nil,
         contextBuilder: ProjectContextBuilder? = nil,
-        patchEngine: NodePatchEngine = NodePatchEngine(),
         parser: CoCaptainAgentParser = CoCaptainAgentParser(),
         outputAdapter: (any CoCaptainAgentOutputAdapting)? = nil,
-        validator: CoCaptainAgentValidator = CoCaptainAgentValidator(),
-        nodeEditToolsEnabled: (() -> Bool)? = nil
+        validator: CoCaptainAgentValidator = CoCaptainAgentValidator()
     ) {
         self.llmClient = llmClient ?? LLMService.shared
         self.contextBuilder = contextBuilder
-        self.patchEngine = patchEngine
         // Wrap the XML adapter in the composite so function-call responses are
         // merged with fenced-XML responses when both arrive in the same turn.
         self.outputAdapter = outputAdapter ?? CoCaptainCompositeAgentAdapter(
             xmlAdapter: CoCaptainXMLAgentAdapter(parser: parser)
         )
         self.validator = validator
-        self.nodeEditToolsEnabled = nodeEditToolsEnabled ?? { NodeEditToolsFeature.isEnabled }
     }
 
     private let logger = Logger(subsystem: "com.caocap.CoCaptainAgentCoordinator", category: "Coordinator")
@@ -168,7 +158,7 @@ public final class CoCaptainAgentCoordinator {
 
     /// Runs one assistant turn against the active project context. Structured
     /// responses are preferred so the UI can separate visible chat text from
-    /// executable actions and reviewable node edits.
+    /// executable actions and reviewable pending work.
     public func run(
         userMessage: String,
         store: ProjectStore?,
@@ -182,9 +172,7 @@ public final class CoCaptainAgentCoordinator {
     ) async throws -> CoCaptainAgentRunResult {
         let resolvedTurnPlan = turnPlan ?? CoCaptainTurnPlan(purpose: purpose, mode: .agent)
         let contextDetailLevel = resolvedTurnPlan.contextDetailLevel
-        let contextBuilder = contextBuilder ?? ProjectContextBuilder(
-            usesOnDemandCodeReads: llmClient.supportsOnDemandCodeReads
-        )
+        let contextBuilder = contextBuilder ?? ProjectContextBuilder()
         let context = store.map { store in
             switch scope {
             case .project:
@@ -276,7 +264,6 @@ public final class CoCaptainAgentCoordinator {
             scope: scope,
             purpose: purpose,
             chatMode: turnPlan.mode,
-            store: store,
             onVisibleText: onVisibleText
         )
         let policy = turnPlan.effectivePolicy
@@ -383,13 +370,10 @@ public final class CoCaptainAgentCoordinator {
             return conversationalRunResult(from: directive)
         }
 
-        // A clarifying question takes precedence over any edits in the same
+        // A clarifying question takes precedence over pending actions in the same
         // turn: the model was unsure, so nothing should be staged until the
         // user answers. Safe/pending actions are also held back.
         if !connectionFallback, let question = payload?.clarifyingQuestion {
-            if let payload, !payload.nodeEdits.isEmpty {
-                logger.debug("CoCaptain dropped \(payload.nodeEdits.count) node edit(s) accompanying a clarifying question.")
-            }
             return CoCaptainAgentRunResult(
                 preamble: directive.preamble,
                 payloadMessage: payload?.assistantMessage,
@@ -402,8 +386,7 @@ public final class CoCaptainAgentCoordinator {
         let safeActions = connectionFallback ? [] : (payload?.safeActions ?? [])
         let executionSummary = executeSafeActions(safeActions, dispatcher: dispatcher, store: store)
         let reviewDraft = makeReviewDraft(
-            pendingActions: payload?.pendingActions ?? [],
-            nodeEdits: payload?.nodeEdits ?? []
+            pendingActions: payload?.pendingActions ?? []
         )
 
         return CoCaptainAgentRunResult(
@@ -423,7 +406,6 @@ public final class CoCaptainAgentCoordinator {
         scope: CoCaptainAgentScope,
         purpose: CoCaptainTurnPurpose,
         chatMode: CoCaptainChatMode,
-        store: ProjectStore? = nil,
         onVisibleText: @escaping (String) -> Void
     ) async throws -> CoCaptainAgentDirective {
         var responseText = ""
@@ -442,7 +424,7 @@ public final class CoCaptainAgentCoordinator {
                 scope: scope,
                 purpose: purpose,
                 chatMode: chatMode,
-                toolExecutor: expectsStructuredResponse ? makeToolExecutor(store: store) : nil
+                toolExecutor: nil
             )
         } else {
             stream = llmClient.streamAgentEvents(
@@ -453,7 +435,7 @@ public final class CoCaptainAgentCoordinator {
                 scope: scope,
                 purpose: purpose,
                 chatMode: chatMode,
-                toolExecutor: expectsStructuredResponse ? makeToolExecutor(store: store) : nil
+                toolExecutor: nil
             )
         }
 
@@ -482,56 +464,6 @@ public final class CoCaptainAgentCoordinator {
             )
         }
         return directive
-    }
-
-    /// Builds the in-turn tool executor for read-style tools.
-    ///
-    /// Only `read_node_section` is answered inline; every other call returns
-    /// `nil` so it keeps its existing collect-and-route behavior. Read results
-    /// never touch the validator or the review pipeline.
-    private func makeToolExecutor(store: ProjectStore?) -> CoCaptainToolExecutor? {
-        guard let store else { return nil }
-        return { [weak self] functionCall in
-            guard let self, functionCall.name == CoCaptainReadNodeSectionTool.name else {
-                return nil
-            }
-            return self.readNodeSection(functionCall: functionCall, store: store)
-        }
-    }
-
-    /// Resolves one `read_node_section` call against the active store.
-    /// Errors are returned as text so the model can self-correct in-turn.
-    private func readNodeSection(
-        functionCall: CoCaptainAgentFunctionCall,
-        store: ProjectStore
-    ) -> String {
-        let nodeID = (functionCall.stringArgument("nodeId") ?? functionCall.stringArgument("node_id"))
-            .flatMap(UUID.init(uuidString:))
-        guard let nodeID else {
-            return "Error: `read_node_section` requires a valid `nodeId` UUID from the canvas context."
-        }
-        guard let sectionName = functionCall.stringArgument("section")?.lowercased(),
-              let section = CoCaptainNodeEditProposal.MiniAppSection(rawValue: sectionName) else {
-            return "Error: `section` must be \"code\" or \"srs\"."
-        }
-        guard let node = patchEngine.resolveNode(nodeID: nodeID, for: .miniApp, in: store),
-              let miniApp = node.miniApp else {
-            return "Error: no Mini-App node with id \(nodeID.uuidString) exists on the canvas."
-        }
-
-        let text: String
-        switch section {
-        case .code:
-            text = miniApp.codeText
-        case .srs:
-            text = miniApp.srsText
-        }
-
-        logger.debug("read_node_section answered for \(nodeID.uuidString, privacy: .public) section=\(sectionName, privacy: .public) chars=\(text.count, privacy: .public)")
-        guard text.count > CoCaptainReadNodeSectionTool.maximumResponseCharacters else {
-            return text
-        }
-        return String(text.prefix(CoCaptainReadNodeSectionTool.maximumResponseCharacters)) + "\n[TRUNCATED]"
     }
 
     /// A locally-built question offered after a failed turn so the user always
@@ -592,32 +524,9 @@ public final class CoCaptainAgentCoordinator {
 
     /// Builds a corrective system message that feeds validation issues back to
     /// the model along with the original request, giving it a second chance to
-    /// produce a conforming structured payload. The wording references the
-    /// node-edit tools when they are enabled, the XML block otherwise.
+    /// produce a conforming structured payload.
     private func agenticRetryMessage(for userMessage: String, validationIssues: [String]) -> String {
         let issueList = validationIssues.map { "- \($0)" }.joined(separator: "\n")
-
-        if nodeEditToolsEnabled() {
-            return """
-            The previous response has not satisfied the machine-readable CoCaptain action contract.
-
-            Validation issues:
-            \(issueList)
-            
-            CRITICAL: 
-            1. Do NOT just provide code in markdown chat. 
-            2. You MUST call the `propose_node_edit` function for code/content changes, or `ask_clarifying_question` when the request is too vague to act on.
-            3. For app navigation/tool actions, call `request_app_action`.
-            4. Put code/content implementation in `propose_node_edit` operations.
-            5. Put mutating or non-autonomous app actions in `request_app_action` with `executionMode=pending`.
-            6. Use `executionMode=safe` only for available, non-mutating, autonomous app actions.
-            7. For full builds or games, use one `replace_all` operation on the Mini-App `section="code"` with a complete single-file HTML document.
-            8. For documentation, requirements, spec, or SRS requests, target the Mini-App `section="srs"` unless the user explicitly asks for code.
-            
-            Original user request:
-            \(userMessage)
-            """
-        }
 
         return """
         The previous response has not satisfied the machine-readable CoCaptain action contract.
@@ -627,13 +536,10 @@ public final class CoCaptainAgentCoordinator {
         
         CRITICAL: 
         1. Do NOT just provide code in markdown chat. 
-        2. You MUST include a `cocaptain_actions` XML block.
-        3. For app navigation/tool actions, call `request_app_action`.
-        4. Put code/content implementation in `nodeEdits`.
-        5. Put mutating or non-autonomous app actions in `pendingActions` or call `request_app_action` with `executionMode=pending`.
-        6. Use `safeActions` or `executionMode=safe` only for available, non-mutating, autonomous app actions.
-        7. For full builds or games, use `replace_all` for the Mini-App `section="code"` with a complete single-file HTML document.
-        8. For documentation, requirements, spec, or SRS requests, target the Mini-App `section="srs"` unless the user explicitly asks for code.
+        2. For app navigation/tool actions, call `request_app_action`.
+        3. Put mutating or non-autonomous app actions in `request_app_action` with `executionMode=pending`.
+        4. Use `executionMode=safe` only for available, non-mutating, autonomous app actions.
+        5. When the request is too vague to act on, call `ask_clarifying_question` instead of guessing.
         
         Original user request:
         \(userMessage)
@@ -706,15 +612,12 @@ public final class CoCaptainAgentCoordinator {
         )
     }
 
-    /// Packages validated reviewable work for the review lifecycle. Previewing,
-    /// target resolution, identity, and persistence are owned by that module.
+    /// Packages validated reviewable work for the review lifecycle.
     private func makeReviewDraft(
-        pendingActions: [CoCaptainAgentAction],
-        nodeEdits: [CoCaptainNodeEditProposal]
+        pendingActions: [CoCaptainAgentAction]
     ) -> CoCaptainReviewLifecycle.Draft? {
         let draft = CoCaptainReviewLifecycle.Draft(
-            pendingActions: pendingActions,
-            nodeEdits: nodeEdits
+            pendingActions: pendingActions
         )
         return draft.isEmpty ? nil : draft
     }

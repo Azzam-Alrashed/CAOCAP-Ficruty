@@ -51,64 +51,16 @@ public struct CoCaptainAgentParser {
             guard let id = attrs["id"] else { return nil }
             return CoCaptainAgentAction(actionID: id, args: actionArgs(from: attrs))
         }
-        
-        let nodeEdits = extractTagMatches(name: "node_edit", from: xml).compactMap { item -> CoCaptainNodeEditProposal? in
-            let content = item.content
-            let attrs = item.attributes
-            let roleStr = attrs["role"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            let role = roleStr.flatMap(NodeRole.init(rawValue:)) ?? .miniApp
-            let sectionStr = attrs["section"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            let section = sectionStr.flatMap(CoCaptainNodeEditProposal.MiniAppSection.init(rawValue:)) ?? .code
-            let nodeID = (attrs["nodeId"] ?? attrs["node_id"] ?? attrs["nodeID"]).flatMap(UUID.init(uuidString:))
-            
-            let summary = attrs["summary"] ?? ""
-            let operations = extractTagMatches(name: "operation", from: content).compactMap { opItem -> NodePatchOperation? in
-                let opContent = opItem.content
-                let opAttrs = opItem.attributes
-                guard let typeStr = opAttrs["type"],
-                      let type = NodePatchOperationType(rawValue: typeStr) else { return nil }
-                
-                let target = extractTag(name: "target", from: opContent)
-                let body = extractCDATA(from: opContent) ?? extractTag(name: "content", from: opContent) ?? ""
-                
-                return NodePatchOperation(type: type, target: target, content: body)
-            }
 
-            return CoCaptainNodeEditProposal(
-                nodeID: nodeID,
-                role: role,
-                section: section,
-                summary: summary,
-                operations: operations,
-                learningNote: extractLearningNote(from: content)
-            )
-        }
-
+        // Legacy `node_edit` elements are ignored; Mini-App code edits are retired.
         let payload = CoCaptainAgentPayload(
             assistantMessage: assistantMessage,
             safeActions: safeActions,
             pendingActions: pendingActions,
-            nodeEdits: nodeEdits,
             clarifyingQuestion: extractClarifyingQuestion(from: xml)
         )
 
         return CoCaptainParsedResponse(preamble: preamble, payload: payload)
-    }
-
-    /// Extracts an optional `learning_note` element from a `node_edit` body.
-    /// Malformed notes (missing concept or empty body) degrade to `nil` and
-    /// never invalidate the surrounding edit.
-    private func extractLearningNote(from nodeEditContent: String) -> CoCaptainLearningNote? {
-        guard let match = extractTagMatches(name: "learning_note", from: nodeEditContent).first else {
-            return nil
-        }
-
-        let concept = (match.attributes["concept"] ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let body = match.content.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !concept.isEmpty, !body.isEmpty else { return nil }
-
-        return CoCaptainLearningNote(concept: concept, body: body)
     }
 
     /// Extracts the first well-formed `clarifying_question` element. Malformed
@@ -261,19 +213,6 @@ public struct CoCaptainAgentParser {
     private func actionArgs(from attributes: [String: String]) -> [String: String]? {
         let args = attributes.filter { $0.key != "id" }
         return args.isEmpty ? nil : args
-    }
-
-    /// Extracts the raw text from the first `<![CDATA[...]]>` section in the string.
-    private func extractCDATA(from text: String) -> String? {
-        let pattern = "<!\\[CDATA\\[(.*?)\\]\\]>"
-        let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
-        let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
-        if let match = regex?.firstMatch(in: text, options: [], range: nsRange) {
-            if let range = Range(match.range(at: 1), in: text) {
-                return String(text[range])
-            }
-        }
-        return nil
     }
 
     private func parseLoosePayload(_ response: String) -> CoCaptainParsedResponse? {

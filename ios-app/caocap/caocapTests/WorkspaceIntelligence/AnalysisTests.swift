@@ -42,15 +42,10 @@ struct AnalysisTests {
         let bundle = ReviewBundleItem(
             items: [
                 PendingReviewItem(
-                    targetLabel: "Mini-App CODE",
+                    targetLabel: "Rename Node",
                     summary: "Pending",
-                    preview: "preview",
-                    source: .nodeEdit(
-                        role: .miniApp,
-                        section: .code,
-                        operations: [],
-                        baseText: ""
-                    )
+                    preview: "title=Home",
+                    source: .appAction(.renameNode, ["nodeId": UUID().uuidString, "title": "Home"])
                 )
             ]
         )

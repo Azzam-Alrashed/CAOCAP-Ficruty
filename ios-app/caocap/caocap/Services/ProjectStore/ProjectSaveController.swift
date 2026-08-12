@@ -12,16 +12,13 @@ public final class ProjectSaveController {
     
     private let persistence: ProjectPersistenceService
     private let persistenceWriter: ProjectPersistenceWriter
-    private let activityRecorder: any ActivityRecording
     private let logger = Logger(subsystem: "com.caocap.app", category: "Persistence")
     
     public init(
-        persistence: ProjectPersistenceService,
-        activityRecorder: (any ActivityRecording)? = nil
+        persistence: ProjectPersistenceService
     ) {
         self.persistence = persistence
         self.persistenceWriter = ProjectPersistenceWriter(persistence: persistence)
-        self.activityRecorder = activityRecorder ?? NoOpActivityRecorder()
     }
     
     public func save(snapshot: ProjectSnapshot, fileName: String, showIndicator: Bool = true) {
@@ -36,22 +33,16 @@ public final class ProjectSaveController {
         
         Task(priority: .background) {
             let saveState = PerformanceSignposts.begin(PerformanceSignposts.Name.save)
-            let didSave: Bool
             do {
                 try await writer.save(snapshot, fileName: fileName)
-                didSave = true
                 log.info("Successfully saved project to disk.")
             } catch {
-                didSave = false
                 log.error("Failed to save project: \(error.localizedDescription)")
             }
             PerformanceSignposts.end(PerformanceSignposts.Name.save, saveState)
 
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                if didSave {
-                    self.activityRecorder.recordSuccessfulSave(at: Date())
-                }
                 self.activeWritesCount = max(0, self.activeWritesCount - 1)
                 if showIndicator {
                     self.activeVisualSavesCount = max(0, self.activeVisualSavesCount - 1)

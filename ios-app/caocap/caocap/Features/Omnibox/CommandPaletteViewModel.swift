@@ -2,10 +2,8 @@ import SwiftUI
 import Observation
 import OSLog
 
-/// Mini-App preview tools surfaced in the omnibox while a large-sheet preview is open.
+/// Mini-App detail tools surfaced in the omnibox while a large-sheet is open.
 public enum MiniAppPreviewTool: String, CaseIterable, Identifiable {
-    case srs
-    case code
     case agent
     case settings
     case backToCanvas
@@ -14,8 +12,6 @@ public enum MiniAppPreviewTool: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .srs: return "SRS"
-        case .code: return "Code"
         case .agent: return "Agent"
         case .settings: return "Settings"
         case .backToCanvas: return "Back to Canvas"
@@ -24,8 +20,6 @@ public enum MiniAppPreviewTool: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .srs: return "doc.text"
-        case .code: return "chevron.left.forwardslash.chevron.right"
         case .agent: return "sparkles"
         case .settings: return "gearshape"
         case .backToCanvas: return "arrow.uturn.backward"
@@ -174,11 +168,6 @@ public class CommandPaletteViewModel {
 
     public func selectionIndex(forPreviewToolAt index: Int) -> Int {
         index
-    }
-
-    public func selectPreviewCodeToolIfAvailable() {
-        guard let index = filteredPreviewTools.firstIndex(of: .code) else { return }
-        selectedIndex = index
     }
 
     public func selectPreviewBackToCanvasToolIfAvailable() {

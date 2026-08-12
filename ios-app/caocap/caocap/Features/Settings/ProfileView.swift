@@ -93,9 +93,6 @@ struct ProfileView: View {
                             }
                         }
                         .padding(.top, 20)
-
-                        GamificationLevelCard(store: GamificationStore.shared)
-                            .padding(.horizontal, 20)
                         
                         // MARK: - Sections
                         VStack(spacing: 24) {

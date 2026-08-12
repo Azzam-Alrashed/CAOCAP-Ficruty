@@ -4,7 +4,7 @@ import Foundation
 import OSLog
 import Observation
 
-/// Manages a Gemini Live session for copilot voice (and optional screen-share) calls.
+/// Manages a Gemini Live session for copilot screen-share calls.
 @MainActor
 @Observable
 final class GeminiLiveSessionService {
@@ -34,7 +34,7 @@ final class GeminiLiveSessionService {
     private var liveSession: LiveSession?
     private var receiveTask: Task<Void, Never>?
     private var quotaWatchTask: Task<Void, Never>?
-    private var mode: CopilotInteractionMode = .voice
+    private var mode: CopilotInteractionMode = .video
     private var sessionContextPrompt = ""
     private var accumulatedInputTranscript = ""
     private var accumulatedOutputTranscript = ""

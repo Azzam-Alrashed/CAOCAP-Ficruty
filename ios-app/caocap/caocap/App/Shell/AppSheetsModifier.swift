@@ -28,7 +28,6 @@ struct AppSheetsModifier: ViewModifier {
                         get: { session.selectedCopilot },
                         set: { session.updateSelectedCopilot($0) }
                     ),
-                    miniAppCount: session.userMiniAppCount(),
                     onUpgrade: {
                         session.requestPurchaseSheet()
                     },
@@ -50,7 +49,6 @@ struct AppSheetsModifier: ViewModifier {
             }
             .sheet(isPresented: $session.showingUsage) {
                 UsageSheetView(
-                    miniAppCount: session.userMiniAppCount(),
                     onUpgrade: {
                         session.requestPurchaseSheet()
                     }
@@ -84,16 +82,6 @@ struct AppSheetsModifier: ViewModifier {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
-            .sheet(isPresented: $session.showingActivity) {
-                ActivityHistoryView(store: .shared)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
-            .sheet(isPresented: $session.showingDaily) {
-                DailyChallengesView(store: .shared)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
             .sheet(isPresented: $session.showingHelp) {
                 HelpView(
                     completedLessonIDs: session.onboarding.completedLessonIDs,
@@ -115,21 +103,6 @@ struct AppSheetsModifier: ViewModifier {
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-            }
-            .alert(
-                LocalizationManager.shared.localizedString("Mini-App limit reached"),
-                isPresented: $session.showingMiniAppLimitAlert
-            ) {
-                Button(LocalizationManager.shared.localizedString("View Pro")) {
-                    session.showingPurchaseSheet = true
-                }
-                Button(LocalizationManager.shared.localizedString("Not Now"), role: .cancel) {}
-            } message: {
-                Text(
-                    LocalizationManager.shared.localizedString(
-                        "Free accounts can create up to 5 Mini-Apps. Upgrade to Pro for unlimited Mini-Apps."
-                    )
-                )
             }
     }
 

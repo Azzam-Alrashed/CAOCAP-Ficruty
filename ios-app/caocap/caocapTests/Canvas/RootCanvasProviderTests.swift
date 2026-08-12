@@ -16,7 +16,7 @@ struct RootCanvasProviderTests {
         #expect(helloWorld.type == .miniApp)
         #expect(helloWorld.position == .zero)
         #expect(helloWorld.title == "Hello World")
-        #expect(helloWorld.subtitle == "Tap to run")
+        #expect(helloWorld.subtitle == "Tap to open")
         #expect(helloWorld.icon == "play.circle.fill")
         #expect(helloWorld.theme == .blue)
         #expect(helloWorld.action == nil)
@@ -24,14 +24,13 @@ struct RootCanvasProviderTests {
 
         let code = try #require(helloWorld.miniApp?.codeText)
         #expect(code == ProjectTemplateProvider.defaultCode)
-        #expect(helloWorld.miniApp?.srsText == RootCanvasProvider.helloWorldSRS)
-        #expect(helloWorld.miniApp?.srsReadinessState == .implementationReady)
+        #expect(code.isEmpty)
     }
 
-    @Test func legacyCuratedNodesRetainTheElevenNodeLaunchGrid() throws {
+    @Test func legacyCuratedNodesRetainTheNineNodeLaunchGrid() throws {
         let nodes = RootCanvasProvider.legacyCuratedNodes
-        #expect(nodes.count == 11)
-        #expect(RootCanvasProvider.legacyCuratedNodeIDs.count == 11)
+        #expect(nodes.count == 9)
+        #expect(RootCanvasProvider.legacyCuratedNodeIDs.count == 9)
 
         let columnSpacing: CGFloat = 250
         let rowY: [CGFloat] = [-330, -110, 110, 330]
@@ -52,26 +51,23 @@ struct RootCanvasProviderTests {
         #expect(help.action == .openHelp)
     }
 
-    @Test func helloWorldLaunchMiniAppUsesCanonicalBoilerplate() throws {
+    @Test func helloWorldLaunchMiniAppUsesEmptyPlaceholderCode() throws {
         let node = try #require(RootCanvasProvider.nodes.first)
         let code = try #require(node.miniApp?.codeText)
 
         #expect(node.type == .miniApp)
         #expect(node.title == "Hello World")
         #expect(code == ProjectTemplateProvider.defaultCode)
-        #expect(code.contains("Hello World!"))
-        #expect(!code.contains("https://"))
+        #expect(code.isEmpty)
     }
 
-    @Test func xoCanvasContainsATouchFirstRunnableMiniApp() throws {
+    @Test func xoCanvasContainsPlaceholderMiniApp() throws {
         let node = try #require(XOCanvasProvider.snapshot.nodes.first)
         let code = try #require(node.miniApp?.codeText)
 
         #expect(node.type == .miniApp)
-        #expect(code.contains("pointerdown"))
-        #expect(code.contains("touch-action:none"))
-        #expect(code.contains("viewport-fit=cover"))
-        #expect(code.contains("role=\"grid\""))
-        #expect(!code.contains("https://"))
+        #expect(node.title == "XO")
+        #expect(code == XOCanvasProvider.code)
+        #expect(code.isEmpty)
     }
 }

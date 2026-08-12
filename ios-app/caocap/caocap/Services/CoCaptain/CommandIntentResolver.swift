@@ -70,6 +70,56 @@ public struct CommandIntentResolver {
                 "عقدة جديدة",
                 "سوي عقدة"
             ]
+        case .deleteNode:
+            return [
+                "delete node",
+                "remove node",
+                "حذف عقدة",
+                "احذف عقدة",
+                "ازل عقدة"
+            ]
+        case .renameNode:
+            return [
+                "rename node",
+                "rename",
+                "اعادة تسمية",
+                "غير الاسم",
+                "غير اسم العقدة"
+            ]
+        case .updateNodeSubtitle:
+            return [
+                "update subtitle",
+                "change subtitle",
+                "node subtitle",
+                "تغيير العنوان الفرعي",
+                "غير العنوان الفرعي"
+            ]
+        case .updateNodeIcon:
+            return [
+                "update icon",
+                "change icon",
+                "node icon",
+                "تغيير الايقونة",
+                "غير الايقونة"
+            ]
+        case .connectNodes:
+            return [
+                "connect nodes",
+                "link nodes",
+                "connect",
+                "ربط العقد",
+                "اربط العقد",
+                "وصل العقد"
+            ]
+        case .disconnectNodes:
+            return [
+                "disconnect nodes",
+                "unlink nodes",
+                "disconnect",
+                "فك الربط",
+                "افصل العقد",
+                "الغ ربط"
+            ]
         case .summonCoCaptain:
             return [
                 "summon cocaptain",
@@ -79,16 +129,6 @@ public struct CommandIntentResolver {
                 "افتح المساعد",
                 "افتح مساعد الذكاء الاصطناعي",
                 "استدع المساعد"
-            ]
-        case .summonCopilotVoice:
-            return [
-                "voice call",
-                "call copilot",
-                "voice copilot",
-                "start voice call",
-                "مكالمة صوتية",
-                "اتصل بالمساعد",
-                "صوت المساعد"
             ]
         case .summonCopilotVideo:
             return [
@@ -263,26 +303,6 @@ public struct CommandIntentResolver {
                 "انشاء لوحة فرعية",
                 "لوحة فرعية جديدة"
             ]
-        case .openActivity:
-            return [
-                "open activity",
-                "activity",
-                "show activity",
-                "النشاط",
-                "الفعالية",
-                "افتح النشاط",
-                "سجل النشاط"
-            ]
-        case .openDaily:
-            return [
-                "open daily",
-                "daily",
-                "daily challenges",
-                "اليومي",
-                "التحديات اليومية",
-                "افتح اليومي",
-                "التحدي اليومي"
-            ]
         case .openWhatsApp:
             return [
                 "open whatsapp",
@@ -371,6 +391,7 @@ public struct CommandIntentResolver {
     static func hasNegation(in normalizedInput: String) -> Bool {
         let negations = [
             "dont",
+            "don t", // "don't" after punctuation stripping
             "do not",
             "never",
             "لا",

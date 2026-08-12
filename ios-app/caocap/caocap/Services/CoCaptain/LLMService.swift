@@ -42,17 +42,6 @@ public final class LLMService {
         )
     }
 
-    /// CAOCAP keeps LiteRT-LM tool calling disabled in the first release, so
-    /// tool-based prompt rules are omitted and full-budget context is retained.
-    private var currentModelSupportsFunctionCalling: Bool {
-        if case .cloud = currentModelRoute { return true }
-        return false
-    }
-
-    public var supportsOnDemandCodeReads: Bool {
-        currentModelSupportsFunctionCalling
-    }
-
     /// The active chat session that maintains history.
     private var chats: [CoCaptainAgentScope: FirebaseAILogic.Chat] = [:]
     private let tokenUsageLimiter = TokenUsageLimiter.shared
@@ -180,7 +169,6 @@ public final class LLMService {
             scope: scope,
             purpose: purpose,
             chatMode: chatMode,
-            nodeEditToolsEnabled: NodeEditToolsFeature.isEnabled && supportsFunctionCalling,
             modelSupportsFunctionCalling: supportsFunctionCalling
         )
 
@@ -384,59 +372,38 @@ public final class LLMService {
     }
 
     /// The base system instruction loaded into the Gemini context window.
-    /// Dictates the persona, rules of engagement, and the output contract
-    /// (native tools when `NodeEditToolsFeature` is enabled, XML otherwise).
-    private static func systemInstructionText(nodeEditToolsEnabled: Bool) -> String {
-        let contractSentence = nodeEditToolsEnabled
-            ? "You can request app actions with the `request_app_action` function, propose node edits with the `propose_node_edit` function, and ask one question with the `ask_clarifying_question` function. The app validates every requested action before execution."
-            : "You can request app actions with the `request_app_action` function and request node edits with a `cocaptain_actions` XML block. The app validates every requested action before execution."
-        let applyRule = nodeEditToolsEnabled
-            ? """
-            - If the user asks you to apply a change, you MUST call `propose_node_edit` to implement it.
-            - Call `propose_node_edit` in every response that involves node content changes.
-            """
-            : """
-            - If the user asks you to apply a change, you MUST provide the XML to implement it.
-            - Append the `cocaptain_actions` block at the end of every response that involves node content changes.
-            """
-
-        return """
+    /// Dictates the persona, rules of engagement, and the output contract.
+    private static func systemInstructionText() -> String {
+        """
         You are Co-Captain, a spatial programming assistant for the CAOCAP platform.
-        \(contractSentence)
+        You can request app actions with the `request_app_action` function and ask one question with the `ask_clarifying_question` function. The app validates every requested action before execution.
         
         Personality:
         - You are a patient, encouraging mentor. Most of your users are beginners learning to code for the first time.
         - Use plain, friendly language. Never use technical jargon without a one-phrase explanation.
-        - You can execute mutations on a spatial canvas when the user asks for canvas changes.
         - Be concise and proactive, but never dismissive.
         - Never refuse a request. If you cannot do something directly, explain what you can do and offer the closest helpful step.
 
         Core Rule:
-        - Answer ordinary questions, opinions, and advice conversationally without app actions or node edits.
-        - Use app actions or node edits only when the user explicitly asks to navigate, use a tool, create, edit, write, document, apply, implement, or otherwise change the current canvas.
-        - Never provide full code in Markdown chat. Code belongs EXCLUSIVELY in node edits.
-        \(applyRule)
-        - Use `request_app_action` for app navigation and app-level tool actions.
+        - Answer ordinary questions, opinions, and advice conversationally without app actions.
+        - Use app actions when the user asks to change the canvas graph or app state (create, rename, delete, connect, move, theme, organize, navigate, etc.).
+        - Do not propose Mini-App HTML/code edits; use graph AppActions instead.
+        - Prefer `request_app_action` for canvas and app-level changes. Pass action-specific string arguments when the catalog requires them (for example nodeId, title, fromNodeId, toNodeId, x, y, type, theme, kind).
         - Safe actions are only for non-mutating autonomous app actions. Mutating or review-required app actions must use executionMode `pending`.
 
         Understanding beginners:
-        - When the user says "title", "headline", or "heading", they mean the visible page heading (the `h1`), not the browser tab `<title>` tag.
         - If a change request is vague or could mean several different things, do NOT guess and do NOT reject it. Ask exactly one clarifying question with 2-4 short, concrete options a beginner can pick from.
-        - Phrase options as outcomes ("Make the text bigger"), never as technical choices ("Adjust font-size CSS").
+        - Phrase options as outcomes ("Rename this node to Welcome"), never as technical implementation details.
         """
     }
 
     /// Creates and configures a new `GenerativeModel` instance with the required
     /// tools and system instructions for CoCaptain agent execution.
     private func makeModel(modelName: String) -> GenerativeModel {
-        var declarations: [FunctionDeclaration] = [
+        let declarations: [FunctionDeclaration] = [
             Self.requestAppActionDeclaration,
-            Self.readNodeSectionDeclaration
+            Self.askClarifyingQuestionDeclaration
         ]
-        if NodeEditToolsFeature.isEnabled {
-            declarations.append(Self.proposeNodeEditDeclaration)
-            declarations.append(Self.askClarifyingQuestionDeclaration)
-        }
 
         return FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(
             modelName: modelName,
@@ -446,7 +413,7 @@ public final class LLMService {
             ),
             systemInstruction: ModelContent(
                 role: "system",
-                parts: Self.systemInstructionText(nodeEditToolsEnabled: NodeEditToolsFeature.isEnabled)
+                parts: Self.systemInstructionText()
             )
         )
     }
@@ -454,73 +421,46 @@ public final class LLMService {
     /// The tool definition that exposes local CAOCAP app actions to the LLM.
     private static let requestAppActionDeclaration = FunctionDeclaration(
         name: CoCaptainFunctionCallAgentAdapter.requestAppActionName,
-        description: "Requests a CAOCAP app action. The app validates and either executes or stages the action for user review.",
+        description: "Requests a CAOCAP app action. The app validates and either executes or stages the action for user review. Include action-specific string args when needed (nodeId, title, etc.).",
         parameters: [
             "actionId": .string(description: "The exact app action id to request."),
             "executionMode": .enumeration(
                 values: ["safe", "pending"],
                 description: "`safe` only for non-mutating autonomous actions. `pending` for mutating or review-required actions."
             ),
-            "reason": .string(description: "Short reason for requesting the action.")
+            "reason": .string(description: "Short reason for requesting the action."),
+            "nodeId": .string(description: "Target node UUID when the action needs one."),
+            "fromNodeId": .string(description: "Source node UUID for connect/disconnect."),
+            "toNodeId": .string(description: "Destination node UUID for connect/disconnect."),
+            "title": .string(description: "New title for rename_node or create_node."),
+            "subtitle": .string(description: "Subtitle for update_node_subtitle."),
+            "icon": .string(description: "SF Symbol name for update_node_icon."),
+            "type": .string(description: "NodeType raw value for create_node or transform_node."),
+            "theme": .string(description: "NodeTheme raw value for theme_node."),
+            "kind": .string(description: "Connection kind: next or connected."),
+            "x": .string(description: "Canvas X position as a number string."),
+            "y": .string(description: "Canvas Y position as a number string.")
         ],
-        optionalParameters: ["reason"]
-    )
-
-    /// The read-only tool that returns the full current text of one Mini-App
-    /// node section on demand, answered inline by the app during the turn.
-    private static let readNodeSectionDeclaration = FunctionDeclaration(
-        name: CoCaptainReadNodeSectionTool.name,
-        description: "Reads the full, current text of one Mini-App node section from the canvas. Call this before proposing edits when the canvas context only shows a code summary.",
-        parameters: [
-            "nodeId": .string(description: "The exact node UUID from the canvas context."),
-            "section": .enumeration(
-                values: ["code", "srs"],
-                description: "`code` for the Mini-App source code, `srs` for its requirements document."
-            )
+        optionalParameters: [
+            "reason",
+            "nodeId",
+            "fromNodeId",
+            "toNodeId",
+            "title",
+            "subtitle",
+            "icon",
+            "type",
+            "theme",
+            "kind",
+            "x",
+            "y"
         ]
     )
 
-    /// Structured node-edit proposal tool (feature-gated). Mirrors the XML
-    /// `node_edit` contract so validation and review flow stay unchanged.
-    private static let proposeNodeEditDeclaration = FunctionDeclaration(
-        name: CoCaptainNodeEditTools.proposeNodeEditName,
-        description: "Proposes one edit to a Mini-App node section. The app previews the edit and the user must approve it before anything changes. Never combine with ask_clarifying_question in the same turn.",
-        parameters: [
-            "nodeId": .string(description: "The exact target node UUID from the canvas context."),
-            "section": .enumeration(
-                values: ["code", "srs"],
-                description: "Which section of the Mini-App the edit targets."
-            ),
-            "summary": .string(description: "A short plain-language description of what changes."),
-            "operations": .array(
-                items: .object(
-                    properties: [
-                        "type": .enumeration(
-                            values: ["replace_all", "replace_exact", "insert_before_exact", "insert_after_exact", "append", "prepend"],
-                            description: "The patch operation type."
-                        ),
-                        "target": .string(description: "Exact text to locate. Required only for exact operations."),
-                        "content": .string(description: "The new content for this operation.")
-                    ],
-                    optionalProperties: ["target"]
-                ),
-                description: "Ordered patch operations. Prefer one replace_all with the complete updated document for small files."
-            ),
-            "learningNote": .object(
-                properties: [
-                    "concept": .string(description: "A 2-5 word name for the concept this edit demonstrates."),
-                    "body": .string(description: "2-3 plain sentences about the concept, referencing the user's own app.")
-                ],
-                description: "A short lesson revealed to the user after they apply the edit."
-            )
-        ],
-        optionalParameters: ["nodeId", "learningNote"]
-    )
-
-    /// Structured clarifying-question tool (feature-gated). Takes precedence
-    /// over node edits in the same turn, mirroring the XML contract rule.
+    /// Structured clarifying-question tool. Prefer this over guessing when a
+    /// request is too vague to act on.
     private static let askClarifyingQuestionDeclaration = FunctionDeclaration(
-        name: CoCaptainNodeEditTools.askClarifyingQuestionName,
+        name: CoCaptainClarifyingQuestionTools.askClarifyingQuestionName,
         description: "Asks the user one short question with 2-4 tappable options when their request is too vague to act on. Never reject a request; ask instead of guessing.",
         parameters: [
             "prompt": .string(description: "One short question phrased for a non-technical user."),
@@ -535,13 +475,8 @@ public final class LLMService {
     ///
     /// Sections are joined in order: canvas context (when provided), the agent
     /// contract (when `expectsStructuredResponse` is `true`), and the user request.
-    /// The agent contract includes scope-specific instructions, the output contract
-    /// (native node-edit tools or the XML schema for `cocaptain_actions` depending
-    /// on `NodeEditToolsFeature`), and the split list of autonomous vs.
-    /// review-required actions.
-    ///
-    /// Tool capability inputs are injectable for tests; `nil` reads the active
-    /// feature flag and model route.
+    /// The agent contract includes scope-specific instructions and the split list
+    /// of autonomous vs. review-required actions.
     func buildPrompt(
         userMessage: String,
         context: String?,
@@ -550,9 +485,9 @@ public final class LLMService {
         scope: CoCaptainAgentScope,
         purpose: CoCaptainTurnPurpose,
         chatMode: CoCaptainChatMode = .agent,
-        nodeEditToolsEnabled: Bool? = nil,
         modelSupportsFunctionCalling: Bool? = nil
     ) -> String {
+        _ = modelSupportsFunctionCalling
         var parts: [String] = []
 
         if let context, !context.isEmpty {
@@ -560,20 +495,15 @@ public final class LLMService {
         }
 
         if expectsStructuredResponse {
-            let nodeEditToolsEnabled = nodeEditToolsEnabled ?? NodeEditToolsFeature.isEnabled
             let scopeInstructions: String = {
                 switch scope {
                 case .project:
                     return "You are in the global project CoCaptain scope. You may reason across the full canvas."
                 case .node:
-                    let nodeIDLine = nodeEditToolsEnabled
-                        ? "- For edits to the selected node or linked source nodes, pass the exact `nodeId` to every `propose_node_edit` call."
-                        : "- For edits to the selected node or linked source nodes, include the exact `nodeId` attribute in each `node_edit`."
                     return """
                     You are in a node-scoped agent session.
                     - Focus on the selected node in the context.
-                    \(nodeIDLine)
-                    - Do not directly edit compiled preview HTML. Edit the Mini-App's `section="code"` or `section="srs"` source instead.
+                    - Prefer graph AppActions such as rename_node, update_node_subtitle, update_node_icon, theme_node, connect_nodes, delete_node, and move_node with the selected node's id.
                     """
                 }
             }()
@@ -592,112 +522,42 @@ public final class LLMService {
                 }
                 .joined(separator: "\n")
 
-            let readToolInstructions = (
-                modelSupportsFunctionCalling ?? currentModelSupportsFunctionCalling
-            )
-                ? """
-                - The canvas context may show only a short head of each Mini-App's code or SRS. Before proposing edits to an existing Mini-App, call `read_node_section(nodeId, section)` to read the full current text — never guess at code you have not seen.
-                """
-                : ""
-
-            // Wire-format-specific wording. With the node-edit tools enabled,
-            // the XML schema block is omitted entirely; the XML parser stays
-            // in place as a silent fallback for models that still emit it.
-            let mutatingCommandRule = nodeEditToolsEnabled
-                ? "- When the user wants a canvas change (build, rename, restyle, fix, add, remove, or similar), call `propose_node_edit` with concrete operations. Do not wait for specific verbs — act on the requested outcome."
-                : "- When the user wants a canvas change (build, rename, restyle, fix, add, remove, or similar), append an XML block named `cocaptain_actions` with concrete `node_edits`. Do not wait for specific verbs — act on the requested outcome."
-            let adviceOnlyRule = nodeEditToolsEnabled
-                ? "- If you are only answering a question, providing advice, or discussing ideas (e.g., 'What game should we make?'), do NOT call `propose_node_edit`. Pure chat without an edit is allowed."
-                : "- If you are only answering a question, providing advice, or discussing ideas (e.g., 'What game should we make?'), do NOT include a `cocaptain_actions` block. Pure chat without an edit is allowed."
-            let noEditsForQuestionsRule = nodeEditToolsEnabled
-                ? "- If the user is only asking a question, asking for advice, or asking for an opinion, do not request app actions and do not propose node edits."
-                : "- If the user is only asking a question, asking for advice, or asking for an opinion, do not request app actions and do not append `cocaptain_actions`."
-            let codeHomeRule = nodeEditToolsEnabled
-                ? "- NEVER provide a full file implementation inside the chat text. Put it in `propose_node_edit` operations."
-                : "- NEVER provide a full file implementation inside the chat text. Put it in the `node_edits`."
-            let clarifyingRule = nodeEditToolsEnabled
-                ? "- If a change request is too vague to act on confidently (e.g. \"make it pop\", \"fix it\"), call `ask_clarifying_question` instead of proposing edits. Never reject the request and never guess a large change."
-                : "- If a change request is too vague to act on confidently (e.g. \"make it pop\", \"fix it\"), append a `cocaptain_actions` block containing ONE `clarifying_question` instead of node edits. Never reject the request and never guess a large change."
-            let clarifyingCombinationRule = nodeEditToolsEnabled
-                ? "- Do not combine `ask_clarifying_question` with `propose_node_edit` in the same response; the question always wins and edits would be dropped."
-                : "- Do not combine a `clarifying_question` with `node_edits` in the same response; the question always wins and edits would be dropped."
-            let nodeIDRule = nodeEditToolsEnabled
-                ? "- In node-scoped sessions, pass the exact `nodeId` UUID to every `propose_node_edit` call whenever the target node is known."
-                : "- In node-scoped sessions, include `nodeId=\"UUID\"` on every `node_edit` whenever the target node is known."
-            let learningNoteRule = nodeEditToolsEnabled
-                ? "- Every node edit should include a `learningNote`: a short lesson the user unlocks after applying the change. Set `concept` to a 2-5 word name for the idea, and write 2-3 plain sentences referencing the user's own app (never generic textbook prose)."
-                : "- Every `node_edit` should include one `learning_note` child: a short lesson the user unlocks after applying the change. Set `concept` to a 2-5 word name for the idea, and write 2-3 plain sentences referencing the user's own app (never generic textbook prose)."
-
-            let xmlSchemaBlock = nodeEditToolsEnabled ? "" : """
-
-
-                - XML schema for `cocaptain_actions`:
-                
-                <cocaptain_actions>
-                  <assistant_message>short summary</assistant_message>
-                  <clarifying_question prompt="one short question when the request is too vague to act on">
-                    <option>First concrete outcome</option>
-                    <option>Second concrete outcome</option>
-                  </clarifying_question>
-                  <safe_actions>
-                    <action id="id" />
-                  </safe_actions>
-                  <pending_actions>
-                    <action id="id" />
-                  </pending_actions>
-                  <node_edits>
-                    <node_edit nodeId="UUID" role="miniApp" section="srs|code" summary="what changes">
-                      <operation type="replace_all|replace_exact|insert_before_exact|insert_after_exact|append|prepend">
-                        <target>exact text (only for exact operations)</target>
-                        <content><![CDATA[new content]]></content>
-                      </operation>
-                      <learning_note concept="short concept name">2-3 plain sentences about what this change teaches, using the user's own app.</learning_note>
-                    </node_edit>
-                  </node_edits>
-                </cocaptain_actions>
-                """
-
             parts.append(
                 """
                 Agent contract:
                 \(scopeInstructions)
 
-                SRS and Guarded Generation:
-                - If the context indicates SRS Readiness is "Draft", "Empty", or "Needs Clarification": prioritize asking clarifying questions to help the user complete the requirements. Do NOT write implementation code (HTML/CSS/JS) unless the user explicitly forces you to.
-                - If the context indicates SRS Readiness is "Implementation-Ready" and a Mini-App has blank code: propose a complete single-file HTML document containing inline CSS/JS using a Mini-App `section="code"` node edit.
-
                 - Respond conversationally first (concise).
-                \(noEditsForQuestionsRule)
-                - For app navigation or app-level tool actions, use the `request_app_action` function instead of manually writing app actions in XML.
-                \(mutatingCommandRule)
-                \(adviceOnlyRule)
-                - CRITICAL: If you are building a game or a full feature, use `replace_all` for the Mini-App code section with a complete single-file HTML document containing inline CSS and JavaScript.
-                \(codeHomeRule)
+                - If the user is only asking a question, asking for advice, or asking for an opinion, do not request app actions.
+                - When the user wants a canvas graph change (create, rename, delete, connect, move, theme, organize, transform), call `request_app_action` with the matching action id and required arguments.
+                - Useful graph actions and args:
+                  - create_node: optional type, title, x, y
+                  - delete_node: nodeId
+                  - rename_node: nodeId, title
+                  - update_node_subtitle: nodeId, subtitle
+                  - update_node_icon: nodeId, icon
+                  - connect_nodes / disconnect_nodes: fromNodeId, toNodeId, optional kind (`next` or `connected`)
+                  - move_node: nodeId, x, y (autonomous / safe)
+                  - theme_node: nodeId, theme
+                  - transform_node: nodeId, type
+                - If you are only answering a question, providing advice, or discussing ideas, do NOT call tools. Pure chat is allowed.
 
                 Clarifying questions:
-                \(clarifyingRule)
+                - If a change request is too vague to act on confidently, call `ask_clarifying_question` instead of guessing. Never reject the request.
                 - Give 2 to 4 short options phrased as outcomes a beginner understands. The user's pick arrives as their next message.
-                \(clarifyingCombinationRule)
+                - Do not combine `ask_clarifying_question` with `request_app_action` in the same response when the question is required to choose the action.
 
                 App actions:
-                - Prefer `request_app_action(actionId, executionMode, reason)` for app actions.
+                - Prefer `request_app_action(actionId, executionMode, reason)` plus any extra string args the action needs.
                 - Use executionMode `safe` ONLY for these explicitly autonomous action ids:
                 \(autonomousActionLines.isEmpty ? "- none" : autonomousActionLines)
                 - Use executionMode `pending` for these review-required action ids:
                 \(reviewActionLines.isEmpty ? "- none" : reviewActionLines)
                 - Never request a non-autonomous action with executionMode `safe`.
 
-                Node edits:
-                - Only target Mini-App source sections for edits: `section="srs"` and `section="code"`.
-                - Use LOWERCASE role name `miniApp`.
-                \(readToolInstructions)
-                \(nodeIDRule)
-                - Code/content changes belong in node edits, not app actions.
-                - Every node edit needs a non-empty summary and at least one operation.
-                - Exact operations require a non-empty `target`; append/prepend/replace_all do not.
-                - Targets are resolved flexibly: generic words like "title", "headline", or "heading" automatically resolve to the page's main `h1` heading, so pass the user's own words as the target instead of guessing between `<title>` and `<h1>`.
-                - For small text tweaks on existing Mini-App code, prefer `replace_exact` (or a focused `replace_all` when rewriting a short document).
-                \(learningNoteRule)\(xmlSchemaBlock)
+                Compatibility XML (optional fallback):
+                - Models may still emit a trailing `cocaptain_actions` block with `assistant_message`, `clarifying_question`, `safe_actions`, and `pending_actions`.
+                - Do not emit `node_edit` / `node_edits`; those elements are ignored.
                 """
             )
         }

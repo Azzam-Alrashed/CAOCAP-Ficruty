@@ -8,8 +8,6 @@ Owns root-level session orchestration for the running app: workspace routing hoo
 - `AppRouter` (in `Navigation/`) still owns workspace navigation and `ProjectStore` instances.
 - `AppActionDispatcher` (in `Services/AppActions/`) still owns action definitions; the coordinator registers handlers that mutate session/UI state.
 - `App/Shell/` contains SwiftUI modifiers and helpers that bind to the coordinator without adding business rules.
-- The Activity node sets `showingActivity`; `AppSheetsModifier` presents the
-  feature-owned expanded activity sheet.
 
 ## Editing Guidance
 

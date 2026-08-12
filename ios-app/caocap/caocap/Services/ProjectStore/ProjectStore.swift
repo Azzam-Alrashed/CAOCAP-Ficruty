@@ -4,7 +4,7 @@ import OSLog
 import SwiftUI
 
 /// Owns the mutable state for one spatial project, including nodes, viewport
-/// position, persistence, undo wiring, and live preview compilation.
+/// position, persistence, and undo wiring.
 @Observable
 @MainActor
 public class ProjectStore {
@@ -37,7 +37,6 @@ public class ProjectStore {
     private let persistence: ProjectPersistenceService
     private let saveController: ProjectSaveController
     private let checkpointManager: CheckpointManager
-    private let livePreviewOrchestrator = LivePreviewOrchestrator()
     private let mutationEngine = NodeMutationEngine()
     private let agentPipeline = AgentPipelineEngine()
     
@@ -53,24 +52,19 @@ public class ProjectStore {
     
     public let fileName: String
     
-    /// Called when daily challenges are newly completed after a live preview compile.
-    public var onChallengesCompleted: (([DailyChallengeDefinition]) -> Void)?
-    
     public init(
         fileName: String = "canvas_v1.json",
         projectName: String = "Untitled Project",
         initialNodes: [SpatialNode]? = nil,
         initialViewportScale: CGFloat = 1.0,
-        persistence: ProjectPersistenceService = ProjectPersistenceService(),
-        activityRecorder: (any ActivityRecording)? = nil
+        persistence: ProjectPersistenceService = ProjectPersistenceService()
     ) {
         self.fileName = fileName
         self.projectName = projectName
         self.viewportScale = initialViewportScale
         self.persistence = persistence
         self.saveController = ProjectSaveController(
-            persistence: persistence,
-            activityRecorder: activityRecorder
+            persistence: persistence
         )
         self.checkpointManager = CheckpointManager(persistence: persistence)
         wireMutationEngineCallbacks()
@@ -82,10 +76,6 @@ public class ProjectStore {
     private func wireMutationEngineCallbacks() {
         mutationEngine.onRequestSave = { [weak self] showIndicator in
             self?.requestSave(showIndicator: showIndicator)
-        }
-        mutationEngine.onCompileLivePreview = { [weak self] nodes in
-            guard let self else { return }
-            self.compileLivePreviewsAndEvaluateChallenges(nodes: &nodes)
         }
         mutationEngine.onTriggerDownstreamAgents = { [weak self] id, nodes in
             self?.triggerDownstreamAgents(from: id, nodes: nodes)
@@ -110,9 +100,6 @@ public class ProjectStore {
                 logger.info("No saved project found for \(self.fileName). Initializing with defaults.")
                 self.nodes = initialNodes ?? []
                 self.viewportScale = initialViewportScale
-
-                // Ensure Mini-App previews are compiled immediately for new projects.
-                compileLivePreviewsAndEvaluateChallenges(nodes: &nodes)
 
                 // Only perform an initial save for permanent project files.
                 if !self.fileName.contains("onboarding") {
@@ -140,9 +127,6 @@ public class ProjectStore {
                 unsupportedProjectMessage = "This project could not be opened. Create a fresh Mini-App canvas to continue."
                 self.nodes = initialNodes ?? []
             }
-
-            // Ensure Mini-App previews are synced with embedded code on startup.
-            compileLivePreviewsAndEvaluateChallenges(nodes: &nodes)
 
             // Load history
             checkpointManager.loadHistory(for: fileName)
@@ -172,10 +156,6 @@ public class ProjectStore {
             fileName: fileName,
             snapshotFactory: { [weak self] in
                 self?.currentSnapshot() ?? ProjectSnapshot(schemaVersion: Self.currentSchemaVersion, projectName: "", nodes: [], viewportOffset: .zero, viewportScale: 1.0)
-            },
-            onDebounceComplete: { [weak self] in
-                guard let self = self else { return }
-                self.compileLivePreviewsAndEvaluateChallenges(nodes: &self.nodes)
             }
         )
     }
@@ -206,7 +186,6 @@ public class ProjectStore {
             apply(snapshot: snapshot)
         }
         save()
-        compileLivePreviewsAndEvaluateChallenges(nodes: &nodes)
     }
 
     /// Deletes a historical checkpoint from disk and local state.
@@ -333,9 +312,6 @@ public class ProjectStore {
     public func updateNodeTextContent(id: UUID, text: String, persist: Bool = true) {
         mutationEngine.updateNodeTextContent(nodes: &nodes, id: id, text: text, persist: persist)
     }
-    public func updateMiniAppSRS(id: UUID, text: String, persist: Bool = true) {
-        mutationEngine.updateMiniAppSRS(nodes: &nodes, id: id, text: text, persist: persist)
-    }
     public func updateMiniAppCode(id: UUID, text: String, persist: Bool = true) {
         mutationEngine.updateMiniAppCode(nodes: &nodes, id: id, text: text, persist: persist)
     }
@@ -372,8 +348,24 @@ public class ProjectStore {
     public func organizeNodes() {
         mutationEngine.organizeNodes(nodes: &nodes, )
     }
-    public func addNode(type: NodeType = .miniApp) {
-        mutationEngine.addNode(nodes: &nodes, type: type)
+    public func addNode(type: NodeType = .miniApp, title: String? = nil, position: CGPoint? = nil) {
+        mutationEngine.addNode(nodes: &nodes, type: type, title: title, position: position)
+    }
+
+    public func connectNodes(
+        fromID: UUID,
+        toID: UUID,
+        kind: NodeConnectionKind = .next
+    ) {
+        mutationEngine.connectNodes(nodes: &nodes, fromID: fromID, toID: toID, kind: kind)
+    }
+
+    public func disconnectNodes(
+        fromID: UUID,
+        toID: UUID,
+        kind: NodeConnectionKind? = nil
+    ) {
+        mutationEngine.disconnectNodes(nodes: &nodes, fromID: fromID, toID: toID, kind: kind)
     }
     public func addShortcutNode(for appAction: AppActionID, definition: AppActionDefinition) {
         guard let nodeAction = appAction.pinableNodeAction else { return }
@@ -406,18 +398,6 @@ public class ProjectStore {
     }
     public func deleteNode(id: UUID, persist: Bool = true) {
         mutationEngine.deleteNode(nodes: &nodes, id: id, persist: persist)
-    }
-
-    private func compileLivePreviewsAndEvaluateChallenges(nodes: inout [SpatialNode]) {
-        _ = livePreviewOrchestrator.compile(nodes: &nodes)
-        let htmlSamples = nodes.compactMap { node -> String? in
-            guard node.type == .miniApp else { return nil }
-            return node.miniApp?.compiledHTML
-        }
-        let newlyCompleted = GamificationStore.shared.evaluateMiniApps(htmlSamples: htmlSamples)
-        if !newlyCompleted.isEmpty {
-            onChallengesCompleted?(newlyCompleted)
-        }
     }
 
 }

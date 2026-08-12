@@ -26,8 +26,7 @@ final class ProjectSaveControllerTests: XCTestCase {
         
         XCTAssertTrue(sut.isSaving)
         
-        // Wait for the background save task to complete
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await sut.waitForActiveWrites()
         
         // Back on MainActor it should be false
         XCTAssertFalse(sut.isSaving)
@@ -94,58 +93,25 @@ final class ProjectSaveControllerTests: XCTestCase {
         XCTAssertFalse(sut.isSaving)
     }
 
-    func testSuccessfulSaveRecordsActivity() async throws {
-        let suiteName = "ProjectSaveControllerTests.success.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let activity = ActivityStore(defaults: defaults)
-        let controller = ProjectSaveController(
-            persistence: persistence,
-            activityRecorder: activity
-        )
-
-        controller.save(
-            snapshot: makeSnapshot(),
-            fileName: "activity_success.json",
-            showIndicator: false
-        )
-        await controller.waitForActiveWrites()
-
-        XCTAssertEqual(activity.todayCount, 1)
-    }
-
-    func testCancelledDebouncedSaveDoesNotRecordActivity() async throws {
-        let suiteName = "ProjectSaveControllerTests.cancelled.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let activity = ActivityStore(defaults: defaults)
-        let controller = ProjectSaveController(
-            persistence: persistence,
-            activityRecorder: activity
-        )
-
-        controller.requestSave(
-            fileName: "activity_cancelled.json",
+    func testCancelledDebouncedSaveDoesNotWrite() async throws {
+        sut.requestSave(
+            fileName: "save_cancelled.json",
             snapshotFactory: { self.makeSnapshot() }
         )
-        controller.cancelPendingSave()
+        sut.cancelPendingSave()
         try await Task.sleep(for: .milliseconds(550))
+        await sut.waitForActiveWrites()
 
-        XCTAssertEqual(activity.todayCount, 0)
+        XCTAssertFalse(persistence.projectExists(fileName: "save_cancelled.json"))
     }
 
-    func testFailedSaveDoesNotRecordActivity() async throws {
-        let suiteName = "ProjectSaveControllerTests.failed.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let activity = ActivityStore(defaults: defaults)
+    func testFailedSaveCompletesWithoutCrash() async throws {
         let invalidDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("activity-file-\(UUID().uuidString)")
+            .appendingPathComponent("save-file-\(UUID().uuidString)")
         try Data("not a directory".utf8).write(to: invalidDirectory)
         defer { try? FileManager.default.removeItem(at: invalidDirectory) }
         let controller = ProjectSaveController(
-            persistence: ProjectPersistenceService(baseDirectory: invalidDirectory),
-            activityRecorder: activity
+            persistence: ProjectPersistenceService(baseDirectory: invalidDirectory)
         )
 
         controller.save(
@@ -154,30 +120,6 @@ final class ProjectSaveControllerTests: XCTestCase {
             showIndicator: false
         )
         await controller.waitForActiveWrites()
-
-        XCTAssertEqual(activity.todayCount, 0)
-    }
-
-    func testSeparateCanvasControllersAggregateActivity() async throws {
-        let suiteName = "ProjectSaveControllerTests.aggregate.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let activity = ActivityStore(defaults: defaults)
-        let first = ProjectSaveController(
-            persistence: persistence,
-            activityRecorder: activity
-        )
-        let second = ProjectSaveController(
-            persistence: persistence,
-            activityRecorder: activity
-        )
-
-        first.save(snapshot: makeSnapshot(), fileName: "canvas_one.json", showIndicator: false)
-        second.save(snapshot: makeSnapshot(), fileName: "canvas_two.json", showIndicator: false)
-        await first.waitForActiveWrites()
-        await second.waitForActiveWrites()
-
-        XCTAssertEqual(activity.todayCount, 2)
     }
 
     private func makeSnapshot() -> ProjectSnapshot {

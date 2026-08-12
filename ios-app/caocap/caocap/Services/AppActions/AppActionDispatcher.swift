@@ -14,8 +14,13 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case goRoot = "go_root"
     case goBack = "go_back"
     case createNode = "create_node"
+    case deleteNode = "delete_node"
+    case renameNode = "rename_node"
+    case updateNodeSubtitle = "update_node_subtitle"
+    case updateNodeIcon = "update_node_icon"
+    case connectNodes = "connect_nodes"
+    case disconnectNodes = "disconnect_nodes"
     case summonCoCaptain = "summon_cocaptain"
-    case summonCopilotVoice = "summon_copilot_voice"
     case summonCopilotVideo = "summon_copilot_video"
     case undo = "undo"
     case redo = "redo"
@@ -35,8 +40,6 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
     case toggleHUD = "toggle_hud"
     case showActionsList = "show_actions_list"
     case createSubCanvas = "create_sub_canvas"
-    case openActivity = "open_activity"
-    case openDaily = "open_daily"
     case openWhatsApp = "open_whatsapp"
     case openAppIcon = "open_app_icon"
     case changeCopilot = "change_copilot"
@@ -52,8 +55,6 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
         case .openProfile: return .openProfile
         case .summonCoCaptain: return .summonCoCaptain
         case .proSubscription: return .proSubscription
-        case .openActivity: return .openActivity
-        case .openDaily: return .openDaily
         case .openWhatsApp: return .openWhatsApp
         case .help: return .openHelp
         case .openAppIcon: return .openAppIcon
@@ -170,6 +171,54 @@ public final class AppActionDispatcher: AppActionPerforming {
             allowsAutonomousExecution: false
         ),
         AppActionDefinition(
+            id: .deleteNode,
+            title: "Delete Node",
+            icon: "trash",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .renameNode,
+            title: "Rename Node",
+            icon: "pencil",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .updateNodeSubtitle,
+            title: "Update Node Subtitle",
+            icon: "text.alignleft",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .updateNodeIcon,
+            title: "Update Node Icon",
+            icon: "star",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .connectNodes,
+            title: "Connect Nodes",
+            icon: "link",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
+            id: .disconnectNodes,
+            title: "Disconnect Nodes",
+            icon: "link.badge.minus",
+            category: .project,
+            isMutating: true,
+            allowsAutonomousExecution: false
+        ),
+        AppActionDefinition(
             id: .summonCoCaptain,
             title: "Summon Co-Captain",
             icon: "sparkles",
@@ -177,14 +226,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             isMutating: false,
             allowsAutonomousExecution: true,
             canPinToCanvas: true
-        ),
-        AppActionDefinition(
-            id: .summonCopilotVoice,
-            title: "Voice Call Copilot",
-            icon: "mic.fill",
-            category: .assistant,
-            isMutating: false,
-            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .summonCopilotVideo,
@@ -341,24 +382,6 @@ public final class AppActionDispatcher: AppActionPerforming {
             category: .project,
             isMutating: true,
             allowsAutonomousExecution: false
-        ),
-        AppActionDefinition(
-            id: .openActivity,
-            title: "Activity",
-            icon: "chart.bar.xaxis",
-            category: .assistant,
-            isMutating: false,
-            allowsAutonomousExecution: false,
-            canPinToCanvas: true
-        ),
-        AppActionDefinition(
-            id: .openDaily,
-            title: "Daily",
-            icon: "rosette",
-            category: .assistant,
-            isMutating: false,
-            allowsAutonomousExecution: false,
-            canPinToCanvas: true
         ),
         AppActionDefinition(
             id: .openWhatsApp,

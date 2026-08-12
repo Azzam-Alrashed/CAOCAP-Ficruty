@@ -18,7 +18,7 @@ public struct CoCaptainAgentValidator {
     public init() {}
 
     /// Validates the extracted model payload against the live capabilities of the application.
-    /// Ensures requested actions exist and node edits have the correct structure.
+    /// Ensures requested actions exist and are correctly classified.
     @MainActor
     public func validate(
         payload: CoCaptainAgentPayload,
@@ -59,28 +59,13 @@ public struct CoCaptainAgentValidator {
             }
         }
 
-        for edit in payload.nodeEdits {
-            if edit.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                issues.append("Node edit for `\(edit.role.rawValue)` needs a non-empty summary.")
-            }
-
-            if edit.operations.isEmpty {
-                issues.append("Node edit for `\(edit.role.rawValue)` must include at least one operation.")
-            }
-
-            for operation in edit.operations {
-                validate(operation: operation, role: edit.role, issues: &issues)
-            }
-        }
-
         // A clarifying question is valid agentic work on its own: asking the
         // user which change they meant is preferable to guessing or refusing.
         if requiresAgenticWork,
            payload.safeActions.isEmpty,
            payload.pendingActions.isEmpty,
-           payload.nodeEdits.isEmpty,
            payload.clarifyingQuestion == nil {
-            issues.append("Build/edit requests must include at least one safe action, pending action, node edit, or clarifying question.")
+            issues.append("Build/edit requests must include at least one safe action, pending action, or clarifying question.")
         }
 
         return CoCaptainAgentValidationResult(issues: issues)
@@ -111,25 +96,5 @@ public struct CoCaptainAgentValidator {
         }
 
         return issues
-    }
-
-    /// Validates an individual patch operation to ensure it meets constraints for its type.
-    private func validate(
-        operation: NodePatchOperation,
-        role: NodeRole,
-        issues: inout [String]
-    ) {
-        if operation.content.isEmpty {
-            issues.append("Node edit for `\(role.rawValue)` has an operation with empty content.")
-        }
-
-        switch operation.type {
-        case .replaceExact, .insertBeforeExact, .insertAfterExact:
-            if operation.target?.isEmpty != false {
-                issues.append("Operation `\(operation.type.rawValue)` for `\(role.rawValue)` requires a non-empty target.")
-            }
-        case .replaceAll, .append, .prepend:
-            break
-        }
     }
 }

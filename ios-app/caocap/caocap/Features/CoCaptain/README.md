@@ -1,37 +1,36 @@
 # CoCaptain Feature
 
-CoCaptain is the agentic assistant for CAOCAP. It reads the current spatial project, streams model responses, executes safe app actions, and stages code changes for human review.
+CoCaptain is the agentic assistant for CAOCAP. It reads the current spatial project graph, streams model responses, executes safe app actions, and stages mutating graph actions for human review.
 
 ## Ownership
 
 - `Chat/` owns the adaptive CoCaptain sheet/inspector, shared chat visual language, grouped project conversation browser, lazy timeline, bubbles and on-demand message actions, typed progress/errors, context-aware input composer (Agent/Ask/Plan mode, optional `@` pin, route disclosure, and `cocaptain.chatMode` persistence), streaming task lifetime, direct command handling, and rendering Review Lifecycle effects.
 - `AgentContract/` owns the machine-readable agent contract: coordinator, parser, output adapters, validator, typed review drafts, and shared agent/review/timeline models.
-- `Review/` owns `CoCaptainReviewLifecycle` plus Review Bundle and pending edit/action card rendering for human approval. The lifecycle owns staging, identity, clarification, decisions, conflicts, checkpoints, and node-session persistence.
+- `Review/` owns `CoCaptainReviewLifecycle` plus Review Bundle and pending action card rendering for human approval. The lifecycle owns staging, identity, decisions, conflicts, checkpoints, and node-session persistence.
 - `Analysis/` owns structural parser warnings and project recommendations from the analyzer.
 - `NodeAgent/` owns the embedded node-scoped chat interface.
 
 Supporting services live outside this feature:
 
-- `ProjectContextBuilder` serializes the canvas for the model.
+- `ProjectContextBuilder` serializes the canvas graph (titles, types, ids, links, positions) for the model.
 - `CoCaptainConversationStore` persists project-scoped timelines, active conversation selection, and reading position in a versioned local sidecar keyed by canvas file name.
 - `LLMService` routes and streams from Firebase AI Logic or local LiteRT-LM; `LocalGemmaModelManager` owns the downloaded model and local sessions. On-device Gemma is available on the iPhone 15 Pro family and newer iPhones, plus M-series iPads; unsupported devices use Gemini cloud.
-- `AppActionDispatcher` performs high-level app actions.
-- `NodePatchEngine` previews and applies node edits using flexible target matching for all exact operations.
+- `AppActionDispatcher` performs high-level app actions, including graph mutations (`create_node`, `delete_node`, `rename_node`, `update_node_subtitle`, `update_node_icon`, `connect_nodes`, `disconnect_nodes`).
 
 ## Agent Flow
 
 1. The user picks Agent, Ask, or Plan in the composer (persisted as `cocaptain.chatMode`, default Agent) and sends a message through `CoCaptainViewModel`.
 2. Direct commands are resolved locally with `CommandIntentResolver` when possible. In Ask/Plan modes, mutating shortcuts are skipped so those messages go to the model as chat.
-3. Otherwise, `CoCaptainAgentCoordinator` builds project context from the active `ProjectStore` using the turn plan’s detail level (implementation for Agent, product for Ask/Plan). In project scope, an optional `@` pin focuses the prompt on one node via `buildNodePromptContext` without switching to a node-scoped session. By default Agent context carries only a short head of each Mini-App's code/SRS; the model reads full sections on demand (see the read tool below). The full-budget context is kept when the local LiteRT-LM backend (`gemma-4-local`) is selected, since CAOCAP does not expose its function calling in the first release.
+3. Otherwise, `CoCaptainAgentCoordinator` builds project context from the active `ProjectStore` using the turn plan’s detail level (implementation for Agent, product for Ask/Plan). In project scope, an optional `@` pin focuses the prompt on one node via `buildNodePromptContext` without switching to a node-scoped session. Context is graph metadata only — no Mini-App source dumps.
 4. `CoCaptainTurnPlan` merges turn purpose with the selected `CoCaptainChatMode` to choose the effective execution policy. There is no keyword intent classifier.
-5. `LLMService` streams text back into the current assistant bubble. Offline turns automatically use a ready local Gemma model without changing the saved online preference. On cloud turns, when the model calls the read-only `read_node_section(nodeId, section)` tool, the coordinator answers it inline against the active `ProjectStore` and `LLMService` sends the result back on the same chat session (bounded to 4 tool-response rounds per turn).
+5. `LLMService` streams text back into the current assistant bubble. Offline turns automatically use a ready local Gemma model without changing the saved online preference.
 6. `CoCaptainAgentOutputAdapter` hides machine output while streaming and turns the final response into a directive. The ViewModel updates the assistant bubble from `onVisibleText` so prose streams live; XML/tool payloads stay hidden.
-7. For structured turns, `CoCaptainAgentValidator` checks action IDs, action safety, and node edit shape. Executable work is enforced only when the policy requires it (onboarding guided edit), not for standard Agent chat.
-8. Safe actions execute immediately when autonomous; validated pending actions and node edits leave the coordinator as a typed review draft.
+7. For structured turns, `CoCaptainAgentValidator` checks action IDs and action safety. Executable work is not forced for standard Agent chat; pure prose is allowed.
+8. Safe actions execute immediately when autonomous; validated pending actions leave the coordinator as a typed review draft.
 9. `CoCaptainReviewLifecycle` stages that draft into a canonically identified Review Bundle without mutating the canvas or performing pending actions.
-10. An explicit approval revalidates the original base node text before writing changes to `ProjectStore` or performing an app action. Undo and checkpoints remain available after Apply.
+10. An explicit approval performs the pending app action through `AppActionDispatcher`. Undo and checkpoints remain available after Apply.
 
-The core contract is human-in-the-loop code editing. Do not auto-apply node edits without explicit user approval.
+The core contract is human-in-the-loop graph mutation via AppActions. Do not auto-apply mutating actions without explicit user approval.
 Free-usage and subscription prompts are product CTA timeline items, not review bundles.
 
 ## Conversation Continuity
@@ -44,71 +43,50 @@ rename, and delete chats without affecting nodes, checkpoints, or snapshots.
 
 Switching or restoring a conversation resets the underlying model session, then
 replays a bounded recent transcript on the next turn. Review Bundles remain
-attached to the conversation where they were proposed and are restored into the
-Review Lifecycle before a decision can be made. Node-scoped messages continue
+attached to the conversation where they were proposed and are restored into
+the Review Lifecycle before a decision can be made. Node-scoped messages continue
 to use `NodeAgentState`.
 
 Explicit **Stop** cancels a turn. Dismissing CoCaptain does not: the shared view
 model keeps streaming, persists the completed result, and shows it when the
 surface reopens.
 
-### Flexible Patch Matching
-
-`NodePatchEngine.apply` resolves `replace_exact` / insert-exact targets with one matcher (`PatchTargetMatcher`). It tries, in order:
-
-1. Semantic alias resolution (beginner phrases like `title`, `headline`, `heading`, `big text` resolve to the page's `<h1>` inner text, never the `<title>` tag)
-2. Literal match
-3. Case-insensitive match
-4. Token-sequence match (ignores punctuation differences such as `hello world` vs `Hello World!`)
-5. Whitespace-flexible match
-
-Each tier returns a 3-way `Resolution` (`unique` / `ambiguous` / `none`) instead of silently failing:
-
-- **Unique** matches apply normally. Review staging still normalizes successful results to a single canonical `replace_all` operation.
-- **Ambiguous** matches (2+ hits in one tier) throw `NodePatchError.ambiguous` carrying `PatchMatchCandidate` values — plain-language labels plus a context slice that occurs exactly once in the text, so a later pick re-resolves deterministically.
-- **No match** computes up to three near-match candidates from token overlap ("did you mean one of these?"); only when no decent candidate exists does the edit conflict, with friendly mentor-tone copy.
-
 ### Clarification Flow (Never Reject, Always Guide)
 
-Ambiguity never dead-ends:
-
-- Review Lifecycle staging converts `NodePatchError.ambiguous` into a `.needsClarification` review item whose card asks "Which one did you mean?" with one tappable button per candidate.
-- `CoCaptainReviewLifecycle` re-stages the chosen candidate locally — no model round-trip or canvas mutation — and the item becomes a normal `.pending` review.
-
-Intent-level ambiguity ("make it pop") is handled by the model with a `clarifying_question` contract element (see below), rendered as a tappable option card. Picking an option sends it as the user's next message. Validation failures also append a locally-built recovery question so every failure path has a tappable next step.
+Intent-level ambiguity ("make it pop") is handled by the model with a
+`clarifying_question` / `ask_clarifying_question` contract element, rendered as
+a tappable option card. Picking an option sends it as the user's next message.
+Validation failures also append a locally-built recovery question so every
+failure path has a tappable next step.
 
 ## Turn Execution Modes
 
-`CoCaptainTurnPlan` merges `CoCaptainTurnPurpose` with `CoCaptainChatMode` into a `CoCaptainTurnExecutionPolicy` in `CoCaptainAgentModels.swift`. The coordinator reads `turnPlan.effectivePolicy` instead of hardcoding onboarding exceptions. Onboarding purposes override the chat mode; standard turns follow the composer’s Agent/Ask/Plan selection (`chatMode`, default Agent, persisted under `cocaptain.chatMode`). Project-scoped and node-scoped CoCaptain share that same stored mode.
+`CoCaptainTurnPlan` merges `CoCaptainTurnPurpose` with `CoCaptainChatMode` into a `CoCaptainTurnExecutionPolicy` in `CoCaptainAgentModels.swift`. The coordinator reads `turnPlan.effectivePolicy` instead of hardcoding exceptions. Standard turns follow the composer’s Agent/Ask/Plan selection (`chatMode`, default Agent, persisted under `cocaptain.chatMode`). Project-scoped and node-scoped CoCaptain share that same stored mode.
 
-| Policy | When | Structured tools | Enforce edit | Agentic retry | Execute / stage | Context |
+| Policy | When | Structured tools | Enforce work | Agentic retry | Execute / stage | Context |
 |------|------|------------------|--------------|---------------|-----------------|---------|
 | Agent | Standard turn + `.agent` mode | Yes | No — pure chat OK | Yes — invalid structured output only | Yes when the model emits work | Implementation |
 | Ask | Standard turn + `.ask` mode | No | No | No | No — prose only | Product |
 | Plan | Standard turn + `.plan` mode | No | No | No | No — outline prose only | Product |
-| Conversational | `.onboardingWelcome`, `.onboardingBuildHandoff` | No | No | No | No — prose only | Product |
-| Agentic (onboarding) | `.onboardingGuidedEdit` | Yes | Yes | Yes — missing or invalid work | Yes — stages a guided code edit for review | Implementation |
 
-Do not reintroduce keyword intent classification. Agent mode must stage reviewable edits from structured fixtures even when the user message lacks verbs like “make” or “build,” and must finish pure prose turns without “must include an edit” failures.
+Do not reintroduce keyword intent classification. Agent mode must stage reviewable AppActions from structured fixtures even when the user message lacks verbs like “make” or “build,” and must finish pure prose turns without “must include an edit” failures.
 
 Ask, Plan, and conversational turns still receive canvas context and mode/purpose prompt instructions, but the agent contract block is omitted from the LLM prompt and action catalogs / in-turn tool executors are not passed. Plan prompts steer toward numbered step outlines without implementing changes. If the model disobeys and emits `cocaptain_actions`, the coordinator ignores the payload and surfaces visible prose only. Connection-fallback “edits unavailable” notices apply only when the turn expected canvas work (`requiresDegradedConnectionNotice`), not Ask/Plan.
-
-`CoCaptainTurnCompletion.shouldAdvanceToOnboardingReview` is `true` when a guided-edit turn succeeds and presents a review bundle. If the model or network fails, `OnboardingCoCaptainReviewFixture` injects a local review bundle so onboarding never hard-blocks.
 
 When adding a new turn purpose, declare its execution policy in the same enum switch as its prompt instructions. When changing mode → policy mapping, update the turn-plan / coordinator policy tests.
 
 ## Structured Payload Contract
 
-There are two wire formats for node edits and clarifying questions; both converge on the same `CoCaptainAgentPayload`, so the validator, review builder, and conflict guard are format-independent.
+There are two wire formats for app actions and clarifying questions; both converge on the same `CoCaptainAgentPayload`, so the validator, review builder, and conflict guard are format-independent.
 
-### Native node-edit tools (preferred, feature-gated)
+### Native tools (preferred)
 
-When `NodeEditToolsFeature` is enabled (default on in Debug/TestFlight, off in production App Store builds, overridable via `cocaptain.nodeEditToolsEnabled`), the model is instructed to use Gemini function calling:
+The model is instructed to use Gemini function calling:
 
-- `propose_node_edit(nodeId, section, summary, operations[], learningNote)` — one call per node edit, with nested operation objects mirroring the XML shapes below.
+- `request_app_action(actionId, executionMode, …args)` — navigation and graph mutations. Mutating actions use `executionMode=pending`.
 - `ask_clarifying_question(prompt, options[])` — one short question with 2–4 outcome-phrased options.
 
-`CoCaptainNodeEditFunctionAdapter` maps these calls into the payload. With the flag on, the XML schema block is omitted from the prompt and the agentic retry message references the tools; the XML parser stays in place as a silent fallback for models that still emit it. If a turn contains both tool calls and an XML block, the function-call edits win and the XML edits are dropped. `CoCaptainAgentOutputSource` records which format delivered each directive for rollout telemetry.
+Legacy `propose_node_edit` calls are dropped with a diagnostic. Prefer graph AppActions such as `rename_node`, `delete_node`, `connect_nodes`, and `create_node` (optional `type` / `title` / `x` / `y`).
 
 ### XML block (fallback, and the first-release format for local LiteRT-LM)
 
@@ -122,19 +100,13 @@ The model may include one trailing XML block:
     <option>Second concrete outcome</option>
   </clarifying_question>
   <safe_actions>
-    <action id="id" />
+    <action id="go_root" />
   </safe_actions>
   <pending_actions>
-    <action id="id" />
+    <action id="rename_node" nodeId="…" title="New title" />
+    <action id="create_node" title="Cafe Menu" x="40" y="-20" />
+    <action id="connect_nodes" fromNodeId="…" toNodeId="…" kind="next" />
   </pending_actions>
-  <node_edits>
-    <node_edit role="miniApp" section="code" summary="Update headline">
-      <operation type="replace_all">
-        <content><![CDATA[<h1>New text</h1>]]></content>
-      </operation>
-      <learning_note concept="Short concept name">2-3 plain sentences about what this change teaches, referencing the user's own app.</learning_note>
-    </node_edit>
-  </node_edits>
 </cocaptain_actions>
 ```
 
@@ -144,22 +116,18 @@ Rules:
 - Malformed XML falls back to visible text with no payload.
 - `safeActions` may only contain available, non-mutating, autonomous actions.
 - `pendingActions` are shown for review before execution and are required for mutating or non-autonomous app actions.
-- `nodeEdits` target Mini-App nodes by `nodeId`, `role="miniApp"`, and `section="srs"` or `section="code"`, plus `NodePatchOperation` arrays.
-- Node edits require a non-empty summary and at least one operation.
-- Exact operations require a non-empty target.
-- `clarifying_question` needs a non-empty `prompt` and 2–4 non-empty options; malformed questions degrade to prose. A question-only payload counts as valid agentic work, and a question always takes precedence over node edits in the same turn (the edits are dropped). The same precedence applies to `ask_clarifying_question` vs `propose_node_edit` function calls.
-- `learning_note` (or the `learningNote` tool argument) is an optional short lesson attached to a node edit: a `concept` name plus 2–3 plain sentences. It is revealed as a "What you just learned" timeline card only after the user applies the edit — never on the review card. Malformed notes degrade to nil without invalidating the edit; when the model omits one, the coordinator builds a local fallback from the edit summary.
-- Prompt rules keep the mentor tone: never refuse, use plain non-technical language, and ask exactly one clarifying question with outcome-phrased options when unsure. "Title"/"headline" mean the visible page heading, not the browser tab title.
+- `clarifying_question` needs a non-empty `prompt` and 2–4 non-empty options; malformed questions degrade to prose. A question-only payload counts as valid agentic work, and a question always takes precedence over pending actions in the same turn (the actions are dropped). The same precedence applies to `ask_clarifying_question` vs `request_app_action` function calls.
+- Prompt rules keep the mentor tone: never refuse, use plain non-technical language, and ask exactly one clarifying question with outcome-phrased options when unsure.
 
 Invalid structured payloads are not partially executed. The coordinator retries once with parse or validation feedback. If the retry is still invalid, the user sees a recovery question rather than a silent no-op or unsafe action.
 
-Firebase function calling is the preferred path for app actions through the `request_app_action` tool, and — behind `NodeEditToolsFeature` — for node edits and clarifying questions through `propose_node_edit` / `ask_clarifying_question`. The XML block remains the compatibility format until tool usage dominates the output-source telemetry.
+Firebase function calling is the preferred path for app actions through `request_app_action` and clarifying questions through `ask_clarifying_question`. The XML block remains the compatibility format until tool usage dominates the output-source telemetry.
 
 If this payload changes, update parser/coordinator tests and the prompt contract in `LLMService`.
 
 ## Review Safety
 
-Node edits store their original section `baseText` when the Review Lifecycle stages the Review Bundle. On every approval, the lifecycle checks that the current Mini-App section still matches that base text before applying operations. This prevents silently overwriting user edits made after the model response.
+Pending AppActions stage without side effects. On every approval, the lifecycle re-checks that the action is still available in the current dispatcher context before performing it. Failed or unavailable actions become terminal conflicted review items instead of silently no-oping.
 
 Preserve this conflict guard when refactoring review state.
 
@@ -167,8 +135,7 @@ Preserve this conflict guard when refactoring review state.
 
 Unresolved Review Bundles on node-scoped CoCaptain sessions are JSON-encoded by
 `CoCaptainReviewLifecycle` into `NodeAgentState.pendingReviewBundlesData` and
-restored when the node CoCaptain panel reopens. Both `.pending` and
-`.needsClarification` are unresolved. Project-scoped Review Bundles are stored
+restored when the node CoCaptain panel reopens. Project-scoped Review Bundles are stored
 inside their `CoCaptainConversationStore` timeline sidecar and restored when
 that conversation becomes active. Auto-triggered agent pipeline runs stage
 through the same lifecycle, and canvas `awaitingReview` state is derived from
@@ -186,13 +153,13 @@ Review cards with a target node include **View on Canvas**, which flies the work
 - Keep model orchestration in `AgentContract/CoCaptainAgentCoordinator`.
 - Keep payload parsing deterministic and tolerant of malformed model output.
 - Prefer adding new app capabilities through `AppActionDispatcher` and `AppActionID`.
-- Add tests when changing parser fences, action classification, review item states, patch behavior, or retry behavior.
+- Add tests when changing parser fences, action classification, review item states, or retry behavior.
 - Do not leak raw structured payload text into the visible chat timeline.
 - Be careful with cancellation: only explicit Stop cancels streaming; dismissing and reopening the chat must preserve the active turn.
 - Keep project conversation persistence in `CoCaptainConversationStore`; do not add large chat timelines or attachments to `ProjectSnapshot`.
 - Keep validation near the coordinator boundary. SwiftUI views should render review state, not decide whether model output is safe.
 - Keep raw model wire formats behind output adapters. The coordinator should consume directives, not Firebase/Gemini-specific response parts.
-- Keep app actions in `request_app_action`; keep Mini-App SRS/code changes in `nodeEdits`.
+- Keep canvas mutations in `request_app_action` pending actions (`rename_node`, `delete_node`, `connect_nodes`, etc.). Do not reintroduce Mini-App code-section edit contracts.
 - Keep free-tier quota enforcement in `LLMService`/`TokenUsageLimiter`; CoCaptain UI should only surface quota state when a hard limit blocks a request, then route upgrades through a product CTA. Review bundles are reserved for workspace changes and assistant-proposed app actions.
 
 ## Verification Checklist
@@ -206,16 +173,14 @@ Review cards with a target node include **View on Canvas**, which flies the work
 - Simulate model/network/attachment/quota failures and confirm each has distinct recovery copy.
 - Open the input plus menu and confirm quick prompts send once.
 - Switch Agent ↔ Ask from the composer chip; confirm the placeholder updates and the choice survives relaunch (default Agent).
-- Pin a Mini-App with `@` in project CoCaptain; confirm the next turn’s context focuses that node; clear the pin and confirm full-canvas context returns.
-- In Agent mode, ask to rename a Mini-App headline and confirm a review bundle can stage Apply.
-- Switch to Ask and send the same rename prompt; confirm prose-only reply with no review staging.
+- Pin a node with `@` in project CoCaptain; confirm the next turn’s context focuses that node; clear the pin and confirm full-canvas context returns.
+- In Agent mode, ask to rename or connect nodes and confirm a review bundle can stage Apply.
+- Switch to Ask and send the same mutation prompt; confirm prose-only reply with no review staging.
 - Open node-scoped CoCaptain and confirm it uses the same Agent/Ask/Plan selection.
 - Send a direct navigation command and confirm safe actions execute or review appears as expected.
-- Ask for a code change and confirm review items are created rather than auto-applied.
-- Confirm review cards show focused Before/After windows around the change (not the entire Mini-App file).
-- Apply a Mini-App code edit and confirm the target Mini-App section updates plus the preview recompiles.
-- Confirm resolved Review Bundles collapse and an applied node edit exposes Undo while the undo manager can reverse it.
-- Modify a node after a review bundle is created, then apply the stale review item and confirm it conflicts.
+- Ask for a graph change and confirm review items are created rather than auto-applied.
+- Apply a pending rename/delete/connect action and confirm the canvas updates.
+- Confirm resolved Review Bundles collapse and applied mutating actions expose Undo while the undo manager can reverse them.
 - Scroll up during streaming and confirm the timeline does not pull away; use Jump to Latest and confirm the reading position restores after switching chats.
 - On regular-width iPad, confirm CoCaptain stays beside the canvas as an inspector; on compact width, confirm the detented sheet remains.
 - Switch projects while streaming and confirm the old task cancels while each project’s archived history remains isolated.
@@ -224,19 +189,16 @@ Review cards with a target node include **View on Canvas**, which flies the work
 
 Useful test coverage for this feature:
 
-- parser success, malformed JSON fallback, and trailing fence behavior.
-- coordinator safe action execution and review bundle generation.
-- validator rejection for unknown actions, unsafe safe actions, unavailable pending actions, and empty node edit operations.
-- function-call adapter mapping for safe actions, pending actions, malformed arguments, and mixed function-call + fenced node edits.
-- node-edit function adapter mapping for `propose_node_edit` / `ask_clarifying_question`, precedence of tool edits over XML edits, and flag-dependent prompt/retry content.
-- learning-note extraction, coordinator carry-through, fallback generation, and the apply-time mentor card.
-- `read_node_section` tool round-trips and context-budget slimming behavior.
-- Review Lifecycle staging and transitions, including unavailable actions, ambiguity, stale base text, bulk decisions, and node-only persistence.
+- parser success, malformed XML fallback, and trailing fence behavior.
+- coordinator safe action execution and review bundle generation for pending AppActions.
+- validator rejection for unknown actions, unsafe safe actions, unavailable pending actions, and duplicate/overlapping actions.
+- function-call adapter mapping for safe actions, pending actions, malformed arguments, and clarifying questions.
+- legacy `propose_node_edit` drop diagnostics.
+- Review Lifecycle staging and transitions, including unavailable actions, bulk decisions, and node-only persistence.
 - direct command handling for autonomous vs review-required actions; Ask skips mutating short-circuits.
-- retry behavior when agentic work is required (onboarding guided edit) but no structured payload is returned.
-- retry behavior when the structured payload is present but invalid (Agent and guided edit).
-- Agent pure-prose turns finish without forced edit retries; Agent stages reviews from structured fixtures without keyword verbs.
+- retry behavior when the structured payload is present but invalid (Agent).
+- Agent pure-prose turns finish without forced action retries; Agent stages reviews from structured fixtures without keyword verbs.
 - Ask never stages a review bundle from model output; Ask uses product context and omits degraded edit notices.
-- turn-plan policy mapping for Agent, Ask, and onboarding purposes.
+- turn-plan policy mapping for Agent, Ask, and Plan.
 - conversation archive encoding, per-project isolation, unsupported schema handling, and deletion.
-- retry/edit metadata preservation, explicit-stop behavior, background dismissal, and typed error transitions.
+- ProjectContextBuilder graph metadata (no code-section dumps).

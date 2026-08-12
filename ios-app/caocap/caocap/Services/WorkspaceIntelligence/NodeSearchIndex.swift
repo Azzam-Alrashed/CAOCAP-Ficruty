@@ -25,7 +25,6 @@ public struct NodeSearchIndex {
                 var score = 0
                 let titleLower = node.title.lowercased()
                 let miniAppContent = [
-                    node.miniApp?.srsText,
                     node.miniApp?.codeText
                 ]
                     .compactMap { $0 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Compact, draggable call chrome for Gemini Live voice and screen-share sessions.
+/// Compact, draggable call chrome for Gemini Live screen-share sessions.
 /// Starts at the top of the canvas and can be dragged out of the way.
 struct CopilotCallView: View {
     @Bindable var viewModel: CopilotCallViewModel

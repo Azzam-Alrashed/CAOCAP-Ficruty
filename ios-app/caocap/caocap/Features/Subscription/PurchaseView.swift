@@ -18,14 +18,8 @@ struct PurchaseView: View {
         FeatureItem(
             icon: "sparkles",
             title: "Unlimited CoCaptain",
-            subtitle: "Chat, voice, and screen-share with no monthly usage caps",
+            subtitle: "Chat and screen-share with no monthly usage caps",
             color: Color(hex: "A855F7")
-        ),
-        FeatureItem(
-            icon: "square.stack.3d.up.fill",
-            title: "Unlimited Mini-Apps",
-            subtitle: "Create as many Mini-Apps as you need — free is capped at 5",
-            color: Color(hex: "3B82F6")
         ),
     ]
 
@@ -235,7 +229,7 @@ struct PurchaseView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                     
-                    Text("Unlimited CoCaptain and Mini-Apps for your infinite canvas.")
+                    Text("Unlimited CoCaptain for your infinite canvas.")
                         .font(.system(size: 17))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -442,8 +436,8 @@ struct PurchaseView: View {
                     .background(Color.primary.opacity(0.1))
                 
                 VStack(alignment: .leading, spacing: 16) {
-                    BulletRow(icon: "sparkles", text: "Unlimited CoCaptain chat, voice, and screen-share.")
-                    BulletRow(icon: "square.stack.3d.up.fill", text: "Unlimited Mini-Apps across your canvases.")
+                    BulletRow(icon: "sparkles", text: "Unlimited CoCaptain chat and screen-share.")
+                    BulletRow(icon: "sparkles", text: "Unlimited CoCaptain with no monthly usage caps.")
                 }
             }
             .padding(24)

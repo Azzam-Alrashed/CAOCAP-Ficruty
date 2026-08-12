@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// The tutorial workspace hosts a seeded Hello World Mini-App used by interactive
-/// lessons that teach preview editing and canvas organization.
+/// lessons that teach opening nodes and canvas organization.
 public enum TutorialCanvasProvider {
     public static let miniAppNodeID = UUID(uuidString: "CA0CA003-0000-4000-8000-000000000001")!
 
@@ -21,12 +21,10 @@ public enum TutorialCanvasProvider {
             type: .miniApp,
             position: .zero,
             title: "Hello World",
-            subtitle: "Tap to run",
+            subtitle: "Tap to open",
             icon: "play.circle.fill",
             theme: .blue,
             miniApp: MiniAppState(
-                srsText: "# Hello World\n\nTap the headline and explore the live preview.",
-                srsReadinessState: .implementationReady,
                 codeText: ProjectTemplateProvider.defaultCode
             )
         )

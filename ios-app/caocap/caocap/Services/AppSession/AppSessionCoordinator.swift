@@ -16,14 +16,11 @@ final class AppSessionCoordinator {
 
     var showingFileImporter = false
     var showingPurchaseSheet = false
-    var showingMiniAppLimitAlert = false
     var showingUsage = false
     var showingSignIn = false
     var showingSettings = false
     var showingSnapshotBrowser = false
     var showingProfile = false
-    var showingActivity = false
-    var showingDaily = false
     var showingHelp = false
     var showingAppIconPicker = false
     var showConfetti = false
@@ -35,7 +32,7 @@ final class AppSessionCoordinator {
     var presentedMiniApp: SpatialNode?
     /// Non-mini-app node inspector sheet opened from the canvas.
     var selectedNodeDetail: SpatialNode?
-    var activeCopilotCallMode: CopilotInteractionMode = .voice
+    var activeCopilotCallMode: CopilotInteractionMode = .video
     var selectedCopilot: CopilotPersona = UserProfileStore().loadSelectedCopilot()
     @ObservationIgnored var copilotCallViewModel: CopilotCallViewModel?
 
@@ -121,7 +118,6 @@ final class AppSessionCoordinator {
         bindCommandPalette()
         configureActionsIfNeeded()
         actionDispatcher.refreshCopilotActionTitle()
-        wireGamification()
         syncViewportWithActiveStore()
         attachUndoManager(undoManager)
         coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
@@ -178,7 +174,6 @@ final class AppSessionCoordinator {
     func handleWorkspaceChange(undoManager: UndoManager?) {
         activeUndoManager = undoManager
         bindCommandPalette()
-        wireGamification()
         attachUndoManager(undoManager)
         coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
         syncCommandPaletteActions()
@@ -295,11 +290,8 @@ final class AppSessionCoordinator {
         authManager.signOut()
         LocalGemmaModelManager.shared.clearLocalModelCache()
         try await AppDataResetService.eraseLocalData()
-        ActivityStore.shared.reset()
-        GamificationStore.shared.reset()
 
         router = AppRouter()
-        wireGamification()
         commandPalette = CommandPaletteViewModel()
         coCaptain = CoCaptainViewModel()
         actionDispatcher = AppActionDispatcher()
@@ -438,14 +430,6 @@ final class AppSessionCoordinator {
             showingProfile = false
             dismissed = true
         }
-        if showingActivity {
-            showingActivity = false
-            dismissed = true
-        }
-        if showingDaily {
-            showingDaily = false
-            dismissed = true
-        }
         if showingHelp {
             showingHelp = false
             dismissed = true
@@ -504,7 +488,6 @@ final class AppSessionCoordinator {
                     }.value
 
                     logger.info("Successfully imported project to: \(newFileName)")
-                    ActivityStore.shared.recordSuccessfulSave(at: Date())
 
                     guard let self else { return }
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
@@ -605,25 +588,6 @@ final class AppSessionCoordinator {
         currentScale = viewport.scale
     }
 
-    private func wireGamification() {
-        let handler: ([DailyChallengeDefinition]) -> Void = { [weak self] _ in
-            self?.celebrateChallengeCompletion()
-        }
-        router.rootStore.onChallengesCompleted = handler
-        for store in router.projects.values {
-            store.onChallengesCompleted = handler
-        }
-        router.activeStore.onChallengesCompleted = handler
-        _ = GamificationStore.shared.evaluateMiniApps(
-            htmlSamples: router.activeStore.nodes.compactMap(\.miniApp?.compiledHTML)
-        )
-    }
-
-    private func celebrateChallengeCompletion() {
-        HapticsManager.shared.notification(.success)
-        presentConfetti()
-    }
-
     func ensureActionsConfigured() {
         configureActionsIfNeeded()
     }
@@ -648,16 +612,31 @@ final class AppSessionCoordinator {
             self.selectedNodeDetail = nil
             self.router.goBack()
         }
-        actionDispatcher.register(.createNode) { [weak self] in
-            self?.createNode(type: .miniApp)
+        actionDispatcher.register(.createNode) { [weak self] args in
+            self?.createNode(arguments: args)
+        }
+        actionDispatcher.register(.deleteNode) { [weak self] args in
+            self?.deleteNode(arguments: args)
+        }
+        actionDispatcher.register(.renameNode) { [weak self] args in
+            self?.renameNode(arguments: args)
+        }
+        actionDispatcher.register(.updateNodeSubtitle) { [weak self] args in
+            self?.updateNodeSubtitle(arguments: args)
+        }
+        actionDispatcher.register(.updateNodeIcon) { [weak self] args in
+            self?.updateNodeIcon(arguments: args)
+        }
+        actionDispatcher.register(.connectNodes) { [weak self] args in
+            self?.connectNodes(arguments: args)
+        }
+        actionDispatcher.register(.disconnectNodes) { [weak self] args in
+            self?.disconnectNodes(arguments: args)
         }
         actionDispatcher.register(.summonCoCaptain) { [weak self] in
             guard let self else { return }
             self.coCaptain.configureProjectSession(store: self.router.activeStore, dispatcher: self.actionDispatcher)
             self.presentCoCaptain()
-        }
-        actionDispatcher.register(.summonCopilotVoice) { [weak self] in
-            self?.presentCopilotCall(mode: .voice)
         }
         actionDispatcher.register(.summonCopilotVideo) { [weak self] in
             self?.presentCopilotCall(mode: .video)
@@ -680,10 +659,7 @@ final class AppSessionCoordinator {
             guard let self else { return }
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if let url = await ExportService.export(from: self.router.activeStore, format: .webBundle(includeProjectContext: true)) {
-                    self.exportURL = url
-                    self.showExportSheet = true
-                } else if let url = await ExportService.export(from: self.router.activeStore, format: .caocap) {
+                if let url = await ExportService.export(from: self.router.activeStore, format: .caocap) {
                     self.exportURL = url
                     self.showExportSheet = true
                 }
@@ -703,12 +679,6 @@ final class AppSessionCoordinator {
         }
         actionDispatcher.register(.openProfile) { [weak self] in
             self?.showingProfile = true
-        }
-        actionDispatcher.register(.openActivity) { [weak self] in
-            self?.showingActivity = true
-        }
-        actionDispatcher.register(.openDaily) { [weak self] in
-            self?.showingDaily = true
         }
         actionDispatcher.register(.openWhatsApp) {
             if let url = SupportContact.whatsAppURL {
@@ -820,48 +790,60 @@ final class AppSessionCoordinator {
               let idString = args["nodeId"], let uuid = UUID(uuidString: idString),
               let typeStr = args["type"], let type = NodeType(rawValue: typeStr) else { return }
 
-        if type == .miniApp,
-           let existing = router.activeStore.nodes.first(where: { $0.id == uuid }),
-           existing.type != .miniApp,
-           !canCreateMiniApp() {
-            presentMiniAppLimitReached()
-            return
-        }
-
         router.activeStore.updateNodeType(id: uuid, type: type)
     }
 
+    private func createNode(arguments args: [String: String]?) {
+        let type = args?["type"].flatMap(NodeType.init(rawValue:)) ?? .miniApp
+        let title = args?["title"]
+        let position: CGPoint?
+        if let xStr = args?["x"], let yStr = args?["y"],
+           let x = Double(xStr), let y = Double(yStr) {
+            position = CGPoint(x: x, y: y)
+        } else {
+            position = nil
+        }
+        router.activeStore.addNode(type: type, title: title, position: position)
+    }
+
+    private func deleteNode(arguments args: [String: String]?) {
+        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString) else { return }
+        router.activeStore.deleteNode(id: uuid)
+    }
+
+    private func renameNode(arguments args: [String: String]?) {
+        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString),
+              let title = args?["title"] else { return }
+        router.activeStore.updateNodeTitle(id: uuid, title: title)
+    }
+
+    private func updateNodeSubtitle(arguments args: [String: String]?) {
+        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString) else { return }
+        router.activeStore.updateNodeSubtitle(id: uuid, subtitle: args?["subtitle"])
+    }
+
+    private func updateNodeIcon(arguments args: [String: String]?) {
+        guard let idString = args?["nodeId"], let uuid = UUID(uuidString: idString) else { return }
+        router.activeStore.updateNodeIcon(id: uuid, icon: args?["icon"])
+    }
+
+    private func connectNodes(arguments args: [String: String]?) {
+        guard let fromString = args?["fromNodeId"], let fromID = UUID(uuidString: fromString),
+              let toString = args?["toNodeId"], let toID = UUID(uuidString: toString) else { return }
+        let kind = args?["kind"]
+            .flatMap(NodeConnectionKind.init(rawValue:)) ?? .next
+        router.activeStore.connectNodes(fromID: fromID, toID: toID, kind: kind)
+    }
+
+    private func disconnectNodes(arguments args: [String: String]?) {
+        guard let fromString = args?["fromNodeId"], let fromID = UUID(uuidString: fromString),
+              let toString = args?["toNodeId"], let toID = UUID(uuidString: toString) else { return }
+        let kind = args?["kind"].flatMap(NodeConnectionKind.init(rawValue:))
+        router.activeStore.disconnectNodes(fromID: fromID, toID: toID, kind: kind)
+    }
+
     private func createNode(type: NodeType) {
-        if type == .miniApp, !canCreateMiniApp() {
-            presentMiniAppLimitReached()
-            return
-        }
         router.activeStore.addNode(type: type)
-    }
-
-    private func canCreateMiniApp() -> Bool {
-        let subscriptionManager = SubscriptionManager.shared
-        let limiter = MiniAppCreationLimiter()
-        let count = userMiniAppCount()
-        if case .requiresPro = limiter.gate(
-            isSubscribed: subscriptionManager.isSubscribed,
-            miniAppCount: count
-        ) {
-            return false
-        }
-        return true
-    }
-
-    func userMiniAppCount() -> Int {
-        MiniAppCreationLimiter().countUserMiniApps(
-            persistence: ProjectPersistenceService(),
-            liveNodesByFileName: router.liveNodesByFileName()
-        )
-    }
-
-    private func presentMiniAppLimitReached() {
-        HapticsManager.shared.notification(.warning)
-        showingMiniAppLimitAlert = true
     }
 
     func focusCanvasNode(_ nodeId: UUID) {

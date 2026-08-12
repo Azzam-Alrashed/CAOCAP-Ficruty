@@ -5,323 +5,151 @@ import Testing
 
 @MainActor
 struct CoCaptainReviewLifecycleTests {
-    @Test func stagingUniqueEditCapturesCanonicalIdentityWithoutMutation() throws {
-        let store = makeStore()
-        let nodeID = try #require(store.nodes.first?.id)
-        let original = try #require(store.nodes.first?.miniApp?.codeText)
+    @Test func stagingPendingActionCapturesIdentityWithoutPerforming() throws {
+        let dispatcher = LifecycleActionDispatcher()
         let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: nil)
+            .session(scope: .project, store: makeStore(), dispatcher: dispatcher)
 
         let record = try #require(
             session.stage(
                 draft(
-                    nodeID: nodeID,
-                    replacement: "<h1>Updated</h1>",
-                    learningNote: nil
+                    actionID: .renameNode,
+                    args: ["nodeId": UUID().uuidString, "title": "Renamed"]
                 )
             )
         )
 
         #expect(record.id == record.bundle.id)
+        #expect(record.bundle.items.count == 1)
         #expect(record.bundle.items.first?.status == .pending)
-        #expect(record.bundle.items.first?.beforePreview?.contains("Hello World!") == true)
-        #expect(record.bundle.items.first?.preview.contains("Updated") == true)
-        #expect(record.bundle.items.first?.learningNote != nil)
-        #expect(store.nodes.first?.miniApp?.codeText == original)
+        #expect(record.bundle.items.first?.preview.contains("title=Renamed") == true)
+        #expect(dispatcher.performed.isEmpty)
+        #expect(session.hasUnresolvedReviews)
     }
 
-    @Test func stagingAmbiguousMissingAndUnavailableWorkProducesExplicitOutcomes() throws {
-        let ambiguousStore = makeAmbiguousStore()
-        let ambiguousNodeID = try #require(ambiguousStore.nodes.first?.id)
-        let ambiguousSession = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: ambiguousStore, dispatcher: nil)
-        let ambiguousRecord = try #require(
-            ambiguousSession.stage(
+    @Test func stagingUnknownAndUnavailableActionsProducesConflictedItems() throws {
+        let session = CoCaptainReviewLifecycle()
+            .session(scope: .project, store: makeStore(), dispatcher: LifecycleActionDispatcher())
+
+        let unknownRecord = try #require(
+            session.stage(
                 CoCaptainReviewLifecycle.Draft(
-                    nodeEdits: [
-                        CoCaptainNodeEditProposal(
-                            nodeID: ambiguousNodeID,
-                            summary: "Rename one label",
-                            operations: [
-                                NodePatchOperation(
-                                    type: .replaceExact,
-                                    target: "Repeat me",
-                                    content: "Chosen"
-                                )
-                            ]
-                        )
-                    ]
+                    pendingActions: [CoCaptainAgentAction(actionID: "launch_rocket")]
                 )
             )
         )
-
-        #expect(ambiguousRecord.bundle.items.first?.status == .needsClarification)
-        #expect(ambiguousRecord.bundle.items.first?.clarificationCandidates?.count == 2)
-
-        let missingRecord = try #require(
-            CoCaptainReviewLifecycle()
-                .session(scope: .project, store: ambiguousStore, dispatcher: nil)
-                .stage(draft(nodeID: UUID(), replacement: "Missing"))
-        )
-        #expect(missingRecord.bundle.items.first?.status == .conflicted)
-
-        let unavailableRecord = try #require(
-            CoCaptainReviewLifecycle()
-                .session(scope: .project, store: ambiguousStore, dispatcher: nil)
-                .stage(
-                    CoCaptainReviewLifecycle.Draft(
-                        pendingActions: [
-                            CoCaptainAgentAction(actionID: "launch_rocket")
-                        ]
-                    )
-                )
-        )
-        let unavailableItem = try #require(unavailableRecord.bundle.items.first)
-        #expect(unavailableItem.status == .conflicted)
-        guard case .unavailableAction(let actionID, _) = unavailableItem.source else {
-            Issue.record("Expected an explicit unavailable action source")
+        let unknownItem = try #require(unknownRecord.bundle.items.first)
+        #expect(unknownItem.status == .conflicted)
+        guard case .unavailableAction(let actionID, _) = unknownItem.source else {
+            Issue.record("Expected unavailableAction source")
             return
         }
         #expect(actionID == "launch_rocket")
 
-        let noStoreRecord = try #require(
+        let noDispatcherRecord = try #require(
             CoCaptainReviewLifecycle()
-                .session(scope: .project, store: nil, dispatcher: nil)
-                .stage(draft(nodeID: ambiguousNodeID, replacement: "No store"))
+                .session(scope: .project, store: makeStore(), dispatcher: nil)
+                .stage(draft(actionID: .createNode, args: ["title": "New"]))
         )
-        #expect(noStoreRecord.bundle.items.first?.status == .conflicted)
-    }
-
-    @Test func clarificationRestagesWithoutMutatingCanvas() throws {
-        let store = makeAmbiguousStore()
-        let nodeID = try #require(store.nodes.first?.id)
-        let original = try #require(store.nodes.first?.miniApp?.codeText)
-        let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: nil)
-        let record = try #require(
-            session.stage(
-                CoCaptainReviewLifecycle.Draft(
-                    nodeEdits: [
-                        CoCaptainNodeEditProposal(
-                            nodeID: nodeID,
-                            summary: "Rename one label",
-                            operations: [
-                                NodePatchOperation(
-                                    type: .replaceExact,
-                                    target: "Repeat me",
-                                    content: "Chosen"
-                                )
-                            ]
-                        )
-                    ]
-                )
-            )
-        )
-        let item = try #require(record.bundle.items.first)
-        let candidate = try #require(item.clarificationCandidates?.first)
-
-        let transition = try session.resolve(
-            .chooseClarification(itemID: item.id, candidateID: candidate.id),
-            in: record.id
-        ).get()
-
-        let updated = try #require(transition.record.bundle.items.first)
-        #expect(updated.status == .pending)
-        #expect(updated.clarificationCandidates == nil)
-        #expect(transition.effects == [.clarificationResolved(itemID: item.id)])
-        #expect(store.nodes.first?.miniApp?.codeText == original)
-        #expect(store.history.isEmpty)
-    }
-
-    @Test func approvalAppliesEditAndReturnsOrderedLearningEffects() async throws {
-        let store = makeStore()
-        let nodeID = try #require(store.nodes.first?.id)
-        let note = CoCaptainLearningNote(
-            concept: "Headings",
-            body: "The main heading introduces the page."
-        )
-        let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: nil)
-        let record = try #require(
-            session.stage(
-                draft(
-                    nodeID: nodeID,
-                    replacement: "<h1>Approved</h1>",
-                    learningNote: note
-                )
-            )
-        )
-        let itemID = try #require(record.bundle.items.first?.id)
-
-        let transition = try session.resolve(
-            .approve(itemID: itemID),
-            in: record.id
-        ).get()
-
-        #expect(transition.record.bundle.items.first?.status == .applied)
-        #expect(store.nodes.first?.miniApp?.codeText == "<h1>Approved</h1>")
-        let checkpointWasPersisted = await waitUntil {
-            store.history.count == 1
-        }
-        #expect(checkpointWasPersisted)
-        #expect(store.history.count == 1)
-        #expect(transition.effects.count == 2)
-        guard case .nodeEditApplied(let appliedID, let appliedNodeID, _, _) = transition.effects[0],
-              case .learningNote(let learningID, let returnedNote) = transition.effects[1] else {
-            Issue.record("Expected applied then learning effects")
-            return
-        }
-        #expect(appliedID == itemID)
-        #expect(learningID == itemID)
-        #expect(returnedNote == note)
-        #expect(appliedNodeID == store.nodes.first?.id)
-    }
-
-    @Test func staleApprovalConflictsWithoutMutatingOverNewerText() throws {
-        let store = makeStore()
-        let nodeID = try #require(store.nodes.first?.id)
-        let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: nil)
-        let record = try #require(
-            session.stage(draft(nodeID: nodeID, replacement: "<h1>Suggested</h1>"))
-        )
-        let itemID = try #require(record.bundle.items.first?.id)
-        store.updateMiniAppCode(id: nodeID, text: "<h1>User edit</h1>", persist: false)
-
-        let transition = try session.resolve(
-            .approve(itemID: itemID),
-            in: record.id
-        ).get()
-
-        #expect(transition.record.bundle.items.first?.status == .conflicted)
-        #expect(store.nodes.first?.miniApp?.codeText == "<h1>User edit</h1>")
-        #expect(transition.effects.contains { effect in
-            if case .conflicted(let conflictedID, _) = effect {
-                return conflictedID == itemID
-            }
-            return false
-        })
+        #expect(noDispatcherRecord.bundle.items.first?.status == .conflicted)
     }
 
     @Test func appActionRequiresApprovalAndUsesAgentApprovedSource() throws {
-        let store = makeStore()
         let dispatcher = LifecycleActionDispatcher()
         let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: dispatcher)
+            .session(scope: .project, store: makeStore(), dispatcher: dispatcher)
         let record = try #require(
             session.stage(
-                CoCaptainReviewLifecycle.Draft(
-                    pendingActions: [
-                        CoCaptainAgentAction(
-                            actionID: AppActionID.createNode.rawValue,
-                            args: ["title": "New"]
-                        )
-                    ]
-                )
+                draft(actionID: .createNode, args: ["title": "New", "x": "40", "y": "-20"])
             )
         )
         let itemID = try #require(record.bundle.items.first?.id)
         #expect(dispatcher.performed.isEmpty)
 
-        let transition = try session.resolve(
-            .approve(itemID: itemID),
-            in: record.id
-        ).get()
+        let transition = try session.resolve(.approve(itemID: itemID), in: record.id).get()
 
         #expect(transition.record.bundle.items.first?.status == .applied)
         #expect(dispatcher.performed.first?.source == .agentApproved)
-        #expect(dispatcher.performed.first?.arguments == ["title": "New"])
+        #expect(dispatcher.performed.first?.id == .createNode)
+        #expect(dispatcher.performed.first?.arguments?["title"] == "New")
+        #expect(dispatcher.performed.first?.arguments?["x"] == "40")
+        #expect(session.hasUnresolvedReviews == false)
     }
 
-    @Test func failedAppActionBecomesTerminalConflict() throws {
-        let dispatcher = LifecycleActionDispatcher(executed: false)
+    @Test func renameDeleteAndConnectActionsStageAndApplyThroughReview() throws {
+        let fromID = UUID()
+        let toID = UUID()
+        let dispatcher = LifecycleActionDispatcher(
+            actions: [
+                .renameNode,
+                .deleteNode,
+                .connectNodes
+            ]
+        )
         let session = CoCaptainReviewLifecycle()
             .session(scope: .project, store: makeStore(), dispatcher: dispatcher)
         let record = try #require(
             session.stage(
                 CoCaptainReviewLifecycle.Draft(
                     pendingActions: [
-                        CoCaptainAgentAction(actionID: AppActionID.createNode.rawValue)
+                        CoCaptainAgentAction(
+                            actionID: AppActionID.renameNode.rawValue,
+                            args: ["nodeId": fromID.uuidString, "title": "Home"]
+                        ),
+                        CoCaptainAgentAction(
+                            actionID: AppActionID.connectNodes.rawValue,
+                            args: [
+                                "fromNodeId": fromID.uuidString,
+                                "toNodeId": toID.uuidString,
+                                "kind": "next"
+                            ]
+                        ),
+                        CoCaptainAgentAction(
+                            actionID: AppActionID.deleteNode.rawValue,
+                            args: ["nodeId": toID.uuidString]
+                        )
                     ]
                 )
             )
         )
+
+        #expect(record.bundle.items.count == 3)
+        #expect(record.bundle.title.lowercased().contains("3"))
+
+        let transition = try session.resolve(.approveAll, in: record.id).get()
+
+        #expect(transition.record.bundle.items.allSatisfy { $0.status == .applied })
+        #expect(dispatcher.performed.map(\.id) == [.renameNode, .connectNodes, .deleteNode])
+        #expect(dispatcher.performed.allSatisfy { $0.source == .agentApproved })
+    }
+
+    @Test func failedAppActionBecomesTerminalConflict() throws {
+        let dispatcher = LifecycleActionDispatcher(executed: false)
+        let session = CoCaptainReviewLifecycle()
+            .session(scope: .project, store: makeStore(), dispatcher: dispatcher)
+        let record = try #require(session.stage(draft(actionID: .createNode)))
         let itemID = try #require(record.bundle.items.first?.id)
 
-        let transition = try session.resolve(
-            .approve(itemID: itemID),
-            in: record.id
-        ).get()
+        let transition = try session.resolve(.approve(itemID: itemID), in: record.id).get()
 
         #expect(transition.record.bundle.items.first?.status == .conflicted)
         #expect(session.hasUnresolvedReviews == false)
     }
 
-    @Test func applyAllUsesOneCheckpointAndContinuesAfterConflict() async throws {
-        let first = SpatialNode(
-            type: .miniApp,
-            position: .zero,
-            title: "First",
-            miniApp: MiniAppState(codeText: "<h1>First</h1>")
+    @Test func rejectAllRejectsPendingItemsWithoutPerforming() throws {
+        let dispatcher = LifecycleActionDispatcher(
+            actions: [.createNode, .renameNode]
         )
-        let second = SpatialNode(
-            type: .miniApp,
-            position: CGPoint(x: 100, y: 0),
-            title: "Second",
-            miniApp: MiniAppState(codeText: "<h1>Second</h1>")
-        )
-        let store = makeStore(nodes: [first, second])
         let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: nil)
-        let record = try #require(
-            session.stage(
-                CoCaptainReviewLifecycle.Draft(
-                    nodeEdits: [
-                        proposal(nodeID: first.id, summary: "Update first", replacement: "Agent first"),
-                        proposal(nodeID: second.id, summary: "Update second", replacement: "Agent second")
-                    ]
-                )
-            )
-        )
-        store.updateMiniAppCode(id: first.id, text: "User first", persist: false)
-
-        let transition = try session.resolve(.approveAll, in: record.id).get()
-
-        #expect(transition.record.bundle.items[0].status == .conflicted)
-        #expect(transition.record.bundle.items[1].status == .applied)
-        #expect(store.nodes.first(where: { $0.id == first.id })?.miniApp?.codeText == "User first")
-        #expect(store.nodes.first(where: { $0.id == second.id })?.miniApp?.codeText == "Agent second")
-        let checkpointWasPersisted = await waitUntil {
-            store.history.count == 1
-        }
-        #expect(checkpointWasPersisted)
-        #expect(store.history.count == 1)
-        #expect(transition.effects.count == 3)
-    }
-
-    @Test func rejectAllRejectsPendingAndClarificationItems() throws {
-        let store = makeAmbiguousStore()
-        let nodeID = try #require(store.nodes.first?.id)
-        let dispatcher = LifecycleActionDispatcher()
-        let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: dispatcher)
+            .session(scope: .project, store: makeStore(), dispatcher: dispatcher)
         let record = try #require(
             session.stage(
                 CoCaptainReviewLifecycle.Draft(
                     pendingActions: [
-                        CoCaptainAgentAction(actionID: AppActionID.createNode.rawValue)
-                    ],
-                    nodeEdits: [
-                        CoCaptainNodeEditProposal(
-                            nodeID: nodeID,
-                            summary: "Rename one label",
-                            operations: [
-                                NodePatchOperation(
-                                    type: .replaceExact,
-                                    target: "Repeat me",
-                                    content: "Chosen"
-                                )
-                            ]
+                        CoCaptainAgentAction(actionID: AppActionID.createNode.rawValue),
+                        CoCaptainAgentAction(
+                            actionID: AppActionID.renameNode.rawValue,
+                            args: ["nodeId": UUID().uuidString, "title": "X"]
                         )
                     ]
                 )
@@ -336,13 +164,10 @@ struct CoCaptainReviewLifecycleTests {
     }
 
     @Test func callerFailuresDoNotChangeRecord() throws {
-        let store = makeStore()
-        let nodeID = try #require(store.nodes.first?.id)
+        let dispatcher = LifecycleActionDispatcher()
         let session = CoCaptainReviewLifecycle()
-            .session(scope: .project, store: store, dispatcher: nil)
-        let record = try #require(
-            session.stage(draft(nodeID: nodeID, replacement: "Updated"))
-        )
+            .session(scope: .project, store: makeStore(), dispatcher: dispatcher)
+        let record = try #require(session.stage(draft(actionID: .createNode)))
         let itemID = try #require(record.bundle.items.first?.id)
         _ = try session.resolve(.reject(itemID: itemID), in: record.id).get()
         let before = try #require(session.records.first)
@@ -357,39 +182,22 @@ struct CoCaptainReviewLifecycleTests {
         #expect(session.records.first == before)
     }
 
-    @Test func nodePersistenceKeepsClarificationAndRemovesTerminalRecords() throws {
-        let store = makeAmbiguousStore()
+    @Test func nodePersistenceRemovesTerminalRecords() throws {
+        let store = makeStore()
         let nodeID = try #require(store.nodes.first?.id)
+        let dispatcher = LifecycleActionDispatcher()
         let lifecycle = CoCaptainReviewLifecycle()
         let session = lifecycle.session(
             scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
-        let record = try #require(
-            session.stage(
-                CoCaptainReviewLifecycle.Draft(
-                    nodeEdits: [
-                        CoCaptainNodeEditProposal(
-                            nodeID: nodeID,
-                            summary: "Rename one label",
-                            operations: [
-                                NodePatchOperation(
-                                    type: .replaceExact,
-                                    target: "Repeat me",
-                                    content: "Chosen"
-                                )
-                            ]
-                        )
-                    ]
-                )
-            )
-        )
+        let record = try #require(session.stage(draft(actionID: .createNode)))
 
         #expect(store.nodes.first?.agentState.pendingReviewBundlesData.count == 1)
         #expect(
-            lifecycle.session(scope: .node(nodeID), store: store, dispatcher: nil)
-                .records.first?.bundle.items.first?.status == .needsClarification
+            lifecycle.session(scope: .node(nodeID), store: store, dispatcher: dispatcher)
+                .records.first?.bundle.items.first?.status == .pending
         )
 
         let itemID = try #require(record.bundle.items.first?.id)
@@ -401,24 +209,25 @@ struct CoCaptainReviewLifecycleTests {
     @Test func interleavedNodeSessionsPreserveBundlesStagedByOtherSessions() throws {
         let store = makeStore()
         let nodeID = try #require(store.nodes.first?.id)
+        let dispatcher = LifecycleActionDispatcher()
         let lifecycle = CoCaptainReviewLifecycle()
         let firstSession = lifecycle.session(
             scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
         let firstRecord = try #require(
-            firstSession.stage(draft(nodeID: nodeID, replacement: "First"))
+            firstSession.stage(draft(actionID: .createNode, args: ["title": "First"]))
         )
         let firstItemID = try #require(firstRecord.bundle.items.first?.id)
 
         let secondSession = lifecycle.session(
             scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
         let secondRecord = try #require(
-            secondSession.stage(draft(nodeID: nodeID, replacement: "Second"))
+            secondSession.stage(draft(actionID: .createNode, args: ["title": "Second"]))
         )
 
         _ = try firstSession.resolve(
@@ -429,95 +238,90 @@ struct CoCaptainReviewLifecycleTests {
         let restored = lifecycle.session(
             scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
         #expect(restored.records.map(\.id) == [secondRecord.id])
         #expect(store.nodes.first?.agentState.pendingReviewBundlesData.count == 1)
     }
 
     @Test func interleavedNodeSessionsMergeDecisionsWithinOneBundle() throws {
-        let firstNode = SpatialNode(
-            type: .miniApp,
-            position: .zero,
-            title: "First",
-            miniApp: MiniAppState(codeText: "First")
-        )
-        let secondNode = SpatialNode(
-            type: .miniApp,
-            position: CGPoint(x: 100, y: 0),
-            title: "Second",
-            miniApp: MiniAppState(codeText: "Second")
-        )
-        let store = makeStore(nodes: [firstNode, secondNode])
+        let store = makeStore()
+        let nodeID = try #require(store.nodes.first?.id)
+        let dispatcher = LifecycleActionDispatcher(actions: [.createNode, .renameNode])
         let lifecycle = CoCaptainReviewLifecycle()
         let firstSession = lifecycle.session(
-            scope: .node(firstNode.id),
+            scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
         let record = try #require(
             firstSession.stage(
                 CoCaptainReviewLifecycle.Draft(
-                    nodeEdits: [
-                        proposal(
-                            nodeID: firstNode.id,
-                            summary: "Update first",
-                            replacement: "First updated"
+                    pendingActions: [
+                        CoCaptainAgentAction(
+                            actionID: AppActionID.createNode.rawValue,
+                            args: ["title": "A"]
                         ),
-                        proposal(
-                            nodeID: secondNode.id,
-                            summary: "Update second",
-                            replacement: "Second updated"
+                        CoCaptainAgentAction(
+                            actionID: AppActionID.renameNode.rawValue,
+                            args: ["nodeId": nodeID.uuidString, "title": "B"]
                         )
                     ]
                 )
             )
         )
-        let firstItemID = record.bundle.items[0].id
-        let secondItemID = record.bundle.items[1].id
-        let secondSession = lifecycle.session(
-            scope: .node(firstNode.id),
-            store: store,
-            dispatcher: nil
-        )
+        let firstItemID = try #require(record.bundle.items.first?.id)
+        let secondItemID = try #require(record.bundle.items.last?.id)
 
         _ = try firstSession.resolve(
-            .reject(itemID: firstItemID),
-            in: record.id
-        ).get()
-        let transition = try secondSession.resolve(
-            .reject(itemID: secondItemID),
+            .approve(itemID: firstItemID),
             in: record.id
         ).get()
 
-        #expect(transition.record.bundle.items.allSatisfy { $0.status == .rejected })
-        #expect(store.nodes.first?.agentState.pendingReviewBundlesData.isEmpty == true)
+        let secondSession = lifecycle.session(
+            scope: .node(nodeID),
+            store: store,
+            dispatcher: dispatcher
+        )
+        _ = try secondSession.resolve(
+            .approve(itemID: secondItemID),
+            in: record.id
+        ).get()
+
+        let restored = lifecycle.session(
+            scope: .node(nodeID),
+            store: store,
+            dispatcher: dispatcher
+        )
+        #expect(restored.records.isEmpty)
+        #expect(dispatcher.performed.map(\.id) == [.createNode, .renameNode])
     }
 
     @Test func projectSessionsAreEphemeralAndClearIsScopeAware() throws {
         let store = makeStore()
         let nodeID = try #require(store.nodes.first?.id)
+        let dispatcher = LifecycleActionDispatcher()
         let lifecycle = CoCaptainReviewLifecycle()
         let projectSession = lifecycle.session(
             scope: .project,
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
-        _ = projectSession.stage(draft(nodeID: nodeID, replacement: "Project"))
+        _ = projectSession.stage(draft(actionID: .createNode, args: ["title": "Project"]))
 
         #expect(projectSession.records.count == 1)
         #expect(store.nodes.first?.agentState.pendingReviewBundlesData.isEmpty == true)
         #expect(
-            lifecycle.session(scope: .project, store: store, dispatcher: nil)
+            lifecycle.session(scope: .project, store: store, dispatcher: dispatcher)
                 .records.isEmpty
         )
 
         let nodeSession = lifecycle.session(
             scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         )
-        _ = nodeSession.stage(draft(nodeID: nodeID, replacement: "Node"))
+        _ = nodeSession.stage(draft(actionID: .createNode, args: ["title": "Node"]))
         #expect(store.nodes.first?.agentState.pendingReviewBundlesData.count == 1)
         nodeSession.clear()
         #expect(nodeSession.records.isEmpty)
@@ -532,17 +336,10 @@ struct CoCaptainReviewLifecycleTests {
             id: UUID(),
             items: [
                 PendingReviewItem(
-                    targetLabel: "Mini-App CODE",
+                    targetLabel: "Create Mini-App",
                     summary: "Legacy",
-                    preview: "Updated",
-                    source: .nodeEdit(
-                        role: .miniApp,
-                        section: .code,
-                        operations: [
-                            NodePatchOperation(type: .replaceAll, content: "Updated")
-                        ],
-                        baseText: try #require(store.nodes.first?.miniApp?.codeText)
-                    )
+                    preview: "title=Legacy",
+                    source: .appAction(.createNode, ["title": "Legacy"])
                 )
             ]
         )
@@ -561,7 +358,7 @@ struct CoCaptainReviewLifecycleTests {
         store.updateNodeAgentState(id: nodeID, agentState: state, persist: false)
 
         let session = CoCaptainReviewLifecycle()
-            .session(scope: .node(nodeID), store: store, dispatcher: nil)
+            .session(scope: .node(nodeID), store: store, dispatcher: LifecycleActionDispatcher())
 
         let restored = try #require(session.records.first)
         #expect(session.records.count == 1)
@@ -608,74 +405,21 @@ struct CoCaptainReviewLifecycleTests {
                     type: .miniApp,
                     position: .zero,
                     title: "Mini-App",
-                    miniApp: MiniAppState(codeText: "<h1>Hello World!</h1>")
-                )
-            ]
-        )
-    }
-
-    private func makeAmbiguousStore() -> ProjectStore {
-        makeStore(
-            nodes: [
-                SpatialNode(
-                    type: .miniApp,
-                    position: .zero,
-                    title: "Mini-App",
-                    miniApp: MiniAppState(
-                        codeText: "<p>Repeat me</p><p>Repeat me</p>"
-                    )
+                    miniApp: MiniAppState()
                 )
             ]
         )
     }
 
     private func draft(
-        nodeID: UUID,
-        replacement: String,
-        learningNote: CoCaptainLearningNote? = nil
+        actionID: AppActionID,
+        args: [String: String]? = nil
     ) -> CoCaptainReviewLifecycle.Draft {
         CoCaptainReviewLifecycle.Draft(
-            nodeEdits: [
-                proposal(
-                    nodeID: nodeID,
-                    summary: "Update heading",
-                    replacement: replacement,
-                    learningNote: learningNote
-                )
+            pendingActions: [
+                CoCaptainAgentAction(actionID: actionID.rawValue, args: args)
             ]
         )
-    }
-
-    private func proposal(
-        nodeID: UUID,
-        summary: String,
-        replacement: String,
-        learningNote: CoCaptainLearningNote? = nil
-    ) -> CoCaptainNodeEditProposal {
-        CoCaptainNodeEditProposal(
-            nodeID: nodeID,
-            role: .miniApp,
-            section: .code,
-            summary: summary,
-            operations: [
-                NodePatchOperation(type: .replaceAll, content: replacement)
-            ],
-            learningNote: learningNote
-        )
-    }
-
-    private func waitUntil(
-        timeout: Duration = .seconds(2),
-        condition: @escaping () -> Bool
-    ) async -> Bool {
-        let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: timeout)
-
-        while !condition() {
-            guard clock.now < deadline else { return false }
-            try? await clock.sleep(for: .milliseconds(10))
-        }
-        return true
     }
 }
 
@@ -693,21 +437,22 @@ private final class LifecycleActionDispatcher: AppActionPerforming {
         let arguments: [String: String]?
     }
 
-    let availableActions: [AppActionDefinition] = [
-        AppActionDefinition(
-            id: .createNode,
-            title: "Create New Node",
-            icon: "plus",
-            category: .project,
-            isMutating: true,
-            allowsAutonomousExecution: false
-        )
-    ]
+    let availableActions: [AppActionDefinition]
     private let executed: Bool
     private(set) var performed: [PerformedAction] = []
 
-    init(executed: Bool = true) {
+    init(executed: Bool = true, actions: [AppActionID] = [.createNode, .renameNode]) {
         self.executed = executed
+        self.availableActions = actions.map { id in
+            AppActionDefinition(
+                id: id,
+                title: id.rawValue,
+                icon: "sparkles",
+                category: .project,
+                isMutating: true,
+                allowsAutonomousExecution: false
+            )
+        }
     }
 
     func definition(for id: AppActionID) -> AppActionDefinition? {

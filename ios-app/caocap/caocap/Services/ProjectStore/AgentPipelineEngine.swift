@@ -137,12 +137,13 @@ public final class AgentPipelineEngine {
     func stageReviewDraft(
         _ reviewDraft: CoCaptainReviewLifecycle.Draft,
         nodeID: UUID,
-        store: ProjectStore
+        store: ProjectStore,
+        dispatcher: (any AppActionPerforming)? = nil
     ) -> CoCaptainReviewLifecycle.Record? {
         reviewLifecycle.session(
             scope: .node(nodeID),
             store: store,
-            dispatcher: nil
+            dispatcher: dispatcher
         ).stage(reviewDraft)
     }
 }

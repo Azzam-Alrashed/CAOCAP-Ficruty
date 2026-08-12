@@ -18,7 +18,7 @@ struct ProjectTemplateProviderTests {
         #expect(nodes.isEmpty)
     }
 
-    @Test func defaultMiniAppCodeRemainsAvailableForManualCreation() {
-        #expect(ProjectTemplateProvider.defaultCode.contains("Hello World!"))
+    @Test func defaultMiniAppCodeIsEmptyPlaceholder() {
+        #expect(ProjectTemplateProvider.defaultCode.isEmpty)
     }
 }

@@ -26,14 +26,11 @@ public class LocalizationManager {
         "Projects",
         "Settings",
         "New Project",
-        "Mini-App SRS",
         "Mini-App Code",
         "HTML",
         "CSS",
         "JavaScript",
         "New Logic",
-        "Activity",
-        "Daily",
         "Help",
         "WhatsApp"
     ]

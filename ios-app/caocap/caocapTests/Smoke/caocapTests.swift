@@ -50,18 +50,8 @@ struct caocapTests {
         #expect(ProjectTemplateProvider.defaultNodes.isEmpty)
     }
 
-    @Test func defaultMiniAppCodeRemainsAvailableForManualCreation() {
-        #expect(ProjectTemplateProvider.defaultCode.contains("Hello World!"))
-    }
-
-    @Test func srsScaffoldPreservesDraftAndAddsMissingSections() {
-        let draft = "# Intent\nBuild a calmer way to shape software requirements."
-        let structuredText = SRSScaffold.structuredText(from: draft)
-
-        #expect(structuredText.hasPrefix(draft))
-        #expect(structuredText.contains("## People"))
-        #expect(structuredText.contains("## Requirements"))
-        #expect(structuredText.contains("## Constraints"))
+    @Test func defaultMiniAppCodeIsEmptyPlaceholder() {
+        #expect(ProjectTemplateProvider.defaultCode.isEmpty)
     }
 
     @MainActor
@@ -95,7 +85,7 @@ struct caocapTests {
     }
 
     @MainActor
-    @Test func webBundleExportIncludesRunnableIndexAndSRSReadme() async throws {
+    @Test func caocapExportCopiesProjectFile() async throws {
         let store = ProjectStore(
             fileName: "onboarding-export-test-\(UUID().uuidString).json",
             projectName: "Export Test",
@@ -105,21 +95,22 @@ struct caocapTests {
                     position: .zero,
                     title: "Mini-App",
                     miniApp: MiniAppState(
-                        srsText: SRSScaffold.defaultText,
                         codeText: ProjectTemplateProvider.defaultCode
                     )
                 )
             ]
         )
+        store.save()
+        await store.prepareForDataReset()
 
-        let exportURL = try await #require(ExportService.export(from: store, format: .webBundle(includeProjectContext: true)))
+        let exportURL = try await #require(ExportService.export(from: store, format: .caocap))
         defer { try? FileManager.default.removeItem(at: exportURL) }
 
         var isDirectory: ObjCBool = false
         #expect(FileManager.default.fileExists(atPath: exportURL.path, isDirectory: &isDirectory))
         #expect(!isDirectory.boolValue)
-        #expect(exportURL.pathExtension == "zip")
-        
+        #expect(exportURL.pathExtension == "caocap")
+
         let attributes = try FileManager.default.attributesOfItem(atPath: exportURL.path)
         let fileSize = attributes[.size] as? UInt64 ?? 0
         #expect(fileSize > 0)

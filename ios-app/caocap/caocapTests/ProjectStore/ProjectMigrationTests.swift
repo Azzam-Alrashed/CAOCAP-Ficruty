@@ -330,7 +330,7 @@ struct ProjectMigrationTests {
         #expect(preservedPacMan == customizedPacMan)
     }
 
-    @Test func activityMigrationAppendsBelowCustomizedRootWithoutMovingExistingNodes() throws {
+    @Test func activityMigrationNoLongerAppendsActivityNodeToCustomizedRoot() throws {
         let tempDirectory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
         let persistence = ProjectPersistenceService(baseDirectory: tempDirectory)
@@ -368,19 +368,16 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migrated = try persistence.load(fileName: CanvasFileNaming.rootFileName)
         let preserved = try #require(migrated.nodes.first(where: { $0.id == customNode.id }))
-        let activity = try #require(migrated.nodes.first(where: {
-            $0.id == RootCanvasProvider.activityNodeID
-        }))
 
         #expect(preserved.position == customNode.position)
-        #expect(activity.position == CGPoint(x: 0, y: 920))
-        #expect(activity.isProtected)
-        #expect(migrated.nodes.filter { $0.id == RootCanvasProvider.activityNodeID }.count == 1)
+        #expect(!migrated.nodes.contains(where: { $0.id == RootCanvasProvider.activityNodeID }))
+        #expect(!migrated.nodes.contains(where: { $0.id == RootCanvasProvider.dailyNodeID }))
     }
 
     @Test func curatedRootMigrationUpdatesLegacyConstellationToVerticalLayout() throws {
@@ -460,6 +457,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -490,8 +488,7 @@ struct ProjectMigrationTests {
                 title: "Activity",
                 subtitle: "Saved changes across all canvases",
                 icon: "chart.bar.xaxis",
-                theme: .green,
-                action: .openActivity
+                theme: .green
             ),
             SpatialNode(
                 id: RootCanvasProvider.profileNodeID,
@@ -561,6 +558,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.profileAppIconLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
 
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
@@ -569,7 +567,6 @@ struct ProjectMigrationTests {
             RootCanvasProvider.proNodeID,
             RootCanvasProvider.settingsNodeID,
             RootCanvasProvider.profileNodeID,
-            RootCanvasProvider.activityNodeID,
             RootCanvasProvider.tutorialNodeID,
             RootCanvasProvider.pacManNodeID
         ].compactMap { id in
@@ -580,7 +577,7 @@ struct ProjectMigrationTests {
         #expect(migratedRoot.nodes.map(\.theme) == expectedNodes.map(\.theme))
     }
 
-    @Test func curatedRootMigrationInstallsDailyNodeOnLaunchLayout() throws {
+    @Test func curatedRootMigrationRemovesDailyAndActivityNodes() throws {
         let tempDirectory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
         let persistence = ProjectPersistenceService(baseDirectory: tempDirectory)
@@ -588,28 +585,37 @@ struct ProjectMigrationTests {
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        let launchNodeIDs = [
-            RootCanvasProvider.proNodeID,
-            RootCanvasProvider.settingsNodeID,
-            RootCanvasProvider.profileNodeID,
-            RootCanvasProvider.activityNodeID,
-            RootCanvasProvider.tutorialNodeID,
-            RootCanvasProvider.pacManNodeID
-        ]
-        let launchNodes = launchNodeIDs.enumerated().compactMap { index, id -> SpatialNode? in
-            guard var node = RootCanvasProvider.legacyCuratedNodes.first(where: { $0.id == id }) else { return nil }
-            node.position = RootCanvasProvider.verticalColumnPosition(index: index, count: 6)
-            return node
+        let retained = RootCanvasProvider.legacyCuratedNodes.filter {
+            $0.id != RootCanvasProvider.xoNodeID
         }
+        var nodes = retained
+        nodes.append(
+            SpatialNode(
+                id: RootCanvasProvider.activityNodeID,
+                position: CGPoint(x: -250, y: 330),
+                title: "Activity",
+                icon: "chart.bar.xaxis",
+                theme: .cyan
+            )
+        )
+        nodes.append(
+            SpatialNode(
+                id: RootCanvasProvider.dailyNodeID,
+                position: CGPoint(x: 250, y: 330),
+                title: "Daily",
+                icon: "rosette",
+                theme: .indigo
+            )
+        )
         try persistence.save(
-            ProjectSnapshot(projectName: "Root", nodes: launchNodes, viewportOffset: .zero, viewportScale: 0.5),
+            ProjectSnapshot(projectName: "Root", nodes: nodes, viewportOffset: .zero, viewportScale: 0.5),
             fileName: CanvasFileNaming.rootFileName
         )
         defaults.set(true, forKey: CuratedRootCanvasMigration.migrationCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.verticalLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.activityNodeCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.launchLayoutCompleteKey)
-
+        defaults.set(true, forKey: CuratedRootCanvasMigration.dailyNodeCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.constellationLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.xoGridLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.launchViewportScaleCompleteKey)
@@ -624,8 +630,9 @@ struct ProjectMigrationTests {
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
-        #expect(migratedRoot.nodes.map(\.id) == RootCanvasProvider.legacyCuratedNodes.map(\.id))
-        #expect(migratedRoot.nodes.map(\.position) == RootCanvasProvider.legacyCuratedNodes.map(\.position))
+        #expect(!migratedRoot.nodes.contains(where: { $0.id == RootCanvasProvider.activityNodeID }))
+        #expect(!migratedRoot.nodes.contains(where: { $0.id == RootCanvasProvider.dailyNodeID }))
+        #expect(Set(migratedRoot.nodes.map(\.id)) == Set(retained.map(\.id)))
     }
 
     @Test func curatedRootMigrationUpdatesVerticalColumnToConstellationLayout() throws {
@@ -670,6 +677,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -726,6 +734,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -808,6 +817,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -857,6 +867,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -897,6 +908,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -949,6 +961,7 @@ struct ProjectMigrationTests {
         defaults.set(true, forKey: CuratedRootCanvasMigration.whatsAppTopRightLayoutCompleteKey)
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)
@@ -995,6 +1008,7 @@ struct ProjectMigrationTests {
 
         defaults.set(true, forKey: CuratedRootCanvasMigration.pacManOnlyRootCompleteKey)
 
+        defaults.set(true, forKey: CuratedRootCanvasMigration.removeDailyActivityCompleteKey)
         CuratedRootCanvasMigration.runIfNeeded(persistence: persistence, defaults: defaults)
 
         let migratedRoot = try persistence.load(fileName: CanvasFileNaming.rootFileName)

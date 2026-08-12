@@ -10,8 +10,6 @@ struct NodeActionAppActionTests {
             (.openProfile, .openProfile),
             (.summonCoCaptain, .summonCoCaptain),
             (.proSubscription, .proSubscription),
-            (.openActivity, .openActivity),
-            (.openDaily, .openDaily),
             (.openWhatsApp, .openWhatsApp),
             (.openHelp, .help),
             (.openAppIcon, .openAppIcon)
@@ -29,8 +27,6 @@ struct NodeActionAppActionTests {
             .openProfile,
             .summonCoCaptain,
             .proSubscription,
-            .openActivity,
-            .openDaily,
             .openWhatsApp,
             .help,
             .openAppIcon
@@ -43,16 +39,37 @@ struct NodeActionAppActionTests {
     }
 
     @MainActor
-    @Test func dispatcherExposesNewRootShortcutActions() throws {
+    @Test func dispatcherExposesRootShortcutActions() throws {
         let dispatcher = AppActionDispatcher()
-        let newIDs: [AppActionID] = [.openActivity, .openDaily, .openWhatsApp, .help, .openAppIcon]
+        let shortcutIDs: [AppActionID] = [.openWhatsApp, .help, .openAppIcon]
 
-        for id in newIDs {
+        for id in shortcutIDs {
             let definition = try #require(dispatcher.definition(for: id))
             #expect(!definition.isMutating)
             #expect(!definition.allowsAutonomousExecution)
             #expect(definition.canPinToCanvas)
             #expect(id.pinableNodeAction != nil)
+        }
+    }
+
+    @MainActor
+    @Test func dispatcherExposesGraphMutationActionsAsPendingOnly() throws {
+        let dispatcher = AppActionDispatcher()
+        let graphIDs: [AppActionID] = [
+            .createNode,
+            .deleteNode,
+            .renameNode,
+            .updateNodeSubtitle,
+            .updateNodeIcon,
+            .connectNodes,
+            .disconnectNodes
+        ]
+
+        for id in graphIDs {
+            let definition = try #require(dispatcher.definition(for: id))
+            #expect(definition.isMutating)
+            #expect(!definition.allowsAutonomousExecution)
+            #expect(definition.canPinToCanvas == false)
         }
     }
 }
