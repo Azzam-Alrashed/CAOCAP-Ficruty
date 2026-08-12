@@ -155,8 +155,6 @@ struct GlobalFloatingChromeView: View {
 
         ZStack {
             if shouldShowChrome(session) {
-                let hideChromeForCoCaptain = session.coCaptain.isPresented
-
                 FloatingCommandButton(
                     onTap: {
                         GlobalFloatingChromeController.makeMainAppWindowKey()
@@ -164,6 +162,9 @@ struct GlobalFloatingChromeView: View {
                     },
                     onCenterCanvas: {
                         session.centerActiveCanvas()
+                    },
+                    onOpenCommandLine: {
+                        session.openCommandLine()
                     },
                     onSelectMode: { mode in
                         switch mode {
@@ -183,9 +184,6 @@ struct GlobalFloatingChromeView: View {
                         fabAnchorFrame = frame
                     }
                 )
-                .opacity(hideChromeForCoCaptain ? 0 : 1)
-                .allowsHitTesting(!hideChromeForCoCaptain)
-                .animation(.easeInOut(duration: 0.22), value: hideChromeForCoCaptain)
                 .environment(\.layoutDirection, .leftToRight)
                 .environment(session.onboarding)
 
@@ -197,9 +195,6 @@ struct GlobalFloatingChromeView: View {
                             publishInteractiveFrames(session: session)
                         }
                     )
-                    .opacity(hideChromeForCoCaptain ? 0 : 1)
-                    .allowsHitTesting(!hideChromeForCoCaptain)
-                    .animation(.easeInOut(duration: 0.22), value: hideChromeForCoCaptain)
                     .transition(.opacity)
                 }
             }
@@ -314,11 +309,6 @@ struct GlobalFloatingChromeView: View {
 
     private func publishInteractiveFrames(session: AppSessionCoordinator) {
         guard shouldShowChrome(session) else {
-            bridge.onInteractiveFramesChange([])
-            return
-        }
-        // While CoCaptain is up, FAB + call chrome are visually/interactively hidden.
-        if session.coCaptain.isPresented {
             bridge.onInteractiveFramesChange([])
             return
         }

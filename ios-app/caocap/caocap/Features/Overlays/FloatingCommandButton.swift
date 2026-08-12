@@ -4,8 +4,8 @@ import SwiftUI
 /// bottom-trailing corner of the canvas and snaps to a 3×3 edge grid on release.
 ///
 /// **Interaction modes:**
-/// - **Tap** – opens the Command Line (or dismisses an open sheet).
-/// - **Long-press** – expands a radial menu for Center Canvas / Chat / Video.
+/// - **Tap** – toggles the AI chat.
+/// - **Long-press** – expands a radial menu for Center Canvas / Command Line / Video.
 /// - **Drag** – repositions the button; on release it snaps to the nearest grid point.
 /// - **Drag while expanded** – gestures toward a bubble to highlight and select it.
 struct FloatingCommandButton: View {
@@ -17,7 +17,7 @@ struct FloatingCommandButton: View {
 
     enum CommandAction {
         case centerCanvas
-        case chat
+        case commandLine
         case video
     }
 
@@ -26,6 +26,7 @@ struct FloatingCommandButton: View {
     var onTap: () -> Void
     /// Restores the active canvas to its origin at 100% zoom.
     var onCenterCanvas: () -> Void
+    var onOpenCommandLine: () -> Void
     var onSelectMode: (CopilotInteractionMode) -> Void
     var copilot: CopilotPersona = UserProfileStore().loadSelectedCopilot()
 
@@ -205,18 +206,18 @@ struct FloatingCommandButton: View {
         let angle: CGFloat = 45
 
         ZStack {
-            // Center: Chat
+            // Center: Command Line
             QuickActionBubble(
-                icon: CopilotInteractionMode.chat.systemImageName,
-                color: .blue,
+                icon: "command",
+                color: .green,
                 isExpanded: isExpanded,
-                isHighlighted: activeAction == .chat,
+                isHighlighted: activeAction == .commandLine,
                 size: 48,
                 delay: 0.05
             ) {
                 triggerHapticFeedback(.medium)
                 withAnimation(.spring()) { isExpanded = false }
-                onSelectMode(.chat)
+                onOpenCommandLine()
             }
             .offset(
                 x: isExpanded ? direction.x * distance : 0,
@@ -272,7 +273,7 @@ struct FloatingCommandButton: View {
             x: center.x + direction.rotated(by: -angle).x * distance,
             y: center.y + direction.rotated(by: -angle).y * distance
         )
-        let chatPos = CGPoint(
+        let commandLinePos = CGPoint(
             x: center.x + direction.x * distance,
             y: center.y + direction.y * distance
         )
@@ -282,13 +283,13 @@ struct FloatingCommandButton: View {
         )
 
         let dCenterCanvas = hypot(location.x - centerCanvasPos.x, location.y - centerCanvasPos.y)
-        let dChat = hypot(location.x - chatPos.x, location.y - chatPos.y)
+        let dCommandLine = hypot(location.x - commandLinePos.x, location.y - commandLinePos.y)
         let dVideo = hypot(location.x - videoPos.x, location.y - videoPos.y)
 
         let previousAction = activeAction
         let nearest = [
             (CommandAction.centerCanvas, dCenterCanvas, true),
-            (.chat, dChat, true),
+            (.commandLine, dCommandLine, true),
             (.video, dVideo, true)
         ]
             .filter { $0.1 < threshold && $0.2 }
@@ -306,8 +307,8 @@ struct FloatingCommandButton: View {
         switch action {
         case .centerCanvas:
             onCenterCanvas()
-        case .chat:
-            onSelectMode(.chat)
+        case .commandLine:
+            onOpenCommandLine()
         case .video:
             onSelectMode(.video)
         }

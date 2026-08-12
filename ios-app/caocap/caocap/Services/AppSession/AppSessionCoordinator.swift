@@ -354,9 +354,20 @@ final class AppSessionCoordinator {
         return dismissed
     }
 
-    /// FAB tap: dismiss any open sheet, otherwise open the Command Line.
+    /// FAB tap toggles the AI chat without removing the FAB from the canvas.
     func handleFloatingCommandButtonTap() {
-        if dismissPresentedSheets() { return }
+        if coCaptain.isPresented {
+            coCaptain.setPresented(false)
+            return
+        }
+        commandPalette.setPresented(false)
+        coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
+        presentCoCaptain()
+    }
+
+    /// Opens the Command Line from the FAB's middle long-press action.
+    func openCommandLine() {
+        coCaptain.setPresented(false)
         commandPalette.setPresented(true)
     }
 

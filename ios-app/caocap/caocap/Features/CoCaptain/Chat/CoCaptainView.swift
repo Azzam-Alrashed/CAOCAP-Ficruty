@@ -127,12 +127,6 @@ struct CoCaptainView: View {
                         LocalizationManager.shared.localizedString("New conversation")
                     )
 
-                    if horizontalSizeClass != .regular {
-                        Button("Done") {
-                            isFocused = false
-                            viewModel.setPresented(false)
-                        }
-                    }
                 }
             }
         }

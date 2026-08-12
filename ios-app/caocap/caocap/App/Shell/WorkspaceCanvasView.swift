@@ -6,12 +6,14 @@ struct WorkspaceCanvasView: View {
     let canvasID: String
     @Binding var viewport: ViewportState
     @Binding var currentScale: CGFloat
+    var onEmptySpaceTap: () -> Void = {}
 
     var body: some View {
         InfiniteCanvasView(
             store: store,
             viewport: $viewport,
-            currentScale: $currentScale
+            currentScale: $currentScale,
+            onEmptySpaceTap: onEmptySpaceTap
         )
         .environment(\.layoutDirection, .leftToRight)
         .id(canvasID)

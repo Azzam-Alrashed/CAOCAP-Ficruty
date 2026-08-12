@@ -67,15 +67,23 @@ struct ContentView: View {
                 store: session.router.rootStore,
                 canvasID: "root_canvas",
                 viewport: $session.viewport,
-                currentScale: $session.currentScale
+                currentScale: $session.currentScale,
+                onEmptySpaceTap: dismissCommandLine
             )
         case .project(let fileName):
             WorkspaceCanvasView(
                 store: session.router.activeStore,
                 canvasID: "project_canvas_\(fileName)",
                 viewport: $session.viewport,
-                currentScale: $session.currentScale
+                currentScale: $session.currentScale,
+                onEmptySpaceTap: dismissCommandLine
             )
+        }
+    }
+
+    private func dismissCommandLine() {
+        if session.commandPalette.isPresented {
+            session.commandPalette.setPresented(false)
         }
     }
 

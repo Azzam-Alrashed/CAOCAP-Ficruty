@@ -16,18 +16,6 @@ struct CommandPaletteView: View {
     var body: some View {
         ZStack {
             if viewModel.isPresented {
-                Rectangle()
-                    .fill(Color.black.opacity(0.2))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea(.all, edges: .all)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        isFocused = false
-                        viewModel.setPresented(false)
-                    }
-                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
-                    .zIndex(0)
-
                 VStack(spacing: 8) {
                     Spacer()
 
@@ -56,6 +44,13 @@ struct CommandPaletteView: View {
                     .padding(.vertical, 12)
                     .background(.ultraThinMaterial)
                     .clipShape(Capsule())
+                    .background {
+                        Capsule()
+                            .fill(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.55))
+                            .blur(radius: 12)
+                            .scaleEffect(x: 1.02, y: 1.18)
+                            .allowsHitTesting(false)
+                    }
                     .overlay(
                         Capsule()
                             .stroke(
@@ -80,7 +75,6 @@ struct CommandPaletteView: View {
                     insertion: .offset(y: 12).combined(with: .opacity),
                     removal: .offset(y: 6).combined(with: .opacity)
                 ))
-                .zIndex(1)
                 .onAppear {
                     GlobalFloatingChromeController.makeMainAppWindowKey()
                     Task { @MainActor in

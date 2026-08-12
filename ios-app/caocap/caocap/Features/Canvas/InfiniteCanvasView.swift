@@ -8,6 +8,7 @@ struct InfiniteCanvasView: View {
     let store: ProjectStore
     @Binding var viewport: ViewportState
     @Binding var currentScale: CGFloat
+    var onEmptySpaceTap: () -> Void = {}
 
     @GestureState private var panTranslation: CGSize = .zero
 
@@ -65,6 +66,9 @@ struct InfiniteCanvasView: View {
                             persistViewport()
                             PerformanceSignposts.event(PerformanceSignposts.Name.canvasGesture)
                         }
+                )
+                .simultaneousGesture(
+                    TapGesture().onEnded(onEmptySpaceTap)
                 )
                 .onAppear {
                     if viewport.offset == .zero, viewport.scale == 1.0 {

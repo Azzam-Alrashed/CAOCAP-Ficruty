@@ -84,11 +84,30 @@ struct AppSessionCoordinatorTests {
         #expect(!session.isLaunching)
     }
 
-    @Test func floatingCommandTapOpensCommandLineWhenIdle() {
+    @Test func floatingCommandTapOpensCoCaptainWhenIdle() {
         let session = AppSessionCoordinator()
 
         session.handleFloatingCommandButtonTap()
 
+        #expect(session.coCaptain.isPresented)
+        #expect(!session.commandPalette.isPresented)
+    }
+
+    @Test func floatingCommandTapClosesCoCaptainWhenPresented() {
+        let session = AppSessionCoordinator()
+        session.handleFloatingCommandButtonTap()
+
+        session.handleFloatingCommandButtonTap()
+
+        #expect(!session.coCaptain.isPresented)
+    }
+
+    @Test func middleFABActionOpensCommandLine() {
+        let session = AppSessionCoordinator()
+
+        session.openCommandLine()
+
         #expect(session.commandPalette.isPresented)
+        #expect(!session.coCaptain.isPresented)
     }
 }
