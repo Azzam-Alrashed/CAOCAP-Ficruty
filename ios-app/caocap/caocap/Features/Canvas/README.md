@@ -9,8 +9,8 @@ The Canvas feature is CAOCAP's spatial workspace. It renders the infinite canvas
 - `ViewportState` owns pan and zoom math. Keep gesture calculations here instead of spreading geometry math through views.
 - `NodeView` renders one node. It should stay presentational.
 - `NodeDetailView` opens Mini-App nodes into a large-sheet shell with Agent, Settings, and Back to Canvas (via the shared omnibox).
-- Providers under `Providers/` define the root Hello World Mini-App, curated Tutorial
-  and XO canvases, and generic Mini-App starter nodes (no embedded HTML runtime).
+- Providers under `Providers/` define the empty root canvas, XO canvas, and generic
+  Mini-App starter nodes (no embedded HTML runtime).
 
 ## Data Flow
 
@@ -55,4 +55,4 @@ Useful test coverage for this feature:
 
 - `ViewportState` pan and zoom math.
 - save/load of node positions, links, and viewport state.
-- provider output for required home action nodes.
+- provider output for the empty root canvas.

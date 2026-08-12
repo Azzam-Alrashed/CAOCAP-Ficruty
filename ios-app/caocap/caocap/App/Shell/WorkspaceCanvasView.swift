@@ -14,7 +14,6 @@ struct WorkspaceCanvasView: View {
     let onNavigateToSubCanvas: (String) -> Void
     let onRecoverUnsupportedProject: () -> Void
     var onFlyToNode: ((UUID) -> Void)?
-    var onHelloWorldOpenedForOnboarding: (() -> Void)?
 
     var body: some View {
         InfiniteCanvasView(
@@ -28,8 +27,7 @@ struct WorkspaceCanvasView: View {
             onNodeAction: onNodeAction,
             onNavigateToSubCanvas: onNavigateToSubCanvas,
             onRecoverUnsupportedProject: onRecoverUnsupportedProject,
-            onFlyToNode: onFlyToNode,
-            onHelloWorldOpenedForOnboarding: onHelloWorldOpenedForOnboarding
+            onFlyToNode: onFlyToNode
         )
         // Spatial coordinates and pan/zoom gestures must stay LTR even when the app
         // locale is Arabic. Node cards opt back into RTL for their own text layout.

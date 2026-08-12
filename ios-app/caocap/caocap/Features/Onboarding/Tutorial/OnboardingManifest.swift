@@ -1,31 +1,22 @@
 import Foundation
 
-/// Content data for a single onboarding step shown inside `OnboardingPopoverCard`.
+/// Stable identifier for tutorial steps. New pivot content can define IDs without
+/// changing the reusable coordinator.
+public struct OnboardingStepID: RawRepresentable, Hashable, Sendable {
+    public let rawValue: String
+
+    public init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+}
+
+/// Content and presentation metadata for one tutorial step.
 struct OnboardingStepContent: Equatable {
-    let step: OnboardingCoordinator.Step
+    let id: OnboardingStepID
     let titleKey: String
     let messageKey: String
     let icon: String
-}
-
-/// Static registry of all first-run onboarding steps.
-enum OnboardingManifest {
-    static let steps: [OnboardingStepContent] = OnboardingCoordinator.Step.allCases.map { step in
-        switch step {
-        case .openPortal:
-            return OnboardingStepContent(
-                step: step,
-                titleKey: "onboarding.openPortal.title",
-                messageKey: "onboarding.openPortal.message",
-                icon: "arrow.right.circle.fill"
-            )
-        }
-    }
-
-    static func content(for step: OnboardingCoordinator.Step) -> OnboardingStepContent {
-        guard let content = steps.first(where: { $0.step == step }) else {
-            preconditionFailure("Missing onboarding manifest content for \(step)")
-        }
-        return content
-    }
+    let tooltipAnchor: OnboardingTooltipAnchor
+    let tooltipArrowPlacement: UnifiedBubbleWithArrowShape.ArrowPlacement
+    let blocksCoCaptainPrompt: Bool
 }

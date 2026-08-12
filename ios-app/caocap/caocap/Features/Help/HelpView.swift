@@ -5,34 +5,11 @@ struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
-    var completedLessonIDs: Set<OnboardingLessonID> = []
-    var onRestartTutorial: () -> Void = {}
-    var onStartLesson: (OnboardingLessonID) -> Void = { _ in }
-
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
-
-                    SettingsSection("help.section.lessons") {
-                        ForEach(OnboardingLessonsManifest.lessons) { lesson in
-                            lessonRow(lesson)
-                        }
-                    }
-
-                    SettingsSection("help.section.tutorials") {
-                        ForEach(HelpManifest.tutorials) { item in
-                            SettingsRow(
-                                icon: item.icon,
-                                title: LocalizedStringKey(item.titleKey),
-                                subtitle: LocalizedStringKey(item.subtitleKey),
-                                color: color(for: item.colorName)
-                            ) {
-                                handleTutorial(item.id)
-                            }
-                        }
-                    }
 
                     SettingsSection("help.section.shortcuts") {
                         ForEach(HelpManifest.omniboxShortcuts) { shortcut in
@@ -93,51 +70,6 @@ struct HelpView: View {
         }
     }
 
-    private func lessonRow(_ lesson: OnboardingLesson) -> some View {
-        Button {
-            dismiss()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                onStartLesson(lesson.id)
-            }
-        } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(lesson.accentColor.opacity(0.15))
-                        .frame(width: 32, height: 32)
-                    Image(systemName: lesson.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(lesson.accentColor)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey(lesson.titleKey))
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Text(LocalizedStringKey(lesson.subtitleKey))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if completedLessonIDs.contains(lesson.id) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(lesson.accentColor)
-                } else {
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(lesson.accentColor.opacity(0.85))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
     private func shortcutRow(_ shortcut: HelpShortcutItem) -> some View {
         HStack(spacing: 16) {
             ZStack {
@@ -193,16 +125,6 @@ struct HelpView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
-    }
-
-    private func handleTutorial(_ action: HelpTutorialAction) {
-        dismiss()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            switch action {
-            case .restartInteractiveTutorial:
-                onRestartTutorial()
-            }
-        }
     }
 
     private func color(for name: String) -> Color {

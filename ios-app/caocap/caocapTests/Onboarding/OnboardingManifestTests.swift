@@ -1,165 +1,84 @@
-import Foundation
 import Testing
 @testable import caocap
 
+@MainActor
 struct OnboardingManifestTests {
-    @Test func manifestDefinesEveryCoordinatorStepOnce() {
-        let manifestSteps = OnboardingManifest.steps.map(\.step)
+    private let lessonID = OnboardingLessonID(rawValue: "fixture.lesson")
+    private let firstStep = OnboardingStepID(rawValue: "fixture.first")
+    private let secondStep = OnboardingStepID(rawValue: "fixture.second")
 
-        #expect(manifestSteps == OnboardingCoordinator.Step.allCases)
-        #expect(Set(manifestSteps).count == OnboardingCoordinator.Step.allCases.count)
-    }
+    @Test func productionCatalogIsDormant() {
+        let onboarding = OnboardingCoordinator(catalog: .empty, analytics: NoOpAnalyticsService())
+        onboarding.reset()
 
-    @Test func lessonsKeepUniqueScopedStepsWithNineOrFewerEach() {
-        let lessonSteps = OnboardingLessonsManifest.lessons.flatMap(\.steps)
+        onboarding.startIfNeeded()
 
-        #expect(Set(lessonSteps).count == lessonSteps.count)
-
-        for lesson in OnboardingLessonsManifest.lessons {
-            #expect(lesson.steps.count <= OnboardingLessonsManifest.maxStepsPerLesson)
-        }
-    }
-
-    @Test func lessonsDriveScopedProgressionAndLabels() {
-        #expect(OnboardingLessonsManifest.lessons.count == 1)
-        #expect(OnboardingLessonsManifest.mainLessonIDs == [.canvasBasics])
-        #expect(OnboardingLessonsManifest.lessons.map(\.id) == OnboardingLessonsManifest.mainLessonIDs)
-
-        #expect(OnboardingLessonsManifest.lesson(for: .canvasBasics).steps == [
-            .openPortal
-        ])
-
-        #expect(OnboardingLessonsManifest.nextStep(after: .openPortal, in: OnboardingLessonsManifest.lesson(for: .canvasBasics)) == nil)
-        #expect(OnboardingLessonsManifest.nextMainLesson(after: .canvasBasics) == nil)
-
-        #expect(
-            OnboardingLessonsManifest.stepLabel(
-                for: .openPortal,
-                in: .canvasBasics,
-                language: "English"
-            ) == "1 of 1"
-        )
-    }
-
-    @Test func catalogResolvesArabicCanvasOnboardingCopy() {
-        let title = LocalizationManager.shared.localizedString(
-            "onboarding.lesson.canvasBasics.title",
-            language: "Arabic"
-        )
-        #expect(title == "افتح تطبيقك المصغّر")
-
-        let message = LocalizationManager.shared.localizedString(
-            "onboarding.openPortal.message",
-            language: "Arabic"
-        )
-        #expect(message.contains("Hello World"))
-    }
-
-    @Test func manifestContentIsReadyForPopoverPresentation() {
-        for step in OnboardingCoordinator.Step.allCases {
-            let content = OnboardingManifest.content(for: step)
-
-            #expect(!content.titleKey.isEmpty)
-            #expect(!content.messageKey.isEmpty)
-            #expect(!content.icon.isEmpty)
-            #expect(content.step == step)
-        }
-    }
-
-    @Test func openPortalDeclaresHelloWorldTooltipAnchor() {
-        #expect(OnboardingCoordinator.Step.openPortal.tooltipAnchor == .demoGameNode)
-        #expect(
-            OnboardingCoordinator.Step.openPortal.resolvedTooltipAnchor(isCommandPalettePresented: true)
-                == .demoGameNode
-        )
-        #expect(OnboardingCoordinator.Step.openPortal.tooltipArrowPlacement == .bottom)
-        #expect(OnboardingCoordinator.Step.openPortal.blocksCoCaptainPrompt)
-    }
-
-    @MainActor
-    @Test func hidingPopoverDoesNotAdvanceCurrentStep() {
-        let onboarding = makeResetOnboardingCoordinator()
-        onboarding.currentStep = .openPortal
-        onboarding.activeLessonID = .canvasBasics
-        onboarding.showPopover = true
-
-        onboarding.hidePopoverForCurrentStep()
-
-        #expect(onboarding.currentStep == .openPortal)
-        #expect(!onboarding.showPopover)
-    }
-
-    @MainActor
-    @Test func standaloneLessonCompletionDoesNotAutoStartNextLesson() {
-        let onboarding = makeResetOnboardingCoordinator()
-        onboarding.startLesson(.canvasBasics, advancesThroughLessons: false)
-        onboarding.currentStep = .openPortal
-
-        onboarding.completeCurrentStep()
-
-        #expect(onboarding.isLessonCompleted(.canvasBasics))
+        #expect(OnboardingLessonsManifest.lessons.isEmpty)
+        #expect(OnboardingLessonsManifest.mainLessonIDs.isEmpty)
         #expect(onboarding.currentStep == nil)
         #expect(onboarding.activeLessonID == nil)
-        #expect(onboarding.isCompleted)
+        #expect(!onboarding.showPopover)
+        #expect(!onboarding.isCompleted)
     }
 
-    @MainActor
-    @Test func firstRunLessonCompletionMarksOnboardingComplete() {
-        let onboarding = makeResetOnboardingCoordinator()
-        onboarding.startLesson(.canvasBasics, advancesThroughLessons: true)
-        onboarding.currentStep = .openPortal
-        onboarding.showPopover = true
+    @Test func injectedCatalogAdvancesAndCompletes() {
+        let onboarding = makeFixtureCoordinator()
+        onboarding.reset()
+        var completed = false
+        onboarding.onTutorialCompleted = { completed = true }
+
+        onboarding.startIfNeeded()
+        #expect(onboarding.currentStep == firstStep)
 
         onboarding.completeCurrentStep()
+        #expect(onboarding.currentStep == secondStep)
 
-        #expect(onboarding.isLessonCompleted(.canvasBasics))
-        #expect(onboarding.isCompleted)
+        onboarding.completeCurrentStep()
         #expect(onboarding.currentStep == nil)
+        #expect(onboarding.isLessonCompleted(lessonID))
+        #expect(onboarding.isCompleted)
+        #expect(completed)
     }
 
-    @MainActor
-    @Test func lessonWillStartCallbackFiresBeforeFirstStep() {
-        let onboarding = makeResetOnboardingCoordinator()
-        var startedLesson: OnboardingLessonID?
-        onboarding.onLessonWillStart = { startedLesson = $0 }
+    @Test func injectedCatalogCanSkip() {
+        let onboarding = makeFixtureCoordinator()
+        onboarding.reset()
+        onboarding.startIfNeeded()
 
-        onboarding.startLesson(.canvasBasics, advancesThroughLessons: false)
-
-        #expect(startedLesson == .canvasBasics)
-        #expect(onboarding.currentStep == .openPortal)
-    }
-
-    @MainActor
-    @Test func skipMarksActiveMainLessonComplete() {
-        let onboarding = makeResetOnboardingCoordinator()
-        onboarding.startLesson(.canvasBasics, advancesThroughLessons: true)
         onboarding.skip()
 
-        #expect(onboarding.isLessonCompleted(.canvasBasics))
-        #expect(onboarding.isCompleted)
-        #expect(onboarding.activeLessonID == nil)
-    }
-
-    @MainActor
-    @Test func completingMainLessonsMarksOnboardingComplete() {
-        let onboarding = makeResetOnboardingCoordinator()
-        onboarding.startLesson(.canvasBasics, advancesThroughLessons: true)
-        onboarding.currentStep = .openPortal
-        onboarding.completeCurrentStep()
-
+        #expect(onboarding.currentStep == nil)
+        #expect(onboarding.isLessonCompleted(lessonID))
         #expect(onboarding.isCompleted)
     }
 
-    @Test func tutorialCanvasProviderSeedsPracticeMiniApp() {
-        #expect(TutorialCanvasProvider.snapshot.nodes.count == 1)
-        #expect(TutorialCanvasProvider.snapshot.nodes.first?.id == TutorialCanvasProvider.miniAppNodeID)
-        #expect(TutorialCanvasProvider.snapshot.nodes.first?.type == .miniApp)
-    }
-
-    @MainActor
-    private func makeResetOnboardingCoordinator() -> OnboardingCoordinator {
-        let onboarding = OnboardingCoordinator(analytics: NoOpAnalyticsService())
-        onboarding.reset()
-        return onboarding
+    private func makeFixtureCoordinator() -> OnboardingCoordinator {
+        let lesson = OnboardingLesson(
+            id: lessonID,
+            titleKey: "fixture.lesson.title",
+            subtitleKey: "fixture.lesson.subtitle",
+            icon: "sparkles",
+            accentHex: "00B894",
+            steps: [firstStep, secondStep]
+        )
+        let content = [firstStep, secondStep].map {
+            OnboardingStepContent(
+                id: $0,
+                titleKey: "fixture.step.title",
+                messageKey: "fixture.step.message",
+                icon: "arrow.right.circle.fill",
+                tooltipAnchor: .canvas,
+                tooltipArrowPlacement: .bottom,
+                blocksCoCaptainPrompt: false
+            )
+        }
+        return OnboardingCoordinator(
+            catalog: OnboardingCatalog(
+                mainLessonIDs: [lessonID],
+                lessons: [lesson],
+                stepContent: Dictionary(uniqueKeysWithValues: content.map { ($0.id, $0) })
+            ),
+            analytics: NoOpAnalyticsService()
+        )
     }
 }

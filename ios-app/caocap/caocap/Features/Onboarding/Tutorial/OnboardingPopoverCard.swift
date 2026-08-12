@@ -98,24 +98,27 @@ struct UnifiedBubbleWithArrowShape: Shape {
 }
 
 enum OnboardingTooltipAnchor: Hashable {
-    /// Anchored to the Hello World mini-app node on the root canvas.
-    case demoGameNode
+    /// Reusable anchor slots for future tutorial content.
+    case canvas
     /// Anchored to the floating command button (FAB) at the bottom of the canvas.
     case floatingCommandButton
+    case previewShell
+    case previewOmnibox
+    case coCaptain
 
     /// Whether this anchor is registered inside the canvas view hierarchy.
     var isCanvasLocal: Bool {
-        self == .demoGameNode
+        self == .canvas
     }
 
     /// Whether this anchor is owned by the Mini-App preview shell or its tool sheets.
-    var isPreviewShellLocal: Bool { false }
+    var isPreviewShellLocal: Bool { self == .previewShell }
 
     /// Whether this anchor is rendered inside the preview omnibox list.
-    var isPreviewOmniboxLocal: Bool { false }
+    var isPreviewOmniboxLocal: Bool { self == .previewOmnibox }
 
     /// Whether this anchor lives inside the CoCaptain sheet.
-    var isCoCaptainLocal: Bool { false }
+    var isCoCaptainLocal: Bool { self == .coCaptain }
 }
 
 /// Collects layout anchors for each named onboarding target so the tooltip overlay
@@ -270,27 +273,6 @@ private struct FABChromeOnboardingTooltipOverlayModifier: ViewModifier {
     }
 }
 
-extension OnboardingCoordinator.Step {
-    var tooltipAnchor: OnboardingTooltipAnchor {
-        switch self {
-        case .openPortal:
-            return .demoGameNode
-        }
-    }
-
-    func resolvedTooltipAnchor(isCommandPalettePresented: Bool) -> OnboardingTooltipAnchor {
-        _ = isCommandPalettePresented
-        return tooltipAnchor
-    }
-
-    var tooltipArrowPlacement: UnifiedBubbleWithArrowShape.ArrowPlacement {
-        switch self {
-        case .openPortal:
-            return .bottom
-        }
-    }
-}
-
 /// An overlay view that reads the registered anchor frames and positions a
 /// `OnboardingPopoverCard` relative to the currently active step's target.
 /// The tooltip is positioned to stay within safe area margins and transitions
@@ -309,23 +291,24 @@ private struct OnboardingTooltipOverlay: View {
         GeometryReader { proxy in
             if let onboarding,
                let step = onboarding.currentStep,
+               let stepContent = onboarding.content(for: step),
                onboarding.showPopover {
-                let resolvedAnchor = step.resolvedTooltipAnchor(isCommandPalettePresented: isCommandPalettePresented)
+                let resolvedAnchor = stepContent.tooltipAnchor
                 if rendersAnchor(resolvedAnchor),
                    let targetFrame = resolvedTargetFrame(for: resolvedAnchor, in: proxy) {
                 let tooltipCenter = tooltipCenter(
                     for: targetFrame,
-                    placement: step.tooltipArrowPlacement,
+                    placement: stepContent.tooltipArrowPlacement,
                     cardSize: cardSize,
                     containerSize: proxy.size
                 )
                 let arrowOffset = targetFrame.midX - tooltipCenter.x
 
                 OnboardingPopoverCard(
-                    step: step,
-                    lessonID: onboarding.activeLessonID,
+                    content: stepContent,
+                    lesson: onboarding.activeLessonID.flatMap { onboarding.lesson(for: $0) },
                     arrowOffset: arrowOffset,
-                    arrowPlacement: step.tooltipArrowPlacement
+                    arrowPlacement: stepContent.tooltipArrowPlacement
                 ) {
                     onboarding.skip()
                 }
@@ -432,8 +415,8 @@ private struct OnboardingTooltipOverlay: View {
 /// A premium glassmorphic popover card used for onboarding tooltips.
 /// Matches CAOCAP's dark, material-blurred visual language.
 struct OnboardingPopoverCard: View {
-    let step: OnboardingCoordinator.Step
-    let lessonID: OnboardingLessonID?
+    let content: OnboardingStepContent
+    let lesson: OnboardingLesson?
     var arrowOffset: CGFloat = 0
     var arrowPlacement: UnifiedBubbleWithArrowShape.ArrowPlacement = .bottom
     let onSkip: () -> Void
@@ -441,8 +424,7 @@ struct OnboardingPopoverCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var accentColor: Color {
-        guard let lessonID else { return Color(hex: "6C5CE7") }
-        return OnboardingLessonsManifest.lesson(for: lessonID).accentColor
+        lesson?.accentColor ?? Color(hex: "6C5CE7")
     }
 
     private var accentGradient: LinearGradient {
@@ -458,7 +440,7 @@ struct OnboardingPopoverCard: View {
             // Header: icon + title + step counter
             HStack(spacing: 10) {
                 // Animated icon
-                Image(systemName: step.icon)
+                Image(systemName: content.icon)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(accentGradient)
                     .frame(width: 32, height: 32)
@@ -468,11 +450,11 @@ struct OnboardingPopoverCard: View {
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey(stringLiteral: step.titleKey))
+                    Text(LocalizedStringKey(stringLiteral: content.titleKey))
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.primary)
 
-                    OnboardingProgressBar(step: step, lessonID: lessonID)
+                    OnboardingProgressBar(step: content.id, lesson: lesson)
                 }
 
                 Spacer()
@@ -497,7 +479,7 @@ struct OnboardingPopoverCard: View {
             }
 
             // Message body
-            Text(LocalizedStringKey(stringLiteral: step.messageKey))
+            Text(LocalizedStringKey(stringLiteral: content.messageKey))
                 .font(.system(size: 14, weight: .regular))
                 .foregroundColor(.primary.opacity(0.85))
                 .lineSpacing(3)
@@ -534,11 +516,10 @@ struct OnboardingPopoverCard: View {
 /// A step-progress bar that fills from the left as the user advances through a lesson.
 private struct OnboardingProgressBar: View {
     let step: OnboardingCoordinator.Step
-    let lessonID: OnboardingLessonID?
+    let lesson: OnboardingLesson?
 
     private var lessonSteps: [OnboardingCoordinator.Step] {
-        guard let lessonID else { return [] }
-        return OnboardingLessonsManifest.lesson(for: lessonID).steps
+        lesson?.steps ?? []
     }
 
     private var currentIndex: Int {
@@ -546,8 +527,7 @@ private struct OnboardingProgressBar: View {
     }
 
     private var accentColor: Color {
-        guard let lessonID else { return .blue }
-        return OnboardingLessonsManifest.lesson(for: lessonID).accentColor
+        lesson?.accentColor ?? .blue
     }
 
     var body: some View {
@@ -558,24 +538,6 @@ private struct OnboardingProgressBar: View {
                     .frame(width: 16, height: 4)
             }
         }
-        .accessibilityLabel(Text(step.stepLabel(in: lessonID)))
+        .accessibilityLabel(Text("Step \(currentIndex + 1) of \(lessonSteps.count)"))
     }
-}
-
-#Preview {
-    ZStack {
-        Color.black.ignoresSafeArea()
-
-        VStack(spacing: 30) {
-            ForEach(OnboardingCoordinator.Step.allCases, id: \.rawValue) { step in
-                OnboardingPopoverCard(
-                    step: step,
-                    lessonID: OnboardingLessonsManifest.lesson(containing: step)?.id,
-                    onSkip: {}
-                )
-            }
-        }
-        .padding()
-    }
-    .preferredColorScheme(.dark)
 }

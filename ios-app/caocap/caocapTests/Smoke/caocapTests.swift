@@ -127,7 +127,8 @@ struct caocapTests {
         #expect(onboarding.currentStep == nil)
         
         onboarding.startIfNeeded()
-        #expect(onboarding.currentStep == .openPortal)
+        #expect(onboarding.currentStep == nil)
+        #expect(!onboarding.showPopover)
     }
 
     @MainActor

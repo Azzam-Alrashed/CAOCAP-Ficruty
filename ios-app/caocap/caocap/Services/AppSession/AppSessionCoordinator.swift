@@ -67,9 +67,6 @@ final class AppSessionCoordinator {
     
 
     init() {
-        onboarding.onLessonWillStart = { [weak self] lessonID in
-            self?.prepareWorkspace(for: lessonID)
-        }
         onboarding.onTutorialCompleted = { [weak self] in
             self?.celebrateTutorialGraduation()
         }
@@ -228,35 +225,6 @@ final class AppSessionCoordinator {
         syncViewportWithActiveStore()
     }
 
-    func restartTutorial() {
-        onboarding.reset()
-        router.navigate(to: .root, addToStack: false, animated: false)
-        syncViewportWithActiveStore()
-        onboarding.startIfNeeded()
-    }
-
-    func restartTutorialFromHelp() {
-        showingHelp = false
-        restartTutorial()
-    }
-
-    func startLessonFromHelp(_ lessonID: OnboardingLessonID) {
-        showingHelp = false
-        prepareWorkspace(for: lessonID)
-        onboarding.startLesson(lessonID, advancesThroughLessons: false)
-    }
-
-    func prepareWorkspace(for lessonID: OnboardingLessonID) {
-        switch lessonID {
-        case .canvasBasics:
-            commandPalette.setPresented(false)
-            coCaptain.setPresented(false)
-            router.navigate(to: .root, addToStack: false, animated: false)
-            syncViewportWithActiveStore()
-            commandPalette.nodes = router.activeStore.nodes
-        }
-    }
-
     private func celebrateTutorialGraduation() {
         HapticsManager.shared.notification(.success)
         presentConfetti(showGraduationBanner: true)
@@ -298,9 +266,6 @@ final class AppSessionCoordinator {
         intro = IntroCoordinator()
         personalization = PersonalizationOnboardingCoordinator()
         onboarding = OnboardingCoordinator()
-        onboarding.onLessonWillStart = { [weak self] lessonID in
-            self?.prepareWorkspace(for: lessonID)
-        }
         onboarding.onTutorialCompleted = { [weak self] in
             self?.celebrateTutorialGraduation()
         }
@@ -356,12 +321,6 @@ final class AppSessionCoordinator {
         presentedMiniApp = nil
         selectedNodeDetail = nil
         router.navigateToSubCanvas(fileName: fileName)
-    }
-
-    /// Completes the open-Hello-World onboarding step when the mini-app goes fullscreen.
-    func handleHelloWorldOpenedForOnboarding() {
-        guard onboarding.currentStep == .openPortal else { return }
-        onboarding.completeCurrentStep()
     }
 
     // MARK: - Onboarding + CoCaptain Presentation
@@ -865,7 +824,8 @@ final class AppSessionCoordinator {
     }
 
     private func submitCoCaptainPrompt(_ prompt: String) {
-        if let step = onboarding.currentStep, step.blocksCoCaptainPrompt {
+        if let step = onboarding.currentStep,
+           onboarding.content(for: step)?.blocksCoCaptainPrompt == true {
             return
         }
         coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)

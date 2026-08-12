@@ -90,10 +90,7 @@ struct ContentView: View {
                 onRecoverUnsupportedProject: {
                     session.router.createFreshMiniAppCanvas()
                 },
-                onFlyToNode: { session.focusCanvasNode($0) },
-                onHelloWorldOpenedForOnboarding: {
-                    session.handleHelloWorldOpenedForOnboarding()
-                }
+                onFlyToNode: { session.focusCanvasNode($0) }
             )
         case .project(let fileName):
             WorkspaceCanvasView(
@@ -112,10 +109,7 @@ struct ContentView: View {
                 onRecoverUnsupportedProject: {
                     session.router.createFreshMiniAppCanvas()
                 },
-                onFlyToNode: { session.focusCanvasNode($0) },
-                onHelloWorldOpenedForOnboarding: {
-                    session.handleHelloWorldOpenedForOnboarding()
-                }
+                onFlyToNode: { session.focusCanvasNode($0) }
             )
         }
     }

@@ -37,9 +37,6 @@ struct AppSheetsModifier: ViewModifier {
                     onRestartOnboarding: {
                         session.restartOnboarding()
                     },
-                    onRestartTutorial: {
-                        session.restartTutorial()
-                    },
                     onEraseEverything: {
                         try await session.eraseEverything(authManager: authManager)
                     }
@@ -83,11 +80,7 @@ struct AppSheetsModifier: ViewModifier {
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $session.showingHelp) {
-                HelpView(
-                    completedLessonIDs: session.onboarding.completedLessonIDs,
-                    onRestartTutorial: { session.restartTutorialFromHelp() },
-                    onStartLesson: { session.startLessonFromHelp($0) }
-                )
+                HelpView()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }

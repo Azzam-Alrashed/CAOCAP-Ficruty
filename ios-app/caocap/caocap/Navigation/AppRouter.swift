@@ -45,11 +45,9 @@ public class AppRouter {
         }
     }
     
-    /// Initializes the router, runs any pending workspace migrations, and creates
-    /// the root canvas with its default node template and a zoomed-out initial scale.
+    /// Initializes the router and creates an empty root canvas.
     public init() {
         CanvasWorkspaceMigration.runIfNeeded()
-        CuratedRootCanvasMigration.runIfNeeded()
         self.currentWorkspace = .root
         self.rootStore = ProjectStore(
             fileName: CanvasFileNaming.rootFileName,

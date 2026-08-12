@@ -33,9 +33,6 @@ struct InfiniteCanvasView: View {
     var onNavigateToSubCanvas: ((String) -> Void)? = nil
     var onRecoverUnsupportedProject: (() -> Void)? = nil
     var onFlyToNode: ((UUID) -> Void)? = nil
-    /// Called when Hello World opens during the omnibox onboarding open step.
-    var onHelloWorldOpenedForOnboarding: (() -> Void)? = nil
-    
     init(
         store: ProjectStore,
         viewport: Binding<ViewportState>,
@@ -47,8 +44,7 @@ struct InfiniteCanvasView: View {
         onNodeAction: ((NodeAction) -> Void)? = nil,
         onNavigateToSubCanvas: ((String) -> Void)? = nil,
         onRecoverUnsupportedProject: (() -> Void)? = nil,
-        onFlyToNode: ((UUID) -> Void)? = nil,
-        onHelloWorldOpenedForOnboarding: (() -> Void)? = nil
+        onFlyToNode: ((UUID) -> Void)? = nil
     ) {
         self.store = store
         self._viewport = viewport
@@ -61,7 +57,6 @@ struct InfiniteCanvasView: View {
         self.onNavigateToSubCanvas = onNavigateToSubCanvas
         self.onRecoverUnsupportedProject = onRecoverUnsupportedProject
         self.onFlyToNode = onFlyToNode
-        self.onHelloWorldOpenedForOnboarding = onHelloWorldOpenedForOnboarding
     }
     
     // Drag offsets stay local until the drag ends so links and nodes can track
@@ -248,22 +243,10 @@ struct InfiniteCanvasView: View {
         .onAppear {
             currentScale = viewport.scale
         }
-        .onChange(of: presentedMiniApp?.id) { _, nodeID in
-            guard let nodeID else { return }
-            if nodeID == RootCanvasProvider.helloWorldMiniAppNodeID,
-               onboarding?.currentStep == .openPortal {
-                onHelloWorldOpenedForOnboarding?()
-            }
-        }
     }
 
     private func canvasExplicitAnchorFrames(canvasSize: CGSize) -> [OnboardingTooltipAnchor: CGRect] {
         var frames: [OnboardingTooltipAnchor: CGRect] = [:]
-
-        if onboarding?.currentStep == .openPortal,
-           let frame = screenFrame(for: RootCanvasProvider.helloWorldMiniAppNodeID, canvasSize: canvasSize) {
-            frames[.demoGameNode] = frame
-        }
 
         return frames
     }
