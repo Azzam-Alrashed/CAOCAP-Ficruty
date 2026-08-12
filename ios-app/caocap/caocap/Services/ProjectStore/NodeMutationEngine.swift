@@ -241,40 +241,6 @@ final class NodeMutationEngine {
         onRequestSave?(true)
     }
 
-    /// Creates a `.standard` shortcut node pinned to a specific canvas action,
-    /// placed at the given position. Used when the user pins an action from the
-    /// command palette to their canvas.
-    public func addShortcutNode(
-        nodes: inout [SpatialNode],
-        action: NodeAction,
-        title: String,
-        icon: String,
-        at position: CGPoint
-    ) {
-        let newNode = SpatialNode(
-            type: .standard,
-            position: position,
-            title: title,
-            icon: icon,
-            theme: .indigo,
-            action: action
-        )
-
-        undoManager?.registerUndo(withTarget: self) { target in
-            MainActor.assumeIsolated {
-                target.onPerformUndoMutation? { currentNodes in
-                    target.deleteNode(nodes: &currentNodes, id: newNode.id, persist: true)
-                }
-            }
-        }
-        undoStackChanged += 1
-
-        withAnimation(.spring()) {
-            nodes.append(newNode)
-        }
-        onRequestSave?(true)
-    }
-    
     public func nodeIcon(for type: NodeType) -> String {
         type.defaultIcon
     }
@@ -382,17 +348,10 @@ final class NodeMutationEngine {
     /// Removes a node from the canvas and cleans up all references to it in other
     /// nodes' `nextNodeId` and `connectedNodeIds` fields.
     ///
-    /// Protected nodes (e.g. pinned system nodes) are silently skipped.
     /// The undo operation restores the full pre-deletion node array rather than
     /// re-inserting at the original index, which is simpler and avoids index drift.
     public func deleteNode(nodes: inout [SpatialNode], id: UUID, persist: Bool = true) {
         guard let index = nodes.firstIndex(where: { $0.id == id }) else { return }
-        
-        if nodes[index].isProtected {
-            let title = nodes[index].title
-            logger.warning("Attempted to delete protected node: \(title)")
-            return
-        }
         
         let nodesBeforeDeletion = nodes
         

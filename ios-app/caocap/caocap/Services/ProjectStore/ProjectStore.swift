@@ -367,18 +367,6 @@ public class ProjectStore {
     ) {
         mutationEngine.disconnectNodes(nodes: &nodes, fromID: fromID, toID: toID, kind: kind)
     }
-    public func addShortcutNode(for appAction: AppActionID, definition: AppActionDefinition) {
-        guard let nodeAction = appAction.pinableNodeAction else { return }
-        let center = CGPoint(x: -viewportOffset.width, y: -viewportOffset.height)
-        mutationEngine.addShortcutNode(
-            nodes: &nodes,
-            action: nodeAction,
-            title: definition.title,
-            icon: definition.icon,
-            at: center
-        )
-    }
-
     /// Restores an app-owned node only when its stable identity is absent,
     /// preserving any existing user edits to that node.
     public func ensureNodeExists(_ node: SpatialNode) {

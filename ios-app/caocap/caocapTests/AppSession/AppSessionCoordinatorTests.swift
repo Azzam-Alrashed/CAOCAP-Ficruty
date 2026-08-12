@@ -63,19 +63,7 @@ struct AppSessionCoordinatorTests {
         #expect(!actionIDs.contains(.goBack))
     }
 
-    @Test func navigateRootNodeActionRoutesThroughDispatcher() {
-        let session = AppSessionCoordinator()
-        session.ensureActionsConfigured()
-        session.router.navigate(to: .project("test.json"), animated: false)
-        session.currentScale = 2.0
-
-        session.handleNodeAction(.navigateRoot)
-
-        #expect(session.router.currentWorkspace == .root)
-        #expect(session.currentScale == 1.0)
-    }
-
-    @Test func whatsAppNodeActionIsConfiguredInDispatcher() {
+    @Test func whatsAppActionIsConfiguredInDispatcher() {
         let session = AppSessionCoordinator()
         session.ensureActionsConfigured()
 
@@ -83,24 +71,6 @@ struct AppSessionCoordinatorTests {
 
         #expect(result.executed)
         #expect(SupportContact.whatsAppURL?.absoluteString == "https://wa.me/966559279486")
-    }
-
-    @Test func helpNodeActionPresentsHelpSheet() {
-        let session = AppSessionCoordinator()
-        session.ensureActionsConfigured()
-
-        session.handleNodeAction(.openHelp)
-
-        #expect(session.showingHelp)
-    }
-
-    @Test func appIconNodeActionPresentsAppIconPickerSheet() {
-        let session = AppSessionCoordinator()
-        session.ensureActionsConfigured()
-
-        session.handleNodeAction(.openAppIcon)
-
-        #expect(session.showingAppIconPicker)
     }
 
     @Test func helpAppActionPresentsHelpSheet() {

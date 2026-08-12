@@ -123,8 +123,7 @@ struct CommandPaletteView: View {
                                                     AppActionRow(
                                                         item: action,
                                                         isSelected: index == viewModel.selectedIndex,
-                                                        onSelect: { viewModel.executeAction(action) },
-                                                        onPin: action.canPinToCanvas ? { viewModel.pinAction(action) } : nil
+                                                        onSelect: { viewModel.executeAction(action) }
                                                     )
                                                     .id(action.id.rawValue)
                                                 }
@@ -546,8 +545,7 @@ private struct OmniboxSearchResultsView: View {
         AppActionRow(
             item: action,
             isSelected: viewModel.selectionIndex(forActionAt: index) == viewModel.selectedIndex,
-            onSelect: { viewModel.executeAction(action) },
-            onPin: action.canPinToCanvas ? { viewModel.pinAction(action) } : nil
+            onSelect: { viewModel.executeAction(action) }
         )
         .id(action.id.rawValue)
     }
@@ -640,7 +638,6 @@ struct AppActionRow: View {
     let item: AppActionDefinition
     let isSelected: Bool
     let onSelect: () -> Void
-    var onPin: (() -> Void)? = nil
     
     var body: some View {
         HStack(spacing: 0) {
@@ -669,19 +666,6 @@ struct AppActionRow: View {
             }
             .buttonStyle(.plain)
 
-            if item.canPinToCanvas, let onPin {
-                Button(action: onPin) {
-                    Text(LocalizationManager.shared.localizedString("Add to canvas"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.12))
-                        .cornerRadius(6)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 12)
-            }
         }
         .omniboxRowStyle(isSelected: isSelected)
     }

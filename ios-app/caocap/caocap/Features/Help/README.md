@@ -7,7 +7,7 @@ In-app help center for tutorials, Omnibox shortcut reference, and getting-starte
 - `HelpManifest` owns static section content (tutorials, shortcuts, articles).
 - `HelpView` renders the sheet; navigation side effects are passed in as closures from `AppSessionCoordinator`.
 - `HelpArticleView` renders long-form guide pages pushed from the help list.
-- Entry points: Omnibox `AppActionID.help` and the root canvas Help node (`NodeAction.openHelp`).
+- Entry point: Omnibox `AppActionID.help`.
 
 ## Editing Guidance
 

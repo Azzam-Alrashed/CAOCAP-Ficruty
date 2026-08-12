@@ -26,10 +26,6 @@ struct InfiniteCanvasView: View {
     var canvasFocusNodeID: UUID?
     var commandPalette: CommandPaletteViewModel? = nil
     
-    /// Callback triggered when a specialized action node is tapped. Its
-    /// presence also marks the canvas as non-persistent onboarding mode.
-    var onNodeAction: ((NodeAction) -> Void)? = nil
-    
     var onNavigateToSubCanvas: ((String) -> Void)? = nil
     var onRecoverUnsupportedProject: (() -> Void)? = nil
     var onFlyToNode: ((UUID) -> Void)? = nil
@@ -41,7 +37,6 @@ struct InfiniteCanvasView: View {
         selectedNodeDetail: Binding<SpatialNode?>,
         canvasFocusNodeID: UUID? = nil,
         commandPalette: CommandPaletteViewModel? = nil,
-        onNodeAction: ((NodeAction) -> Void)? = nil,
         onNavigateToSubCanvas: ((String) -> Void)? = nil,
         onRecoverUnsupportedProject: (() -> Void)? = nil,
         onFlyToNode: ((UUID) -> Void)? = nil
@@ -53,7 +48,6 @@ struct InfiniteCanvasView: View {
         self._selectedNodeDetail = selectedNodeDetail
         self.canvasFocusNodeID = canvasFocusNodeID
         self.commandPalette = commandPalette
-        self.onNodeAction = onNodeAction
         self.onNavigateToSubCanvas = onNavigateToSubCanvas
         self.onRecoverUnsupportedProject = onRecoverUnsupportedProject
         self.onFlyToNode = onFlyToNode
@@ -252,9 +246,7 @@ struct InfiniteCanvasView: View {
     }
 
     private func handleNodeTap(_ node: SpatialNode) {
-        if let action = node.action {
-            onNodeAction?(action)
-        } else if node.type == .subCanvas, let fileName = node.linkedCanvasFileName {
+        if node.type == .subCanvas, let fileName = node.linkedCanvasFileName {
             onNavigateToSubCanvas?(fileName)
         } else if node.type == .miniApp {
             presentedMiniApp = node
@@ -433,12 +425,10 @@ private struct CanvasNodeLayer: View, Equatable {
             onTap(node)
         }
         .contextMenu(menuItems: {
-            if !node.isProtected {
-                Button(role: .destructive) {
-                    onDelete(node)
-                } label: {
-                    Label("Delete Node", systemImage: "trash")
-                }
+            Button(role: .destructive) {
+                onDelete(node)
+            } label: {
+                Label("Delete Node", systemImage: "trash")
             }
 
             Button {
@@ -517,8 +507,7 @@ private struct TrackpadPanGesture: UIGestureRecognizerRepresentable {
         viewport: .constant(ViewportState()),
         currentScale: .constant(1.0),
         presentedMiniApp: .constant(nil),
-        selectedNodeDetail: .constant(nil),
-        onNodeAction: nil
+        selectedNodeDetail: .constant(nil)
     )
 }
 

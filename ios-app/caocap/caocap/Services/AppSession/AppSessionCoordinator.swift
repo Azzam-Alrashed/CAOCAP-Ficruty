@@ -312,11 +312,6 @@ final class AppSessionCoordinator {
 
     // MARK: - Node Actions
 
-    func handleNodeAction(_ action: NodeAction) {
-        guard let actionID = action.appActionID else { return }
-        _ = actionDispatcher.perform(actionID, source: .user)
-    }
-
     func handleSubCanvasNavigation(fileName: String) {
         presentedMiniApp = nil
         selectedNodeDetail = nil
@@ -470,12 +465,6 @@ final class AppSessionCoordinator {
         commandPalette.onExecute = { [weak self] actionID in
             guard let self else { return }
             _ = self.actionDispatcher.perform(actionID, source: .user)
-        }
-        commandPalette.onPinAction = { [weak self] actionID in
-            guard let self,
-                  let definition = self.actionDispatcher.definition(for: actionID) else { return }
-            self.router.activeStore.addShortcutNode(for: actionID, definition: definition)
-            self.commandPalette.nodes = self.router.activeStore.nodes
         }
         commandPalette.onCreateNode = { [weak self] type in
             guard let self else { return }

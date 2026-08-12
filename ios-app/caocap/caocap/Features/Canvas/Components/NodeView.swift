@@ -133,41 +133,14 @@ struct NodeView: View, Equatable {
     }
     
     /// The accent color used for badge tinting, border gradients, and icon fills.
-    /// Overrides the node's theme color with yellow when the user holds an active
-    /// Pro subscription and this is the Pro upsell node.
-    private var themeColor: Color {
-        if node.action == .proSubscription && SubscriptionManager.shared.isSubscribed {
-            return .yellow
-        }
-        return node.theme.color
-    }
+    private var themeColor: Color { node.theme.color }
 
     /// Gradient color pair used for the icon background, card gradient, and shadow.
-    /// Uses gold tones for the Pro upsell node when the user is already subscribed.
-    private var gradientColors: [Color] {
-        if node.action == .proSubscription && SubscriptionManager.shared.isSubscribed {
-            return [Color(hex: "FACC15"), Color(hex: "F59E0B")]
-        }
-        return node.theme.gradientColors
-    }
+    private var gradientColors: [Color] { node.theme.gradientColors }
 
-    /// The text shown in the title row, overridden for the Pro upsell node when
-    /// the user is already subscribed (to show "CAOCAP Pro" instead of the raw title).
-    private var nodeTitle: String {
-        if node.action == .proSubscription && SubscriptionManager.shared.isSubscribed {
-            return LocalizationManager.shared.localizedString("CAOCAP Pro")
-        }
-        return node.displayTitle
-    }
+    private var nodeTitle: String { node.displayTitle }
     
-    /// The text shown below the title, overridden for the Pro upsell node when
-    /// the user is already subscribed (to show "Manage Subscription").
-    private var nodeSubtitle: String? {
-        if node.action == .proSubscription && SubscriptionManager.shared.isSubscribed {
-            return LocalizationManager.shared.localizedString("Manage Subscription")
-        }
-        return node.displaySubtitle
-    }
+    private var nodeSubtitle: String? { node.displaySubtitle }
 
     /// Temporary performance probe: preserves the normal material and gradient
     /// chrome but removes only the permanent per-card shadow.
@@ -259,8 +232,8 @@ struct NodeView: View, Equatable {
 }
 
 /// Renders supplementary content beneath the header row of a `NodeView`.
-/// Sub-canvas nodes show a "Tap to open" affordance. Mini-App and action nodes
-/// render nothing (the header row is sufficient).
+/// Sub-canvas nodes show a "Tap to open" affordance. Other workflow nodes render
+/// no supplementary content because the header row is sufficient.
 private struct NodePreviewContent: View {
     let node: SpatialNode
     let agentState: AgentExecutionState
@@ -268,10 +241,7 @@ private struct NodePreviewContent: View {
     
     var body: some View {
         Group {
-            if node.action != nil {
-                EmptyView()
-            } else {
-                switch node.type {
+            switch node.type {
                 case .miniApp:
                     EmptyView()
 
@@ -294,7 +264,6 @@ private struct NodePreviewContent: View {
                     
                 default:
                     EmptyView()
-                }
             }
         }
     }

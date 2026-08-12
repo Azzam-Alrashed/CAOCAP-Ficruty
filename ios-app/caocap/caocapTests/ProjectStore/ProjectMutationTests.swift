@@ -137,27 +137,6 @@ struct ProjectMutationTests {
         #expect(n2PosRedone == n2PosAfter)
     }
 
-    @Test func addShortcutNodeCreatesPinableLauncher() throws {
-        let store = ProjectStore(fileName: UUID().uuidString + ".json")
-        let definition = AppActionDefinition(
-            id: .openSettings,
-            title: "Open Settings",
-            icon: "gearshape.fill",
-            category: .assistant,
-            isMutating: false,
-            allowsAutonomousExecution: true,
-            canPinToCanvas: true
-        )
-
-        store.addShortcutNode(for: .openSettings, definition: definition)
-
-        let shortcut = store.nodes.last
-        #expect(shortcut?.action == .openSettings)
-        #expect(shortcut?.title == "Open Settings")
-        #expect(shortcut?.icon == "gearshape.fill")
-        #expect(shortcut?.type == .standard)
-    }
-
     @Test func organizeNodesResetsRootNodesToDefaults() throws {
         let node = SpatialNode(id: UUID(), type: .standard, position: CGPoint(x: 999, y: 999), title: "Root Node")
         let store = ProjectStore(fileName: UUID().uuidString + ".json", initialNodes: [node])

@@ -47,20 +47,6 @@ public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
 
     public var id: String { rawValue }
 
-    /// Maps pin-able app actions to their canvas shortcut `NodeAction`.
-    public var pinableNodeAction: NodeAction? {
-        switch self {
-        case .goRoot: return .navigateRoot
-        case .openSettings: return .openSettings
-        case .openProfile: return .openProfile
-        case .summonCoCaptain: return .summonCoCaptain
-        case .proSubscription: return .proSubscription
-        case .openWhatsApp: return .openWhatsApp
-        case .help: return .openHelp
-        case .openAppIcon: return .openAppIcon
-        default: return nil
-        }
-    }
 }
 
 public struct AppActionDefinition: Identifiable, Hashable {
@@ -75,17 +61,13 @@ public struct AppActionDefinition: Identifiable, Hashable {
     /// Indicates whether trusted non-user callers, such as CoCaptain, may run
     /// this action without an explicit review item.
     public let allowsAutonomousExecution: Bool
-    /// When true, the omnibox can place a shortcut node on the active canvas.
-    public let canPinToCanvas: Bool
-
     public init(
         id: AppActionID,
         title: String,
         icon: String,
         category: AppActionCategory,
         isMutating: Bool,
-        allowsAutonomousExecution: Bool,
-        canPinToCanvas: Bool = false
+        allowsAutonomousExecution: Bool
     ) {
         self.id = id
         self.title = title
@@ -93,7 +75,6 @@ public struct AppActionDefinition: Identifiable, Hashable {
         self.category = category
         self.isMutating = isMutating
         self.allowsAutonomousExecution = allowsAutonomousExecution
-        self.canPinToCanvas = canPinToCanvas
     }
 
     /// The stable, localised title of the action, resolved via `LocalizationManager`.
@@ -151,8 +132,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "house.fill",
             category: .navigation,
             isMutating: false,
-            allowsAutonomousExecution: true,
-            canPinToCanvas: true
+            allowsAutonomousExecution: true
         ),
         AppActionDefinition(
             id: .goBack,
@@ -224,8 +204,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "sparkles",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: true,
-            canPinToCanvas: true
+            allowsAutonomousExecution: true
         ),
         AppActionDefinition(
             id: .summonCopilotVideo,
@@ -281,8 +260,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "crown",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: false,
-            canPinToCanvas: true
+            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .signIn,
@@ -298,8 +276,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "gearshape.fill",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: true,
-            canPinToCanvas: true
+            allowsAutonomousExecution: true
         ),
         AppActionDefinition(
             id: .openProfile,
@@ -307,8 +284,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "person.fill",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: true,
-            canPinToCanvas: true
+            allowsAutonomousExecution: true
         ),
         AppActionDefinition(
             id: .moveNode,
@@ -340,8 +316,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "questionmark.circle",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: false,
-            canPinToCanvas: true
+            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .organizeNodes,
@@ -389,8 +364,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "message.fill",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: false,
-            canPinToCanvas: true
+            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .openAppIcon,
@@ -398,8 +372,7 @@ public final class AppActionDispatcher: AppActionPerforming {
             icon: "app.fill",
             category: .assistant,
             isMutating: false,
-            allowsAutonomousExecution: false,
-            canPinToCanvas: true
+            allowsAutonomousExecution: false
         ),
         AppActionDefinition(
             id: .changeCopilot,
@@ -434,8 +407,7 @@ public final class AppActionDispatcher: AppActionPerforming {
                 icon: "sparkles",
                 category: .assistant,
                 isMutating: false,
-                allowsAutonomousExecution: true,
-                canPinToCanvas: true
+                allowsAutonomousExecution: true
             )
         }
     }

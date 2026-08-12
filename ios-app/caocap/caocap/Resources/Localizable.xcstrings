@@ -273,17 +273,6 @@
         }
       }
     },
-    "Add to canvas" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "إضافة إلى اللوحة"
-          }
-        }
-      }
-    },
     "Aesthetics" : {
       "comment" : "A section in the context menu that allows the user to change the node's theme.",
       "extractionState" : "stale",

@@ -16,8 +16,8 @@ The Canvas feature is CAOCAP's spatial workspace. It renders the infinite canvas
 
 1. `ContentView` provides an active `ProjectStore` from `AppRouter`.
 2. `InfiniteCanvasView` renders `store.nodes`.
-3. Tapping a Mini-App opens its large-sheet shell, tapping an action node calls
-   `onNodeAction`, and tapping a subcanvas portal opens its linked canvas file.
+3. Tapping a Mini-App opens its large-sheet shell, and tapping a subcanvas portal
+   opens its linked canvas file.
 4. Mini-App tools route through the omnibox. CoCaptain mutates the graph through AppActions (`create_node`, `rename_node`, `connect_nodes`, etc.), not code-section patches.
 5. `ProjectStore` debounces saves. There is no live HTML compile/preview pipeline.
 6. `ConnectionLayer` draws arrows from `nextNodeId` and `connectedNodeIds`.
@@ -46,7 +46,6 @@ When changing gestures or connection rendering, test pan, zoom, drag, and arrow 
 - Drag a node, pan the canvas, pinch zoom, then reopen the project and verify persisted state.
 - Open a Mini-App node full-screen and confirm FAB tap and sparkles open the omnibox; verify MINI-APP rows route to Agent, Settings, and Back to Canvas (no Code / HTML preview).
 - Check connection arrows while dragging nodes and at multiple zoom levels.
-- Verify action nodes on the Home screen navigate to correct destinations.
 - Share/export offers `.caocap` only.
 
 ## Test Targets

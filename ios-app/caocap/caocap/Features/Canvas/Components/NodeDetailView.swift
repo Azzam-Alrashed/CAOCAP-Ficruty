@@ -230,14 +230,12 @@ private struct MiniAppSettingsView: View {
                     ))
                 }
 
-                if !currentNode.isProtected {
-                    Section {
-                        Button("Delete Node", role: .destructive) {
-                            HapticsManager.shared.notification(.warning)
-                            store.deleteNode(id: node.id)
-                            dismiss()
-                            onDelete()
-                        }
+                Section {
+                    Button("Delete Node", role: .destructive) {
+                        HapticsManager.shared.notification(.warning)
+                        store.deleteNode(id: node.id)
+                        dismiss()
+                        onDelete()
                     }
                 }
             }

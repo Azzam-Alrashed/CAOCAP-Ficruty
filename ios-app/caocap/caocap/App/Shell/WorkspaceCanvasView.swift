@@ -10,7 +10,6 @@ struct WorkspaceCanvasView: View {
     @Binding var selectedNodeDetail: SpatialNode?
     var canvasFocusNodeID: UUID?
     var commandPalette: CommandPaletteViewModel?
-    let onNodeAction: (NodeAction) -> Void
     let onNavigateToSubCanvas: (String) -> Void
     let onRecoverUnsupportedProject: () -> Void
     var onFlyToNode: ((UUID) -> Void)?
@@ -24,7 +23,6 @@ struct WorkspaceCanvasView: View {
             selectedNodeDetail: $selectedNodeDetail,
             canvasFocusNodeID: canvasFocusNodeID,
             commandPalette: commandPalette,
-            onNodeAction: onNodeAction,
             onNavigateToSubCanvas: onNavigateToSubCanvas,
             onRecoverUnsupportedProject: onRecoverUnsupportedProject,
             onFlyToNode: onFlyToNode

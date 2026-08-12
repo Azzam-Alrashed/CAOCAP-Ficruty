@@ -83,7 +83,6 @@ struct ContentView: View {
                 selectedNodeDetail: $session.selectedNodeDetail,
                 canvasFocusNodeID: session.canvasFocusNodeID,
                 commandPalette: session.commandPalette,
-                onNodeAction: { session.handleNodeAction($0) },
                 onNavigateToSubCanvas: { fileName in
                     session.handleSubCanvasNavigation(fileName: fileName)
                 },
@@ -102,7 +101,6 @@ struct ContentView: View {
                 selectedNodeDetail: $session.selectedNodeDetail,
                 canvasFocusNodeID: session.canvasFocusNodeID,
                 commandPalette: session.commandPalette,
-                onNodeAction: { session.handleNodeAction($0) },
                 onNavigateToSubCanvas: { fileName in
                     session.handleSubCanvasNavigation(fileName: fileName)
                 },

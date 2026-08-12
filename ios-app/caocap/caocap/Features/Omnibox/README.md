@@ -21,24 +21,6 @@ The Omnibox should not directly mutate app state. It emits `AppActionID` values;
 6. If the query has no listed command matches, the view model emits the trimmed query through `onSubmitPrompt`, and the app shell opens CoCaptain with that prompt.
 7. `AppActionDispatcher.perform(_:source:)` validates source safety and runs configured app actions.
 
-## Pin To Canvas
-
-Some actions can be pinned as shortcut nodes on the active canvas:
-
-- Go to Root
-- Open Settings
-- Open Profile
-- Summon Co-Captain
-- Pro Subscription
-- Activity
-- Daily
-- WhatsApp
-- Help & Documentation
-
-Pin-able rows show an **Add to canvas** affordance. Choosing it calls `ProjectStore.addShortcutNode(for:definition:)` and creates a standard node at the viewport center with the matching `NodeAction`. Selecting the row normally still runs the action immediately through the dispatcher.
-
-Root canvas nodes with rich previews (Activity heatmap, Daily progress) remain spatial dashboard content on the home grid. Their actions still route through `AppActionDispatcher` like every other `NodeAction`. The Help node opens the in-app help center sheet.
-
 ## Intent Matching
 
 `CommandIntentResolver` supports local phrase matching for commands such as "open settings" or Arabic equivalents. It normalizes case, punctuation, and diacritics, then checks conservative aliases.
@@ -71,9 +53,7 @@ In search (capsule) mode, the results card defaults to listing available options
 ## Editing Guidance
 
 - Add new actions to `AppActionID`, `availableActions`, `configure(...)`, and the dispatcher `switch`.
-- For canvas shortcut nodes, also add `NodeAction.appActionID` in `NodeAction+AppAction.swift`, register the handler in `AppSessionCoordinator.configureActions()`, and wire `pinableNodeAction` when the action should be pinnable.
 - Add aliases in `CommandIntentResolver` only when the phrase is unlikely to be ordinary chat.
-- Set `canPinToCanvas` and `AppActionID.pinableNodeAction` only for shortcut actions that should live on the graph.
 - Keep `CommandPaletteView` presentational; search and selection state belong in the view model.
 - Keep side effects out of `CommandPaletteViewModel`; emit IDs or prompts and let the dispatcher/app shell execute.
 - Update CoCaptain tests when changing command aliases, negation behavior, or action safety flags.
@@ -90,7 +70,6 @@ In search (capsule) mode, the results card defaults to listing available options
 - Type an unlisted command, press Return, and confirm CoCaptain opens with that prompt.
 - Tap outside the palette and confirm query/selection reset on close.
 - Try direct commands through CoCaptain, including negated phrases, and confirm safe vs reviewed behavior.
-- For pin-able actions, confirm **Add to canvas** creates a shortcut node and normal selection still runs immediately.
 
 ## Test Targets
 
@@ -103,4 +82,3 @@ Useful test coverage for this feature:
 - `CommandIntentResolver` English and Arabic aliases;
 - negation handling;
 - dispatcher blocking of automatic mutating actions;
-- `addShortcutNode` creates nodes with the expected `NodeAction`.

@@ -1,29 +1,6 @@
 import Foundation
 import CoreGraphics
 
-/// Canvas-level actions a node can dispatch to the app when tapped.
-/// Node taps resolve to `AppActionID` via `NodeAction.appActionID` and run
-/// through `AppActionDispatcher` so the canvas stays decoupled from navigation
-/// and sheet state.
-public enum NodeAction: String, Codable, Equatable {
-    /// Navigate back to the root home canvas.
-    case navigateRoot
-    /// Open the app settings sheet.
-    case openSettings
-    /// Open the user profile sheet.
-    case openProfile
-    /// Present the CoCaptain AI assistant panel.
-    case summonCoCaptain
-    /// Present the Pro subscription purchase flow.
-    case proSubscription
-    /// Open a WhatsApp chat with the CAOCAP creator.
-    case openWhatsApp
-    /// Open the in-app help and documentation center.
-    case openHelp
-    /// Open the alternate app icon picker.
-    case openAppIcon
-}
-
 /// Structural kind of a canvas node, determining its rendering, behavior, and default metadata.
 public enum NodeType: String, Codable, Equatable, Hashable, CaseIterable {
     /// A generic node with no special workflow behavior.
@@ -232,8 +209,6 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
     public var nextNodeId: UUID?
     /// IDs of all nodes this node has explicit bidirectional connections to.
     public var connectedNodeIds: [UUID]?
-    /// App-level action dispatched when this node is tapped (reserved for system nodes).
-    public var action: NodeAction?
     /// Mini-app content and state; only populated for `.miniApp` type nodes.
     public var miniApp: MiniAppState?
     
@@ -246,7 +221,7 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
     /// The filename of the linked canvas for `.subCanvas` nodes.
     public var linkedCanvasFileName: String?
     
-    public init(id: UUID = UUID(), type: NodeType = .standard, position: CGPoint, title: String, subtitle: String? = nil, icon: String? = nil, theme: NodeTheme = .blue, nextNodeId: UUID? = nil, connectedNodeIds: [UUID]? = nil, action: NodeAction? = nil, miniApp: MiniAppState? = nil, agentState: NodeAgentState = NodeAgentState(), agentProfile: AgentProfile = AgentProfile(), linkedCanvasFileName: String? = nil) {
+    public init(id: UUID = UUID(), type: NodeType = .standard, position: CGPoint, title: String, subtitle: String? = nil, icon: String? = nil, theme: NodeTheme = .blue, nextNodeId: UUID? = nil, connectedNodeIds: [UUID]? = nil, miniApp: MiniAppState? = nil, agentState: NodeAgentState = NodeAgentState(), agentProfile: AgentProfile = AgentProfile(), linkedCanvasFileName: String? = nil) {
         self.id = id
         self.type = type
         self.position = position
@@ -256,7 +231,6 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
         self.theme = theme
         self.nextNodeId = nextNodeId
         self.connectedNodeIds = connectedNodeIds
-        self.action = action
         self.miniApp = type == .miniApp ? (miniApp ?? MiniAppState()) : miniApp
         self.agentState = agentState
         self.agentProfile = agentProfile
@@ -285,7 +259,6 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
         case theme
         case nextNodeId
         case connectedNodeIds
-        case action
         case miniApp
         case agentState
         case agentProfile
@@ -303,12 +276,6 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
         self.theme = try container.decode(NodeTheme.self, forKey: .theme)
         self.nextNodeId = try container.decodeIfPresent(UUID.self, forKey: .nextNodeId)
         self.connectedNodeIds = try container.decodeIfPresent([UUID].self, forKey: .connectedNodeIds)
-        // Decode `action` tolerantly: unknown raw values in future formats are silently ignored.
-        if let actionString = try container.decodeIfPresent(String.self, forKey: .action) {
-            self.action = NodeAction(rawValue: actionString)
-        } else {
-            self.action = nil
-        }
         self.miniApp = try container.decodeIfPresent(MiniAppState.self, forKey: .miniApp)
         // Migration: ensure older saves that predate `MiniAppState` still get a default state.
         if self.type == .miniApp, self.miniApp == nil {
@@ -321,7 +288,7 @@ public struct SpatialNode: Identifiable, Codable, Equatable {
 
     /// Repairs legacy saves where workflow nodes kept outdated titles, icons, or themes.
     public func applyingCanonicalThemeIfNeeded() -> SpatialNode {
-        guard action == nil, type != .standard else { return self }
+        guard type != .standard else { return self }
 
         var updated = self
         if theme == .blue, type != .miniApp {

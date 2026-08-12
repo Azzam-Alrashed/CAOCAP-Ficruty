@@ -143,8 +143,6 @@ public class CommandPaletteViewModel {
     
     /// Called by the host when an action should be executed; avoids duplicating dispatch logic here.
     public var onExecute: ((AppActionID) -> Void)?
-    /// Called when the user requests to pin an action shortcut onto the canvas.
-    public var onPinAction: ((AppActionID) -> Void)?
     /// Called when the user selects a node result, asking the canvas to fly to that node.
     public var onFlyToNode: ((UUID) -> Void)?
     /// Called when the user picks a node-creation option from the palette.
@@ -269,12 +267,6 @@ public class CommandPaletteViewModel {
             setPresented(true, mode: .actionsList)
             return
         }
-        setPresented(false)
-    }
-
-    public func pinAction(_ action: AppActionDefinition) {
-        logger.info("Pinning action to canvas: \(action.title)")
-        onPinAction?(action.id)
         setPresented(false)
     }
 
