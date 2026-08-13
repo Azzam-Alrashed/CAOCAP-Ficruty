@@ -31,6 +31,29 @@ struct AppSessionCoordinatorTests {
         #expect(session.router.currentWorkspace == .root)
     }
 
+    @Test func goHomeActionCollapsesWorkspaceAndDismissesCommandLine() {
+        let session = AppSessionCoordinator()
+        session.ensureActionsConfigured()
+        session.openSession()
+        session.openCommandLine()
+
+        _ = session.actionDispatcher.perform(.goHome, source: .user)
+
+        #expect(session.destination == .home)
+        #expect(!session.commandPalette.isPresented)
+    }
+
+    @Test func goRootKeepsSessionOpen() {
+        let session = AppSessionCoordinator()
+        session.ensureActionsConfigured()
+        session.openSession()
+
+        _ = session.actionDispatcher.perform(.goRoot, source: .user)
+
+        #expect(session.destination == .workspace)
+        #expect(session.router.currentWorkspace == .root)
+    }
+
     @Test func filteredPaletteActionsHideRootNavigationAtRoot() {
         let session = AppSessionCoordinator()
         session.router.currentWorkspace = .root

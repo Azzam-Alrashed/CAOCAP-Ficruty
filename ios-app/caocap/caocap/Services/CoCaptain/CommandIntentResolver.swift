@@ -25,14 +25,23 @@ public struct CommandIntentResolver {
     /// conservative so casual chat is not accidentally interpreted as a command.
     private func aliases(for id: AppActionID) -> [String] {
         switch id {
+        case .goHome:
+            return [
+                "go home",
+                "home",
+                "take me home",
+                "open home",
+                "الرئيسية",
+                "الصفحة الرئيسية",
+                "اذهب للرئيسية",
+                "اذهب الى الرئيسية",
+                "افتح الرئيسية"
+            ]
         case .goRoot:
             return [
                 "go root",
-                "go home",
-                "home",
                 "root",
                 "take me to root",
-                "take me home",
                 "open root",
                 "الجذر",
                 "اذهب للجذر",

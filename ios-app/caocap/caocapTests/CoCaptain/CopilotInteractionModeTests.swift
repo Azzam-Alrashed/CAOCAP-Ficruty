@@ -38,4 +38,14 @@ struct CopilotInteractionModeTests {
         #expect(resolver.resolve("view usage", availableActions: dispatcher.availableActions) == .openUsage)
         #expect(resolver.resolve("token usage", availableActions: dispatcher.availableActions) == .openUsage)
     }
+
+    @Test func intentResolverSeparatesAppHomeFromCanvasRoot() {
+        let dispatcher = AppActionDispatcher()
+        let resolver = CommandIntentResolver()
+
+        #expect(resolver.resolve("home", availableActions: dispatcher.availableActions) == .goHome)
+        #expect(resolver.resolve("go home", availableActions: dispatcher.availableActions) == .goHome)
+        #expect(resolver.resolve("root", availableActions: dispatcher.availableActions) == .goRoot)
+        #expect(resolver.resolve("go root", availableActions: dispatcher.availableActions) == .goRoot)
+    }
 }

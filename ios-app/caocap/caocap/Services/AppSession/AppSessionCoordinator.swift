@@ -6,7 +6,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// The app-level destination shown outside an active workspace session.
-enum AppDestination {
+enum AppDestination: Hashable {
     case home
     case workspace
 }
@@ -377,6 +377,18 @@ final class AppSessionCoordinator {
         commandPalette.setPresented(true)
     }
 
+    /// Expands the latest workspace from its Home preview.
+    func openSession() {
+        destination = .workspace
+    }
+
+    /// Collapses the active workspace back into its Home preview.
+    func returnHome() {
+        commandPalette.setPresented(false)
+        coCaptain.setPresented(false)
+        destination = .home
+    }
+
     // MARK: - Command Line
 
     func bindCommandPalette() {
@@ -447,6 +459,9 @@ final class AppSessionCoordinator {
     }
 
     private func configureActions() {
+        actionDispatcher.register(.goHome) { [weak self] in
+            self?.returnHome()
+        }
         actionDispatcher.register(.goRoot) { [weak self] in
             guard let self else { return }
             self.router.goRoot()

@@ -257,6 +257,9 @@ struct GlobalFloatingChromeView: View {
         .onChange(of: session.personalization.shouldPresent) { _, _ in
             refreshChromeVisibility(session: session)
         }
+        .onChange(of: session.destination) { _, _ in
+            refreshChromeVisibility(session: session)
+        }
         .onChange(of: session.appUpdateService.availableUpdate) { _, _ in
             refreshChromeVisibility(session: session)
         }

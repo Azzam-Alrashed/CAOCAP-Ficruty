@@ -6,6 +6,7 @@ import SwiftUI
 /// FAB, call chrome, confetti, and force-update live in a passthrough `UIWindow` above system sheets.
 struct ContentView: View {
     @State private var session = AppSessionCoordinator()
+    @Namespace private var sessionTransitionNamespace
     @Environment(\.undoManager) private var undoManager
 
     var body: some View {
@@ -65,32 +66,64 @@ struct ContentView: View {
             .modifier(AppSheetsModifier(session: session))
     }
 
-    @ViewBuilder
     private var destinationContent: some View {
-        switch session.destination {
-        case .home:
-            HomeView()
-        case .workspace:
-            ZStack {
-                workspaceCanvas
-
-                CommandPaletteView(viewModel: session.commandPalette)
-
-                KeyboardShortcutBridge(
-                    onOpenCommandPalette: {
-                        session.commandPalette.setPresented(true)
-                    },
-                    onSummonCoCaptain: {
-                        _ = session.actionDispatcher.perform(.summonCoCaptain, source: .user)
-                    },
-                    onUndo: {
-                        _ = session.actionDispatcher.perform(.undo, source: .user)
-                    },
-                    onRedo: {
-                        _ = session.actionDispatcher.perform(.redo, source: .user)
-                    }
-                )
+        NavigationStack(path: destinationPath) {
+            HomeView(
+                sessionPreview: SessionCanvasPreview(viewport: session.viewport),
+                onOpenSession: session.openSession,
+                transitionNamespace: sessionTransitionNamespace
+            )
+            .navigationDestination(for: AppDestination.self) { destination in
+                if destination == .workspace {
+                    workspaceContent
+                        .navigationTransition(
+                            .zoom(
+                                sourceID: SessionTransitionID.latest,
+                                in: sessionTransitionNamespace
+                            )
+                        )
+                        .toolbarVisibility(.hidden, for: .navigationBar, .tabBar)
+                        .background(InteractivePopGestureDisabler())
+                }
             }
+        }
+    }
+
+    private var destinationPath: Binding<[AppDestination]> {
+        Binding(
+            get: {
+                session.destination == .workspace ? [.workspace] : []
+            },
+            set: { path in
+                if path.last == .workspace {
+                    session.openSession()
+                } else {
+                    session.returnHome()
+                }
+            }
+        )
+    }
+
+    private var workspaceContent: some View {
+        ZStack {
+            workspaceCanvas
+
+            CommandPaletteView(viewModel: session.commandPalette)
+
+            KeyboardShortcutBridge(
+                onOpenCommandPalette: {
+                    session.commandPalette.setPresented(true)
+                },
+                onSummonCoCaptain: {
+                    _ = session.actionDispatcher.perform(.summonCoCaptain, source: .user)
+                },
+                onUndo: {
+                    _ = session.actionDispatcher.perform(.undo, source: .user)
+                },
+                onRedo: {
+                    _ = session.actionDispatcher.perform(.redo, source: .user)
+                }
+            )
         }
     }
 

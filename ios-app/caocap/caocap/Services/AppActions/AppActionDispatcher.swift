@@ -11,6 +11,7 @@ public enum AppActionCategory: String, Hashable {
 }
 
 public enum AppActionID: String, CaseIterable, Identifiable, Codable, Hashable {
+    case goHome = "go_home"
     case goRoot = "go_root"
     case goBack = "go_back"
     case summonCoCaptain = "summon_cocaptain"
@@ -110,6 +111,14 @@ public protocol AppActionPerforming: AnyObject {
 @MainActor
 public final class AppActionDispatcher: AppActionPerforming {
     public private(set) var availableActions: [AppActionDefinition] = [
+        AppActionDefinition(
+            id: .goHome,
+            title: "Home",
+            icon: "house.fill",
+            category: .navigation,
+            isMutating: false,
+            allowsAutonomousExecution: true
+        ),
         AppActionDefinition(
             id: .goRoot,
             title: "Go to Root",
