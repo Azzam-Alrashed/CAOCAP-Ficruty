@@ -2,6 +2,12 @@
 
 CoCaptain is the agentic assistant for CAOCAP. It reads the current spatial project graph, streams model responses, executes safe app actions, and stages mutating graph actions for human review.
 
+> **Current implementation:** This guide documents the existing iOS CoCaptain
+> stack, including transitional project-graph and review infrastructure. The
+> target product uses CoCaptain or CoStar as the conversational CoPilot for
+> multi-agent workflows; see
+> [`docs/PRODUCT_DIRECTION.md`](../../../../../docs/PRODUCT_DIRECTION.md).
+
 ## Ownership
 
 - `Chat/` owns the adaptive CoCaptain sheet/inspector, shared chat visual language, grouped project conversation browser, lazy timeline, bubbles and on-demand message actions, typed progress/errors, context-aware input composer (Agent/Ask/Plan mode, optional `@` pin, route disclosure, and `cocaptain.chatMode` persistence), streaming task lifetime, direct command handling, and rendering Review Lifecycle effects.

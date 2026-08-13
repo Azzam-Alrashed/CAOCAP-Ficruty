@@ -1,45 +1,45 @@
 # Contributing to CAOCAP
 
-First off, thank you for considering contributing to CAOCAP! It's people like you that make software development better for everyone.
+Thank you for helping build CAOCAP.
 
-## Our Philosophy
+## Product Direction
 
-We follow the "Forgotten Future" of programming—gesture-based, spatial, and agentic. We prioritize **Developer Experience (DX)** above all else. If you're here, you're likely here to push boundaries.
+CAOCAP is becoming an end-to-end command center for AI agents and computers.
+Read [CAOCAP Product Direction](docs/PRODUCT_DIRECTION.md) before proposing
+product or architecture changes.
+
+The repository is transitional. Feature README files describe current code;
+they are not product doctrine. New work should move toward conversational
+multi-agent orchestration without preserving obsolete Mini-App behavior unless
+compatibility is explicitly required.
 
 ## Technical Standards
 
-To keep the codebase maintainable and performant, we adhere to the following standards:
+### Modern SwiftUI
 
-### 1. Modern SwiftUI
-- **State Management**: Use the `@Observable` macro (iOS 17+) for all view state. Avoid legacy `@StateObject` or `@Published` unless necessary for backward compatibility or specific framework requirements.
-- **Views**: Keep views small and modular. Prefer `ViewModifier` or specialized subviews over massive `body` properties.
-- **Concurrency**: Use Swift Structured Concurrency (`async/await`, `Task`). Avoid `@MainActor` blocking for disk I/O or heavy computations.
+- Use Observation (`@Observable`) for shared view state.
+- Keep views small and move business rules out of view bodies.
+- Use structured concurrency and keep heavy work off the main actor.
 
-### 2. Folder Structure
-Maintain the domain-driven, feature-based structure:
-- `Models/`: Pure data.
-- `Services/`: Business logic and infrastructure.
-- `Features/`: UI and feature-specific logic.
-- `Navigation/`: Routing logic.
+### Project Structure
 
-### 3. State-Aware Actions
-- Avoid "stringly-typed" logic. Use enums (like `NodeAction`) for navigation, routing, and intent.
+- `Models/` contains domain data.
+- `Services/` contains business logic and infrastructure.
+- `Features/` contains feature-specific UI and behavior.
+- `Navigation/` contains workspace routing.
 
-## Git Workflow
+### Typed Boundaries
 
-1. **Branching**: Create a feature branch for every change: `feature/your-feature-name` or `fix/your-bug-fix`.
-2. **Commits**: Write descriptive commit messages. Use prefixes like `Feat:`, `Fix:`, `Refactor:`, or `Chore:`.
-3. **Pull Requests**:
-   - Describe what changed and *why*.
-   - Include screenshots or videos for UI changes.
-   - Ensure the project builds successfully before submitting.
+- Prefer typed identifiers and enums over string-based routing or actions.
+- Keep side effects behind service or dispatcher boundaries.
+- Preserve human review and safety checks for consequential agent actions.
 
-## The "Vibe Coding" Way
+## Pull Requests
 
-CAOCAP is built in high-bandwidth development sessions. We value:
-- **Clean Documentation**: Update `STRUCTURE.md` and `README.md` if your changes alter the app's architecture.
-- **Vision First**: If a change doesn't align with the project's long-term mission, let's discuss it in an issue first.
+- Explain what changed and why.
+- Include screenshots or recordings for visible UI changes.
+- Update the relevant documentation when behavior or architecture changes.
+- Build the affected targets and run proportionate tests before submitting.
 
----
-
-**Let's build the future together.**
+If a proposal changes the product model, discuss it in an issue before investing
+in a large implementation.

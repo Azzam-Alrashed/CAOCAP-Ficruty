@@ -27,5 +27,5 @@ The view never mutates app state directly. `CommandPaletteViewModel` emits an ac
 - Open the Command Line and confirm only the input is shown.
 - Enter `open settings` and confirm Settings opens.
 - Enter an unmatched request and confirm it opens the selected CoPilot with that request.
-- Tap outside and confirm the Command Line dismisses and clears its input.
+- Tap empty canvas space and confirm the Command Line dismisses and clears its input.
 - Confirm dictation still fills the input.

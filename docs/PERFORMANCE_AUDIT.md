@@ -4,6 +4,12 @@
 **Scope:** SwiftUI iOS app (`ios-app/caocap`) — launch, canvas, Mini-App previews, CoCaptain, persistence, Copilot Live.  
 **Out of scope:** marketing website (already lean; negligible client JS).
 
+> **Historical audit:** This report measured the pre-orchestration iOS
+> implementation. Mini-App nodes, live previews, and node connections are no
+> longer active product direction. Keep the measurements as historical evidence;
+> do not treat its Mini-App recommendations as the current roadmap. See
+> [CAOCAP Product Direction](PRODUCT_DIRECTION.md).
+
 ## Executive summary
 
 Top bottlenecks (measured + high-confidence static analysis):
@@ -89,7 +95,7 @@ Interactive S3–S9: Profile scheme → Instruments → attach after launch → 
 
 ### F2 — Per Mini-App `WKWebView` thumbnails (P0)
 
-**Evidence:** Static — every Mini-App node embeds `HTMLWebView` at 375×667 scaled to 240 ([`NodeView.swift`](../ios-app/caocap/caocap/Features/Canvas/Components/NodeView.swift)). No shared `WKProcessPool`, no viewport culling, no snapshot fallback when zoomed out. Root launch showed **no** `webViewMake` signposts (no Mini-Apps on root), so S1 understates production project cost.  
+**Evidence:** Static — the former Mini-App node implementation embedded `HTMLWebView` at 375×667 scaled to 240. No shared `WKProcessPool`, viewport culling, or snapshot fallback was present. Root launch showed **no** `webViewMake` signposts, so S1 understated production project cost.
 **Confidence:** High for architecture; Medium for numeric CPU until S3.  
 **Scenarios:** S3, S5.
 
@@ -97,7 +103,7 @@ Interactive S3–S9: Profile scheme → Instruments → attach after launch → 
 
 **Evidence:** Static + S2 idle profile mentions SwiftUI / Material. During pan/zoom:
 
-- `ConnectionLayer` rebuilds curved arrows every frame ([`ConnectionLayer.swift`](../ios-app/caocap/caocap/Features/Canvas/Components/ConnectionLayer.swift))
+- The former `ConnectionLayer` rebuilt curved arrows every frame.
 - Nodes use `.ultraThinMaterial` + dual gradients (shadow already removed as probe)
 - 2000×2000 `SpaceSketchBG` under the scaled layer
 - Mitigations already present: `@GestureState` pan, `CanvasNodeLayer.equatable()`, CA `DottedBackground`
@@ -141,7 +147,10 @@ Interactive S3–S9: Profile scheme → Instruments → attach after launch → 
 - Potential hangs table empty on 20s idle Time Profiler (S2).
 - Marketing website performance.
 
-## Recommended fixes (impact / effort)
+## Historical recommendations (superseded)
+
+These recommendations applied to the Mini-App implementation measured in this
+audit. They are retained for provenance and are not the current product roadmap.
 
 | Priority | Fix | Impact | Effort |
 |----------|-----|--------|--------|
@@ -153,7 +162,7 @@ Interactive S3–S9: Profile scheme → Instruments → attach after launch → 
 | 6 | Defer Gemma preload until after interactive; keep Firebase configure but move non-critical work off first frame | Medium | Low |
 | 7 | Revisit FAB second window vs overlay-in-hierarchy once sheets allow | Low–Medium | Medium |
 
-## Next implementation slice
+## Historical next implementation slice (superseded)
 
 **Mini-App thumbnail strategy (fixes 2–3):** viewport culling / snapshots + shared `WKProcessPool`, validated with an S3 stress project (8–20 Mini-Apps).
 
