@@ -5,10 +5,17 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+/// The app-level destination shown outside an active workspace session.
+enum AppDestination {
+    case home
+    case workspace
+}
+
 /// Orchestrates root-session state: routing, actions, palette binding, sheets, and onboarding hooks.
 @MainActor
 @Observable
 final class AppSessionCoordinator {
+    var destination: AppDestination = .home
     var router = AppRouter()
     var commandPalette = CommandPaletteViewModel()
     var coCaptain = CoCaptainViewModel()
@@ -134,8 +141,7 @@ final class AppSessionCoordinator {
         finishLaunchOverlayDismissal()
     }
 
-    /// Root `ProjectStore` loads synchronously in `AppRouter` before UI appears.
-    /// Yield so SwiftUI can commit the first canvas frame under the overlay.
+    /// Yield so SwiftUI can commit the launch root's first frame before transitioning.
     private func waitForLaunchReadiness() async {
         await Task.yield()
     }

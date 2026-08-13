@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Root view that composes the active workspace canvas, global overlays, and session sheets.
+/// Root view that switches between launch, onboarding, and the signed-in app shell.
 ///
 /// Session orchestration lives in `AppSessionCoordinator`; this view wires UI only.
 /// FAB, call chrome, confetti, and force-update live in a passthrough `UIWindow` above system sheets.
@@ -10,6 +10,67 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            rootContent
+            .background(Color.black.ignoresSafeArea())
+            .modifier(AppSessionLifecycle(
+                session: session,
+                geometry: geometry,
+                undoManager: undoManager
+            ))
+            .onAppear {
+                GlobalFloatingChromeController.shared.install(session: session)
+            }
+            .onDisappear {
+                GlobalFloatingChromeController.shared.uninstall()
+            }
+        }
+    }
+
+    /// These roots are mutually exclusive. The app shell is not mounted beneath onboarding.
+    @ViewBuilder
+    private var rootContent: some View {
+        if session.isLaunching {
+            LaunchScreenView()
+        } else if session.intro.shouldPresent {
+            IntroView(coordinator: session.intro) {
+                session.finishIntroFlow()
+            }
+        } else if session.personalization.shouldPresent {
+            PersonalizationOnboardingView(
+                coordinator: session.personalization,
+                onBackToIntro: {
+                    session.returnToIntroFromPersonalization()
+                },
+                onFinish: {
+                    session.finishPersonalizationFlow()
+                }
+            )
+        } else {
+            appContent
+        }
+    }
+
+    private var appContent: some View {
+        destinationContent
+            .onboardingTooltipOverlay(
+                isCommandPalettePresented: session.commandPalette.isPresented,
+                // FAB tooltips render in the chrome overlay window so they sit above the FAB.
+                rendersAnchor: {
+                    !$0.isCanvasLocal
+                        && !$0.isPreviewShellLocal
+                        && !$0.isCoCaptainLocal
+                        && $0 != .floatingCommandButton
+                }
+            )
+            .modifier(AppSheetsModifier(session: session))
+    }
+
+    @ViewBuilder
+    private var destinationContent: some View {
+        switch session.destination {
+        case .home:
+            HomeView()
+        case .workspace:
             ZStack {
                 workspaceCanvas
 
@@ -29,32 +90,6 @@ struct ContentView: View {
                         _ = session.actionDispatcher.perform(.redo, source: .user)
                     }
                 )
-            }
-            .onboardingTooltipOverlay(
-                isCommandPalettePresented: session.commandPalette.isPresented,
-                // FAB tooltips render in the chrome overlay window so they sit above the FAB.
-                rendersAnchor: {
-                    !$0.isCanvasLocal
-                        && !$0.isPreviewShellLocal
-                        && !$0.isCoCaptainLocal
-                        && $0 != .floatingCommandButton
-                }
-            )
-            .background(Color.black.ignoresSafeArea())
-            .overlay { launchOverlay }
-            .overlay { introOverlay }
-            .overlay { personalizationOverlay }
-            .modifier(AppSheetsModifier(session: session))
-            .modifier(AppSessionLifecycle(
-                session: session,
-                geometry: geometry,
-                undoManager: undoManager
-            ))
-            .onAppear {
-                GlobalFloatingChromeController.shared.install(session: session)
-            }
-            .onDisappear {
-                GlobalFloatingChromeController.shared.uninstall()
             }
         }
     }
@@ -87,44 +122,6 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private var launchOverlay: some View {
-        if session.isLaunching {
-            LaunchScreenView()
-                .transition(.opacity)
-                .zIndex(100)
-        }
-    }
-
-    @ViewBuilder
-    private var introOverlay: some View {
-        if !session.isLaunching && session.intro.shouldPresent {
-            IntroView(coordinator: session.intro) {
-                session.finishIntroFlow()
-            }
-            .transition(.opacity)
-            .zIndex(80)
-        }
-    }
-
-    @ViewBuilder
-    private var personalizationOverlay: some View {
-        if !session.isLaunching
-            && !session.intro.shouldPresent
-            && session.personalization.shouldPresent {
-            PersonalizationOnboardingView(
-                coordinator: session.personalization,
-                onBackToIntro: {
-                    session.returnToIntroFromPersonalization()
-                },
-                onFinish: {
-                    session.finishPersonalizationFlow()
-                }
-            )
-            .transition(.opacity)
-            .zIndex(75)
-        }
-    }
 }
 
 #Preview {

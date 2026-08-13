@@ -290,7 +290,8 @@ struct GlobalFloatingChromeView: View {
     }
 
     private func shouldShowChrome(_ session: AppSessionCoordinator) -> Bool {
-        !session.isLaunching
+        session.destination == .workspace
+            && !session.isLaunching
             && !session.intro.shouldPresent
             && !session.personalization.shouldPresent
             && !shouldShowForceUpdate(session)
