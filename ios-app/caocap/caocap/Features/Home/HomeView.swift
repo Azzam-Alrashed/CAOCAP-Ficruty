@@ -53,15 +53,24 @@ struct HomeView: View {
             ZStack {
                 pageBackground(color: Color(uiColor: .systemBlue))
 
-                if session.sessionLibrary.sessions.isEmpty {
-                    ContentUnavailableView(
-                        "No Sessions Yet",
-                        systemImage: "bubble.left.and.bubble.right",
-                        description: Text("Start a session to give CoCaptain a mission.")
-                    )
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        Button {
+                            session.createSession()
+                        } label: {
+                            NewSessionRow()
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Starts a new session with CoCaptain")
+
+                        if session.sessionLibrary.sessions.isEmpty {
+                            ContentUnavailableView(
+                                "No Sessions Yet",
+                                systemImage: "bubble.left.and.bubble.right",
+                                description: Text("Your conversations will appear here.")
+                            )
+                            .padding(.top, 48)
+                        } else {
                             ForEach(session.sessionLibrary.sessions) { summary in
                                 Button {
                                     session.openSession(id: summary.id)
@@ -79,22 +88,12 @@ struct HomeView: View {
                                 .accessibilityHint("Opens this session")
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 20)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 20)
                 }
             }
             .navigationTitle("Home")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        session.createSession()
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                    }
-                    .accessibilityLabel("New session")
-                }
-            }
             .navigationDestination(for: UUID.self) { sessionID in
                 SessionChatView(session: session, sessionID: sessionID)
                     .toolbar(.hidden, for: .tabBar)
@@ -185,6 +184,50 @@ struct HomeView: View {
         case .settings:
             return .orange
         }
+    }
+}
+
+private struct NewSessionRow: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "plus")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 50, height: 50)
+                .background(.white.opacity(0.18), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("New Session")
+                    .font(.headline)
+
+                Text("Start something new")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.78))
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "arrow.up.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.8))
+        }
+        .foregroundStyle(.white)
+        .padding(18)
+        .background {
+            LinearGradient(
+                colors: [
+                    Color(uiColor: .systemBlue),
+                    Color(uiColor: .systemIndigo)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color(uiColor: .systemBlue).opacity(0.28), radius: 16, y: 8)
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("New Session, Start something new")
     }
 }
 

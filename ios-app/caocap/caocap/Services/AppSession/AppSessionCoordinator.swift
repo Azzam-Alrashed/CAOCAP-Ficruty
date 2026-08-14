@@ -376,7 +376,7 @@ final class AppSessionCoordinator {
     @discardableResult
     func createSession() -> SessionSummary {
         let draft = sessionLibrary.createDraft()
-        openSession(id: draft.id, focusComposer: true)
+        openSession(id: draft.id)
         return draft
     }
 

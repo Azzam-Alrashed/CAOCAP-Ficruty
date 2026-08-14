@@ -65,8 +65,6 @@ struct CoCaptainInputComposer: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Divider().opacity(0.5)
-
             if localModelManager.isDownloadingLocalModel {
                 VStack(spacing: 6) {
                     HStack {
@@ -102,11 +100,12 @@ struct CoCaptainInputComposer: View {
                 pendingReviewBanner
             }
 
-            composerCapsule
-                .padding(.horizontal, CoCaptainChatStyle.standardSpacing)
-                .padding(.bottom, CoCaptainChatStyle.smallSpacing)
+            composerContent
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
         }
-        .background(Color.primary.opacity(0.02))
+        .padding(.top, 8)
+        .background(.bar)
         .animation(.easeInOut(duration: 0.2), value: dictation.errorMessage)
         .onChange(of: dictation.transcript) { _, transcript in
             text = transcript
@@ -223,8 +222,8 @@ struct CoCaptainInputComposer: View {
         }
     }
 
-    /// Adaptive composer that expands only when the draft needs more context.
-    private var composerCapsule: some View {
+    /// Secondary context stays above a compact, Messages-style input row.
+    private var composerContent: some View {
         VStack(alignment: .leading, spacing: CoCaptainChatStyle.smallSpacing) {
             if !mentions.isEmpty { draftContextChips }
             if !attachments.isEmpty { attachmentPreview }
@@ -244,39 +243,31 @@ struct CoCaptainInputComposer: View {
             if !mentionSuggestions.isEmpty { mentionSuggestionList }
             composerInputRow
         }
-        .padding(.horizontal, CoCaptainChatStyle.standardSpacing)
-        .padding(.top, CoCaptainChatStyle.standardSpacing)
-        .padding(.bottom, CoCaptainChatStyle.smallSpacing)
-        .background(
-            RoundedRectangle(
-                cornerRadius: CoCaptainChatStyle.composerCornerRadius,
-                style: .continuous
-            )
-            .fill(.regularMaterial)
-        )
-        .overlay(
-            RoundedRectangle(
-                cornerRadius: CoCaptainChatStyle.composerCornerRadius,
-                style: .continuous
-            )
-                .stroke(
-                    isFocused
-                        ? Color.accentColor.opacity(0.35)
-                        : CoCaptainChatStyle.subtleStroke,
-                    lineWidth: isFocused ? 1.5 : 1
-                )
-        )
-        .animation(.easeInOut(duration: 0.2), value: isFocused)
         .animation(.easeInOut(duration: 0.2), value: chatMode)
         .animation(.easeInOut(duration: 0.2), value: mentions)
         .animation(.easeInOut(duration: 0.2), value: attachments)
     }
 
     private var composerInputRow: some View {
-        HStack(alignment: .bottom, spacing: CoCaptainChatStyle.compactSpacing) {
+        HStack(alignment: .bottom, spacing: 8) {
             attachmentMenu
-            composerTextField
-            sendButton
+
+            HStack(alignment: .bottom, spacing: 2) {
+                composerTextField
+                sendButton
+            }
+            .padding(.leading, 3)
+            .padding(.trailing, 3)
+            .padding(.vertical, 2)
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color(uiColor: .separator).opacity(0.45), lineWidth: 0.5)
+            }
+
             Button(action: onSend) {
                 EmptyView()
             }
@@ -304,8 +295,9 @@ struct CoCaptainInputComposer: View {
                     onSend()
                 }
             }
-            .padding(.horizontal, CoCaptainChatStyle.compactSpacing)
-            .padding(.vertical, CoCaptainChatStyle.smallSpacing)
+            .padding(.leading, 8)
+            .padding(.vertical, 8)
+            .frame(minHeight: 40)
             .disabled(isConversationArchiveLoading || isImportingAttachments)
             .animation(.easeInOut(duration: 0.15), value: composerNewlineCount)
     }
@@ -345,20 +337,15 @@ struct CoCaptainInputComposer: View {
             }
         } label: {
             Image(systemName: "plus")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(
-                    width: CoCaptainChatStyle.compactControlSize,
-                    height: CoCaptainChatStyle.compactControlSize
-                )
-                .background(
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(width: 36, height: 36)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay {
                     Circle()
-                        .fill(CoCaptainChatStyle.raisedFill)
-                )
-                .frame(
-                    width: CoCaptainChatStyle.minimumHitSize,
-                    height: CoCaptainChatStyle.minimumHitSize
-                )
+                        .stroke(Color(uiColor: .separator).opacity(0.35), lineWidth: 0.5)
+                }
+                .frame(width: 44, height: 44)
         }
         .accessibilityLabel(
             LocalizationManager.shared.localizedString("Add attachment")
@@ -630,7 +617,7 @@ struct CoCaptainInputComposer: View {
             ZStack {
                 Circle()
                     .fill(sendButtonBackground)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 30, height: 30)
 
                 if isThinking {
                     Image(systemName: "stop.fill")
@@ -650,7 +637,7 @@ struct CoCaptainInputComposer: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 38, height: 40)
             .foregroundStyle(sendButtonForeground)
         }
         .accessibilityLabel(sendButtonAccessibilityLabel)

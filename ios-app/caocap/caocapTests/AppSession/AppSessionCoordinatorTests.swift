@@ -134,7 +134,7 @@ struct AppSessionCoordinatorTests {
         #expect(!session.coCaptain.isPresented)
     }
 
-    @Test func newSessionIsTransientFocusedAndUsesAUniqueWorkspace() {
+    @Test func newSessionIsTransientUnfocusedAndUsesAUniqueWorkspace() {
         let fixture = makeSessionFixture()
         defer { try? FileManager.default.removeItem(at: fixture.root) }
 
@@ -142,7 +142,7 @@ struct AppSessionCoordinatorTests {
 
         #expect(fixture.session.sessionPath == [draft.id])
         #expect(fixture.session.activeSessionID == draft.id)
-        #expect(fixture.session.shouldFocusSessionComposer)
+        #expect(!fixture.session.shouldFocusSessionComposer)
         #expect(fixture.session.sessionLibrary.sessions.isEmpty)
         #expect(fixture.session.router.currentWorkspace == .project(draft.workspaceFileName))
     }
