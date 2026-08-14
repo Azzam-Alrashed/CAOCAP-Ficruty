@@ -1,9 +1,15 @@
 import SwiftUI
 
+enum SettingsPresentation {
+    case tab
+    case sheet
+}
+
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var selectedCopilot: CopilotPersona
+    var presentation: SettingsPresentation = .sheet
     var onUpgrade: (() -> Void)? = nil
     var onRestartPersonalization: () -> Void = {}
     var onRestartOnboarding: () -> Void = {}
@@ -140,7 +146,7 @@ struct SettingsView: View {
                                     color: .indigo,
                                     action: {
                                         onRestartPersonalization()
-                                        dismiss()
+                                        dismissIfNeeded()
                                     }
                                 )
 
@@ -153,7 +159,7 @@ struct SettingsView: View {
                                     color: .blue,
                                     action: {
                                         onRestartOnboarding()
-                                        dismiss()
+                                        dismissIfNeeded()
                                     }
                                 )
 
@@ -180,7 +186,7 @@ struct SettingsView: View {
                                         Task { @MainActor in
                                             do {
                                                 try await onEraseEverything()
-                                                dismiss()
+                                                dismissIfNeeded()
                                             } catch {
                                                 isErasingEverything = false
                                                 eraseErrorMessage = error.localizedDescription
@@ -197,42 +203,38 @@ struct SettingsView: View {
                         .padding(.top, 20)
                         
                         // MARK: - Footer
-                        VStack(spacing: 8) {
-                            Text("ENGINE CONFIGURATION")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.secondary)
-                            Text("Real-time synchronization active.")
+                        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+                           let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
+                            Text("Version \(version) (\(build))")
                                 .font(.system(size: 10))
                                 .foregroundStyle(.tertiary)
-                            
-                            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-                               let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
-                                Text("Version \(version) (\(build))")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.tertiary)
-                            }
+                                .padding(.vertical, 40)
                         }
-                        .padding(.vertical, 40)
                     }
                 }
             }
+            .navigationTitle(presentation == .tab ? "Settings" : "")
+            .navigationBarTitleDisplayMode(presentation == .tab ? .large : .inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Text("Settings")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundStyle(.primary)
-                }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.primary.opacity(0.6))
-                            .padding(8)
-                            .background(.primary.opacity(0.1))
-                            .clipShape(Circle())
+                if presentation == .sheet {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Text("Settings")
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .foregroundStyle(.primary)
+                    }
+
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.primary.opacity(0.6))
+                                .padding(8)
+                                .background(.primary.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+                        .accessibilityLabel("Close Settings")
                     }
                 }
             }
@@ -264,6 +266,11 @@ struct SettingsView: View {
         case "Dark": return .dark
         default: return nil
         }
+    }
+
+    private func dismissIfNeeded() {
+        guard presentation == .sheet else { return }
+        dismiss()
     }
 }
 

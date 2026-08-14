@@ -6,7 +6,6 @@ import SwiftUI
 /// FAB, call chrome, confetti, and force-update live in a passthrough `UIWindow` above system sheets.
 struct ContentView: View {
     @State private var session = AppSessionCoordinator()
-    @Namespace private var sessionTransitionNamespace
     @Environment(\.undoManager) private var undoManager
 
     var body: some View {
@@ -66,42 +65,14 @@ struct ContentView: View {
             .modifier(AppSheetsModifier(session: session))
     }
 
+    @ViewBuilder
     private var destinationContent: some View {
-        NavigationStack(path: destinationPath) {
-            HomeView(
-                sessionPreview: SessionCanvasPreview(viewport: session.viewport),
-                onOpenSession: session.openSession,
-                transitionNamespace: sessionTransitionNamespace
-            )
-            .navigationDestination(for: AppDestination.self) { destination in
-                if destination == .workspace {
-                    workspaceContent
-                        .navigationTransition(
-                            .zoom(
-                                sourceID: SessionTransitionID.latest,
-                                in: sessionTransitionNamespace
-                            )
-                        )
-                        .toolbarVisibility(.hidden, for: .navigationBar, .tabBar)
-                        .background(InteractivePopGestureDisabler())
-                }
-            }
+        switch session.destination {
+        case .home:
+            HomeView(session: session)
+        case .workspace:
+            workspaceContent
         }
-    }
-
-    private var destinationPath: Binding<[AppDestination]> {
-        Binding(
-            get: {
-                session.destination == .workspace ? [.workspace] : []
-            },
-            set: { path in
-                if path.last == .workspace {
-                    session.openSession()
-                } else {
-                    session.returnHome()
-                }
-            }
-        )
     }
 
     private var workspaceContent: some View {
