@@ -1,9 +1,18 @@
 import SwiftUI
 import UIKit
 
+enum CoCaptainPresentationStyle {
+    case legacySheet
+    case session
+}
+
 struct CoCaptainView: View {
     @Bindable var viewModel: CoCaptainViewModel
     var onRequestExpandedPresentation: (() -> Void)?
+    var presentationStyle: CoCaptainPresentationStyle = .legacySheet
+    var sessionTitle: String?
+    var focusComposerOnAppear = false
+    var onOpenCanvas: (() -> Void)?
     @State private var text: String = ""
     @State private var mentions: [CoCaptainNodeMention] = []
     @State private var attachments: [CoCaptainAttachment] = []
@@ -26,38 +35,96 @@ struct CoCaptainView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                CoCaptainTimelineListView(
-                    viewModel: viewModel,
-                    lastScrollPosition: $viewModel.lastScrollPosition,
-                    isFocused: $isFocused
-                )
-
-                CoCaptainInputComposer(
-                    text: $text,
-                    chatMode: chatModeBinding,
-                    mentions: $mentions,
-                    attachments: $attachments,
-                    isFocused: $isFocused,
-                    allowsContextPinning: true,
-                    pinnableNodes: viewModel.pinnableContextNodes,
-                    isThinking: viewModel.isThinking,
-                    isConversationArchiveLoading: viewModel.isConversationArchiveLoading,
-                    analysisItems: viewModel.analysisItems,
-                    pendingReviewCount: viewModel.pendingReviewCount,
-                    onSend: sendCurrentMessage,
-                    onStop: viewModel.stopStreaming,
-                    onFocusPendingReviews: {
-                        onRequestExpandedPresentation?()
-                        viewModel.focusPendingReviews()
-                    },
-                    onApplySuggestion: viewModel.applySuggestion,
-                    onDismissSuggestion: viewModel.dismissSuggestion
+        Group {
+            if presentationStyle == .legacySheet {
+                NavigationStack { chatContent }
+            } else {
+                chatContent
+            }
+        }
+        .sheet(isPresented: $isConversationListPresented) {
+            CoCaptainConversationListView(viewModel: viewModel)
+                .presentationDetents([.medium, .large])
+        }
+        .onChange(of: isFocused) { _, isFocused in
+            if isFocused {
+                onRequestExpandedPresentation?()
+            }
+        }
+        .onAppear {
+            syncChatModeFromStorage()
+            guard focusComposerOnAppear else { return }
+            Task { @MainActor in
+                await Task.yield()
+                isFocused = true
+            }
+        }
+        .onChange(of: chatModeRawValue) { _, _ in
+            syncChatModeFromStorage()
+        }
+        .onChange(of: viewModel.composerDraftRequest) { _, draft in
+            guard let draft else { return }
+            text = draft.text
+            mentions = draft.mentions
+            attachments = draft.attachments
+            viewModel.composerDraftRequest = nil
+            isFocused = draft.shouldFocus
+        }
+        .onChange(of: viewModel.progressPhase) { oldPhase, newPhase in
+            if let newPhase {
+                announceForAccessibility(newPhase.localizedTitle)
+            } else if oldPhase != nil {
+                announceForAccessibility(
+                    LocalizationManager.shared.localizedString(
+                        "CoCaptain response ready."
+                    )
                 )
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        }
+        .onChange(of: viewModel.pendingReviewCount) { oldCount, newCount in
+            guard newCount > oldCount else { return }
+            onRequestExpandedPresentation?()
+            announceForAccessibility(
+                LocalizationManager.shared.localizedString(
+                    "Changes are ready for review."
+                )
+            )
+        }
+    }
+
+    private var chatContent: some View {
+        VStack(spacing: 0) {
+            CoCaptainTimelineListView(
+                viewModel: viewModel,
+                lastScrollPosition: $viewModel.lastScrollPosition,
+                isFocused: $isFocused
+            )
+
+            CoCaptainInputComposer(
+                text: $text,
+                chatMode: chatModeBinding,
+                mentions: $mentions,
+                attachments: $attachments,
+                isFocused: $isFocused,
+                allowsContextPinning: true,
+                pinnableNodes: viewModel.pinnableContextNodes,
+                isThinking: viewModel.isThinking,
+                isConversationArchiveLoading: viewModel.isConversationArchiveLoading,
+                analysisItems: viewModel.analysisItems,
+                pendingReviewCount: viewModel.pendingReviewCount,
+                onSend: sendCurrentMessage,
+                onStop: viewModel.stopStreaming,
+                onFocusPendingReviews: {
+                    onRequestExpandedPresentation?()
+                    viewModel.focusPendingReviews()
+                },
+                onApplySuggestion: viewModel.applySuggestion,
+                onDismissSuggestion: viewModel.dismissSuggestion
+            )
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if presentationStyle == .legacySheet {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         isFocused = false
@@ -126,52 +193,24 @@ struct CoCaptainView: View {
                     .accessibilityLabel(
                         LocalizationManager.shared.localizedString("New conversation")
                     )
+                }
+            } else {
+                ToolbarItem(placement: .principal) {
+                    Text(sessionTitle ?? viewModel.activeConversationTitle)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
 
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        isFocused = false
+                        onOpenCanvas?()
+                    } label: {
+                        Image(systemName: "square.on.square")
+                    }
+                    .accessibilityLabel("Open canvas")
                 }
             }
-        }
-        .sheet(isPresented: $isConversationListPresented) {
-            CoCaptainConversationListView(viewModel: viewModel)
-                .presentationDetents([.medium, .large])
-        }
-        .onChange(of: isFocused) { _, isFocused in
-            if isFocused {
-                onRequestExpandedPresentation?()
-            }
-        }
-        .onAppear {
-            syncChatModeFromStorage()
-        }
-        .onChange(of: chatModeRawValue) { _, _ in
-            syncChatModeFromStorage()
-        }
-        .onChange(of: viewModel.composerDraftRequest) { _, draft in
-            guard let draft else { return }
-            text = draft.text
-            mentions = draft.mentions
-            attachments = draft.attachments
-            viewModel.composerDraftRequest = nil
-            isFocused = draft.shouldFocus
-        }
-        .onChange(of: viewModel.progressPhase) { oldPhase, newPhase in
-            if let newPhase {
-                announceForAccessibility(newPhase.localizedTitle)
-            } else if oldPhase != nil {
-                announceForAccessibility(
-                    LocalizationManager.shared.localizedString(
-                        "CoCaptain response ready."
-                    )
-                )
-            }
-        }
-        .onChange(of: viewModel.pendingReviewCount) { oldCount, newCount in
-            guard newCount > oldCount else { return }
-            onRequestExpandedPresentation?()
-            announceForAccessibility(
-                LocalizationManager.shared.localizedString(
-                    "Changes are ready for review."
-                )
-            )
         }
     }
 

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared free-tier / Pro usage summary for Settings and the Command Line Usage sheet.
+/// Shared free-tier / Pro usage summary for Activity and the Command Line Usage sheet.
 struct FreeTierUsageView: View {
     var showsSectionChrome: Bool = true
     var onUpgrade: (() -> Void)? = nil

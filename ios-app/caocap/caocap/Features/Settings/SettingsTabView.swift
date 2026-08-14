@@ -12,14 +12,11 @@ struct SettingsTabView: View {
                 set: { session.updateSelectedCopilot($0) }
             ),
             presentation: .tab,
-            onUpgrade: {
-                session.requestPurchaseSheet()
+            onOpenAccount: {
+                session.requestProfileSheet()
             },
-            onRestartPersonalization: {
-                session.restartPersonalization()
-            },
-            onRestartOnboarding: {
-                session.restartOnboarding()
+            onOpenAppIcon: {
+                session.requestAppIconPickerSheet()
             },
             onEraseEverything: {
                 try await session.eraseEverything(authManager: authManager)

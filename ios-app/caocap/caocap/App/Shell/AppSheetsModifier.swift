@@ -8,6 +8,12 @@ struct AppSheetsModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         coCaptainPresentation(content)
+            .sheet(isPresented: $session.showingCanvas) {
+                SessionCanvasSheet(session: session)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(.ultraThinMaterial)
+            }
             .sheet(isPresented: $session.showingSignIn) {
                 SignInView()
                     .presentationDetents([.large])
@@ -28,14 +34,11 @@ struct AppSheetsModifier: ViewModifier {
                         get: { session.selectedCopilot },
                         set: { session.updateSelectedCopilot($0) }
                     ),
-                    onUpgrade: {
-                        session.requestPurchaseSheet()
+                    onOpenAccount: {
+                        session.requestProfileSheet()
                     },
-                    onRestartPersonalization: {
-                        session.restartPersonalization()
-                    },
-                    onRestartOnboarding: {
-                        session.restartOnboarding()
+                    onOpenAppIcon: {
+                        session.requestAppIconPickerSheet()
                     },
                     onEraseEverything: {
                         try await session.eraseEverything(authManager: authManager)

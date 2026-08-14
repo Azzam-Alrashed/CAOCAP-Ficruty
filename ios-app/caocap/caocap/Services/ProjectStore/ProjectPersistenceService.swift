@@ -108,6 +108,19 @@ public struct ProjectPersistenceService: Sendable {
         FileManager.default.fileExists(atPath: fileURL(for: fileName).path)
     }
 
+    /// Removes an abandoned session workspace and its checkpoints.
+    public func deleteProject(fileName: String) throws {
+        let projectURL = fileURL(for: fileName)
+        if FileManager.default.fileExists(atPath: projectURL.path) {
+            try FileManager.default.removeItem(at: projectURL)
+        }
+
+        let snapshotsURL = snapshotsDirectory(for: fileName)
+        if FileManager.default.fileExists(atPath: snapshotsURL.path) {
+            try FileManager.default.removeItem(at: snapshotsURL)
+        }
+    }
+
     /// Lists top-level project/canvas JSON file names in the workspace directory.
     /// Does not include checkpoint snapshots under `snapshots/`.
     public func listProjectFileNames() -> [String] {

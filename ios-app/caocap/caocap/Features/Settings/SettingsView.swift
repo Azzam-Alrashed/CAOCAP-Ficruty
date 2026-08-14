@@ -10,9 +10,8 @@ struct SettingsView: View {
 
     @Binding var selectedCopilot: CopilotPersona
     var presentation: SettingsPresentation = .sheet
-    var onUpgrade: (() -> Void)? = nil
-    var onRestartPersonalization: () -> Void = {}
-    var onRestartOnboarding: () -> Void = {}
+    var onOpenAccount: () -> Void = {}
+    var onOpenAppIcon: () -> Void = {}
     var onEraseEverything: () async throws -> Void = {}
     
     @AppStorage("app_language") private var selectedLanguage = "English"
@@ -21,7 +20,6 @@ struct SettingsView: View {
     @AppStorage("haptics_intensity") private var hapticsIntensity = "Medium"
     @AppStorage("grid_opacity") private var gridOpacity: Double = 0.1
     @AppStorage("connection_style") private var connectionStyle = "Dashed"
-    @AppStorage("spatial_glow_enabled") private var spatialGlowEnabled = true
     @AppStorage("cocaptain.modelName") private var modelName = CoCaptainModelSelectionPolicy.cloudModelName
 
     @State private var localModelManager = LocalGemmaModelManager.shared
@@ -41,18 +39,27 @@ struct SettingsView: View {
                 Color(uiColor: .systemBackground).ignoresSafeArea()
                 
                 // Subtle Glow
-                if spatialGlowEnabled {
-                    Circle()
-                        .fill(Color.orange.opacity(0.1))
-                        .frame(width: 400, height: 400)
-                        .blur(radius: 60)
-                        .offset(x: 150, y: -200)
-                }
+                Circle()
+                    .fill(Color.orange.opacity(0.16))
+                    .frame(width: 400, height: 400)
+                    .blur(radius: 60)
+                    .offset(x: 150, y: -200)
                 
                 ScrollView {
                     VStack(spacing: 32) {
                         
                         VStack(spacing: 24) {
+                            // MARK: - Account
+                            SettingsSection("Account") {
+                                SettingsRow(
+                                    icon: "person.crop.circle.fill",
+                                    title: "Account",
+                                    subtitle: "Profile, subscription, and account management",
+                                    color: .blue,
+                                    action: onOpenAccount
+                                )
+                            }
+
                             // MARK: - Copilot
                             SettingsSection(LocalizedStringKey("settings.copilot.title")) {
                                 VStack(alignment: .leading, spacing: 12) {
@@ -70,10 +77,6 @@ struct SettingsView: View {
                                 }
                             }
 
-                            FreeTierUsageView(
-                                onUpgrade: onUpgrade
-                            )
-
                             GemmaModelSettingsSection(
                                 modelName: $modelName,
                                 localModelManager: localModelManager,
@@ -87,10 +90,20 @@ struct SettingsView: View {
                                 Divider().padding(.leading, 56).opacity(0.3)
                                 
                                 SettingsLanguagePickerRow(selection: $selectedLanguage)
+
+                                Divider().padding(.leading, 56).opacity(0.3)
+
+                                SettingsRow(
+                                    icon: "app.dashed",
+                                    title: "App Icon",
+                                    subtitle: "Choose how CAOCAP appears on your Home Screen",
+                                    color: .indigo,
+                                    action: onOpenAppIcon
+                                )
                             }
                             
-                            // MARK: - Look & Feel
-                            SettingsSection("Look & Feel") {
+                            // MARK: - Canvas
+                            SettingsSection("Canvas") {
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack {
                                         Label("Grid Visibility", systemImage: "grid")
@@ -109,19 +122,10 @@ struct SettingsView: View {
                                 Divider().padding(.leading, 56).opacity(0.3)
                                 
                                 SettingsPickerRow(icon: "waveform.path", title: "Connection Style", selection: $connectionStyle, options: styles, color: .orange)
-                                
-                                Divider().padding(.leading, 56).opacity(0.3)
-                                
-                                Toggle(isOn: $spatialGlowEnabled) {
-                                    Label("Spatial Glow", systemImage: "sun.max.fill")
-                                        .font(.system(size: 16, weight: .medium))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .tint(.orange)
+                            }
 
-                                Divider().padding(.leading, 56).opacity(0.3)
-
+                            // MARK: - Interaction
+                            SettingsSection("Interaction") {
                                 Toggle(isOn: $hapticsEnabled) {
                                     Label("Tactile Feedback", systemImage: "sensor.touch.fill")
                                         .font(.system(size: 16, weight: .medium))
@@ -135,34 +139,6 @@ struct SettingsView: View {
                                     
                                     SettingsPickerRow(icon: "shredder.fill", title: "Intensity", selection: $hapticsIntensity, options: intensities, color: .green)
                                 }
-                            }
-                            
-                            // MARK: - Onboarding
-                            SettingsSection("Onboarding") {
-                                SettingsRow(
-                                    icon: "person.crop.circle.badge.questionmark",
-                                    title: "Replay Personalization",
-                                    subtitle: "Replay the full co-pilot and mission survey",
-                                    color: .indigo,
-                                    action: {
-                                        onRestartPersonalization()
-                                        dismissIfNeeded()
-                                    }
-                                )
-
-                                Divider().padding(.leading, 56).opacity(0.3)
-
-                                SettingsRow(
-                                    icon: "arrow.clockwise.circle",
-                                    title: "Restart Onboarding",
-                                    subtitle: "Start again from the intro screens",
-                                    color: .blue,
-                                    action: {
-                                        onRestartOnboarding()
-                                        dismissIfNeeded()
-                                    }
-                                )
-
                             }
 
                             SettingsSection("Danger Zone") {
@@ -195,7 +171,7 @@ struct SettingsView: View {
                                     }
                                     Button("Cancel", role: .cancel) {}
                                 } message: {
-                                    Text("This permanently deletes every local canvas, checkpoint, preference, onboarding answer, and downloaded model, then signs you out. Your cloud account and App Store purchases are not deleted.")
+                                    Text("This permanently deletes all local app data, preferences, onboarding answers, and downloaded models, then signs you out. Your cloud account and App Store purchases are not deleted.")
                                 }
                             }
                         }

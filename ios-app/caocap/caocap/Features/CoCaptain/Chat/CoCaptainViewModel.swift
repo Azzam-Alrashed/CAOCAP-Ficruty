@@ -2,6 +2,13 @@ import Observation
 import OSLog
 import SwiftUI
 
+public struct CoCaptainConversationMetadata: Equatable, Sendable {
+    public let title: String
+    public let previewText: String
+    public let updatedAt: Date
+    public let hasUserMessages: Bool
+}
+
 @MainActor
 @Observable
 public final class CoCaptainViewModel {
@@ -70,10 +77,15 @@ public final class CoCaptainViewModel {
     private var loadedConversationFileName: String?
     @ObservationIgnored
     private var sessionEpoch = UUID()
+    @ObservationIgnored
+    private var isDiscardingProjectSession = false
 
     /// Called when the user asks to fly the canvas to a review target node.
     @ObservationIgnored
     public var onFlyToNode: ((UUID) -> Void)?
+    /// Bridges the existing conversation store to the lightweight Home session index.
+    @ObservationIgnored
+    public var onConversationMetadataChange: ((CoCaptainConversationMetadata) -> Void)?
 
     public var isThinking: Bool = false
     public private(set) var turnState: AgentExecutionState = .idle
@@ -214,6 +226,34 @@ public final class CoCaptainViewModel {
         } else {
             loadProjectConversationsIfNeeded()
         }
+    }
+
+    /// Stops all work for an untouched session and removes its chat sidecar without
+    /// allowing the ordinary store-change hook to recreate it.
+    public func discardProjectSession(fileName: String) async {
+        guard store?.fileName == fileName || loadedConversationFileName == fileName else {
+            await conversationStore.deleteArchive(for: fileName)
+            return
+        }
+
+        stopStreaming()
+        conversationLoadTask?.cancel()
+        _ = await conversationLoadTask?.result
+        _ = await conversationPersistenceTask?.result
+
+        isDiscardingProjectSession = true
+        store = nil
+        isDiscardingProjectSession = false
+        loadedConversationFileName = nil
+        conversations = []
+        activeConversationID = nil
+        items = [Self.greetingItem()]
+        isConversationArchiveLoading = false
+        conversationLoadTask = nil
+        conversationPersistenceTask = nil
+        onConversationMetadataChange = nil
+
+        await conversationStore.deleteArchive(for: fileName)
     }
 
     public var pinnableContextNodes: [SpatialNode] { [] }
@@ -844,7 +884,7 @@ public final class CoCaptainViewModel {
         guard currentStoreID != lastStoreID else { return }
         defer { lastStoreID = currentStoreID }
 
-        if scope == .project, lastStoreID != nil {
+        if scope == .project, lastStoreID != nil, !isDiscardingProjectSession {
             synchronizeActiveConversation(projectFileName: previousStore?.fileName)
             invalidateActiveTurnForContextChange()
             agentCoordinator.resetChat(scope: scope)
@@ -1246,6 +1286,8 @@ public final class CoCaptainViewModel {
             isConversationArchiveLoading = false
             if loadedArchive == nil {
                 synchronizeActiveConversation()
+            } else {
+                notifyConversationMetadataChange()
             }
         }
     }
@@ -1266,7 +1308,32 @@ public final class CoCaptainViewModel {
         if bumpUpdatedAt {
             conversations[index].updatedAt = Date()
         }
+        notifyConversationMetadataChange(conversation: conversations[index])
         persistConversationArchive(for: projectFileName)
+    }
+
+    private func notifyConversationMetadataChange(
+        conversation: CoCaptainConversation? = nil
+    ) {
+        guard let conversation = conversation ?? conversations.first(where: {
+            $0.id == activeConversationID
+        }) else { return }
+
+        let messages = conversation.items.compactMap { item -> ChatBubbleItem? in
+            guard case .message(let message) = item.content else { return nil }
+            return message
+        }
+        let preview = messages.last(where: {
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        })?.text ?? ""
+        onConversationMetadataChange?(
+            CoCaptainConversationMetadata(
+                title: conversation.title,
+                previewText: preview,
+                updatedAt: conversation.updatedAt,
+                hasUserMessages: messages.contains(where: \.isUser)
+            )
+        )
     }
 
     private func persistConversationArchive(for projectFileName: String? = nil) {

@@ -32,25 +32,31 @@ struct AppSessionCoordinatorTests {
     }
 
     @Test func goHomeActionCollapsesWorkspaceAndDismissesCommandLine() {
-        let session = AppSessionCoordinator()
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let session = fixture.session
         session.ensureActionsConfigured()
-        session.openSession()
+        let draft = session.createSession()
         session.openCommandLine()
 
         _ = session.actionDispatcher.perform(.goHome, source: .user)
 
-        #expect(session.destination == .home)
+        #expect(session.sessionPath.isEmpty)
+        #expect(session.activeSessionID == nil)
+        #expect(session.sessionLibrary.session(id: draft.id) == nil)
         #expect(!session.commandPalette.isPresented)
     }
 
     @Test func goRootKeepsSessionOpen() {
-        let session = AppSessionCoordinator()
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let session = fixture.session
         session.ensureActionsConfigured()
-        session.openSession()
+        let draft = session.createSession()
 
         _ = session.actionDispatcher.perform(.goRoot, source: .user)
 
-        #expect(session.destination == .workspace)
+        #expect(session.sessionPath == [draft.id])
         #expect(session.router.currentWorkspace == .root)
     }
 
@@ -107,22 +113,16 @@ struct AppSessionCoordinatorTests {
         #expect(!session.isLaunching)
     }
 
-    @Test func floatingCommandTapOpensCoCaptainWhenIdle() {
-        let session = AppSessionCoordinator()
-
+    @Test func floatingCommandTapDismissesCanvasBackToChat() {
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let session = fixture.session
+        session.createSession()
+        session.presentCanvas()
         session.handleFloatingCommandButtonTap()
 
-        #expect(session.coCaptain.isPresented)
-        #expect(!session.commandPalette.isPresented)
-    }
-
-    @Test func floatingCommandTapClosesCoCaptainWhenPresented() {
-        let session = AppSessionCoordinator()
-        session.handleFloatingCommandButtonTap()
-
-        session.handleFloatingCommandButtonTap()
-
-        #expect(!session.coCaptain.isPresented)
+        #expect(!session.showingCanvas)
+        #expect(!session.sessionPath.isEmpty)
     }
 
     @Test func middleFABActionOpensCommandLine() {
@@ -132,5 +132,111 @@ struct AppSessionCoordinatorTests {
 
         #expect(session.commandPalette.isPresented)
         #expect(!session.coCaptain.isPresented)
+    }
+
+    @Test func newSessionIsTransientFocusedAndUsesAUniqueWorkspace() {
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+
+        let draft = fixture.session.createSession()
+
+        #expect(fixture.session.sessionPath == [draft.id])
+        #expect(fixture.session.activeSessionID == draft.id)
+        #expect(fixture.session.shouldFocusSessionComposer)
+        #expect(fixture.session.sessionLibrary.sessions.isEmpty)
+        #expect(fixture.session.router.currentWorkspace == .project(draft.workspaceFileName))
+    }
+
+    @Test func firstUserMessageCommitsAndTitlesDraft() throws {
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let draft = fixture.session.createSession()
+
+        fixture.session.coCaptain.onConversationMetadataChange?(
+            CoCaptainConversationMetadata(
+                title: "Plan the launch",
+                previewText: "Plan the launch with me",
+                updatedAt: Date(),
+                hasUserMessages: true
+            )
+        )
+
+        let committed = try #require(fixture.session.sessionLibrary.session(id: draft.id))
+        #expect(committed.title == "Plan the launch")
+        #expect(committed.previewText == "Plan the launch with me")
+        #expect(!fixture.session.sessionLibrary.isDraft(id: draft.id))
+    }
+
+    @Test func openingPreviousSessionRestoresItsWorkspaceWithoutFocusingComposer() {
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let summary = fixture.session.sessionLibrary.createDraft()
+        fixture.session.sessionLibrary.commit(
+            id: summary.id,
+            title: "Existing mission",
+            previewText: "Continue where we stopped"
+        )
+
+        fixture.session.openSession(id: summary.id)
+
+        #expect(fixture.session.sessionPath == [summary.id])
+        #expect(fixture.session.activeSessionID == summary.id)
+        #expect(!fixture.session.shouldFocusSessionComposer)
+        #expect(
+            fixture.session.router.currentWorkspace
+                == .project(summary.workspaceFileName)
+        )
+    }
+
+    @Test func nativeBackPreservesCommittedSession() {
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let summary = fixture.session.sessionLibrary.createDraft()
+        fixture.session.sessionLibrary.commit(
+            id: summary.id,
+            title: "Saved mission",
+            previewText: "A durable conversation"
+        )
+        fixture.session.openSession(id: summary.id)
+
+        fixture.session.sessionPath = []
+        fixture.session.handleSessionPathChange([])
+
+        #expect(fixture.session.activeSessionID == nil)
+        #expect(fixture.session.sessionLibrary.session(id: summary.id) != nil)
+    }
+
+    @Test func nativeBackDiscardsUntouchedDraftAndItsWorkspace() async {
+        let fixture = makeSessionFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let draft = fixture.session.createSession()
+        let persistence = ProjectPersistenceService(baseDirectory: fixture.root)
+
+        fixture.session.sessionPath = []
+        fixture.session.handleSessionPathChange([])
+        await fixture.session.waitForDraftCleanup()
+
+        #expect(fixture.session.sessionLibrary.session(id: draft.id) == nil)
+        #expect(!persistence.projectExists(fileName: draft.workspaceFileName))
+    }
+
+    private func makeSessionFixture() -> (
+        root: URL,
+        session: AppSessionCoordinator
+    ) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AppSessionCoordinatorTests-\(UUID().uuidString)")
+        let sessionPersistence = SessionPersistenceService(
+            baseDirectory: root.appendingPathComponent("sessions")
+        )
+        let library = SessionLibrary(persistence: sessionPersistence)
+        let projectPersistence = ProjectPersistenceService(baseDirectory: root)
+        return (
+            root,
+            AppSessionCoordinator(
+                sessionLibrary: library,
+                projectPersistence: projectPersistence
+            )
+        )
     }
 }

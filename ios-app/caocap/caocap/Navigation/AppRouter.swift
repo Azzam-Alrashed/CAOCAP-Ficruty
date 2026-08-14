@@ -25,6 +25,7 @@ public class AppRouter {
     private var navigationStack: [WorkspaceState] = []
     
     public let rootStore: ProjectStore
+    private let projectPersistence: ProjectPersistenceService
     
     /// Returns the store for the current workspace, lazily creating project
     /// stores on cold boot when navigation restores a project filename.
@@ -38,7 +39,8 @@ public class AppRouter {
             
             // COLD BOOT FIX: Initialize and cache synchronously to prevent race conditions
             let newStore = ProjectStore(
-                fileName: fileName
+                fileName: fileName,
+                persistence: projectPersistence
             )
             projects[fileName] = newStore
             return newStore
@@ -46,14 +48,16 @@ public class AppRouter {
     }
     
     /// Initializes the router and creates an empty root canvas.
-    public init() {
+    public init(projectPersistence: ProjectPersistenceService = ProjectPersistenceService()) {
         CanvasWorkspaceMigration.runIfNeeded()
+        self.projectPersistence = projectPersistence
         self.currentWorkspace = .root
         self.rootStore = ProjectStore(
             fileName: CanvasFileNaming.rootFileName,
             projectName: "Root",
             initialNodes: RootCanvasProvider.nodes,
-            initialViewportScale: RootCanvasProvider.defaultViewportScale
+            initialViewportScale: RootCanvasProvider.defaultViewportScale,
+            persistence: projectPersistence
         )
     }
     
@@ -103,6 +107,12 @@ public class AppRouter {
         navigate(to: .project(resolved), animated: true)
     }
 
+    /// Detaches a session workspace so its pending writes can be drained before
+    /// an untouched draft is deleted from disk.
+    public func detachProject(fileName: String) -> ProjectStore? {
+        projects.removeValue(forKey: fileName)
+    }
+
     /// Creates a brand-new project canvas with the default node template and immediately
     /// navigates to it. Used as a recovery path when an imported or linked canvas cannot
     /// be loaded.
@@ -111,7 +121,8 @@ public class AppRouter {
         let store = ProjectStore(
             fileName: fileName,
             projectName: "Mini-App Canvas",
-            initialNodes: ProjectTemplateProvider.defaultNodes
+            initialNodes: ProjectTemplateProvider.defaultNodes,
+            persistence: projectPersistence
         )
         projects[fileName] = store
         navigate(to: .project(fileName), animated: true)

@@ -21,7 +21,7 @@ struct SettingsSection<Content: View>: View {
             VStack(spacing: 0) {
                 content
             }
-            .background(Color(uiColor: .secondarySystemBackground))
+            .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1))
         }

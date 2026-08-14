@@ -19,7 +19,7 @@ struct HomeView: View {
             }
 
             Tab(value: HomeTab.activity) {
-                EmptyTabScreen()
+                activityTab
             } label: {
                 Image("icons8-Combo Chart Plumpy")
                     .renderingMode(.template)
@@ -38,7 +38,7 @@ struct HomeView: View {
                 contextualSearchTab
             }
         }
-        .tint(Color(uiColor: .systemBlue))
+        .tint(tabTint)
         .onChange(of: selectedTab) { _, newTab in
             guard newTab != .search else { return }
             searchContext = newTab
@@ -47,17 +47,93 @@ struct HomeView: View {
     }
 
     private var sessionsTab: some View {
-        NavigationStack {
-            List(PlaceholderSession.samples) { session in
-                SessionRow(session: session)
-                    .listRowInsets(
-                        EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16)
+        @Bindable var session = session
+
+        return NavigationStack(path: $session.sessionPath) {
+            ZStack {
+                pageBackground(color: Color(uiColor: .systemBlue))
+
+                if session.sessionLibrary.sessions.isEmpty {
+                    ContentUnavailableView(
+                        "No Sessions Yet",
+                        systemImage: "bubble.left.and.bubble.right",
+                        description: Text("Start a session to give CoCaptain a mission.")
                     )
-                    .listRowSeparator(.visible)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(session.sessionLibrary.sessions) { summary in
+                                Button {
+                                    session.openSession(id: summary.id)
+                                } label: {
+                                    SessionRow(session: summary)
+                                        .padding(16)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Opens this session")
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 20)
+                    }
+                }
             }
-            .listStyle(.plain)
-            .navigationTitle("Sessions")
+            .navigationTitle("Home")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        session.createSession()
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .accessibilityLabel("New session")
+                }
+            }
+            .navigationDestination(for: UUID.self) { sessionID in
+                SessionChatView(session: session, sessionID: sessionID)
+                    .toolbar(.hidden, for: .tabBar)
+            }
+            .onChange(of: session.sessionPath) { _, path in
+                session.handleSessionPathChange(path)
+            }
         }
+    }
+
+    private var activityTab: some View {
+        NavigationStack {
+            ZStack {
+                pageBackground(color: Color(uiColor: .systemGreen))
+
+                ScrollView {
+                    FreeTierUsageView {
+                        session.requestPurchaseSheet()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle("Activity")
+        }
+    }
+
+    @ViewBuilder
+    private func pageBackground(color: Color) -> some View {
+        Color(uiColor: .systemBackground)
+            .ignoresSafeArea()
+
+        Circle()
+            .fill(color.opacity(0.16))
+            .frame(width: 400, height: 400)
+            .blur(radius: 60)
+            .offset(x: 150, y: -200)
+            .allowsHitTesting(false)
     }
 
     private var contextualSearchTab: some View {
@@ -97,6 +173,19 @@ struct HomeView: View {
             "Search"
         }
     }
+
+    private var tabTint: Color {
+        let activeContext = selectedTab == .search ? searchContext : selectedTab
+
+        switch activeContext {
+        case .sessions, .search:
+            return Color(uiColor: .systemBlue)
+        case .activity:
+            return Color(uiColor: .systemGreen)
+        case .settings:
+            return .orange
+        }
+    }
 }
 
 private enum HomeTab: Hashable {
@@ -107,22 +196,22 @@ private enum HomeTab: Hashable {
 }
 
 private struct SessionRow: View {
-    let session: PlaceholderSession
+    let session: SessionSummary
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(session.tint)
+                .foregroundStyle(Color(uiColor: .systemBlue))
                 .frame(width: 48, height: 48)
-                .background(session.tint.opacity(0.14), in: Circle())
+                .background(Color(uiColor: .systemBlue).opacity(0.14), in: Circle())
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(session.title)
                     .font(.headline)
                     .lineLimit(1)
 
-                Text(session.latestMessage)
+                Text(session.previewText.isEmpty ? "No messages yet" : session.previewText)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -130,79 +219,28 @@ private struct SessionRow: View {
 
             Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: 7) {
-                Text(session.time)
-                    .font(.caption)
-                    .foregroundStyle(
-                        session.unreadCount > 0
-                            ? Color.accentColor
-                            : Color(uiColor: .secondaryLabel)
-                    )
-
-                if session.unreadCount > 0 {
-                    Text("\(session.unreadCount)")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 20, minHeight: 20)
-                        .background(Color.accentColor, in: Circle())
-                } else {
-                    Color.clear
-                        .frame(width: 20, height: 20)
-                }
-            }
+            Text(session.updatedAt, format: .relative(presentation: .named))
+                .font(.caption)
+                .foregroundStyle(Color(uiColor: .secondaryLabel))
         }
         .contentShape(Rectangle())
     }
 }
 
-private struct PlaceholderSession: Identifiable {
-    let id: Int
-    let title: String
-    let latestMessage: String
-    let time: String
-    let unreadCount: Int
-    let tint: Color
+private struct SessionChatView: View {
+    let session: AppSessionCoordinator
+    let sessionID: UUID
 
-    static let samples = [
-        PlaceholderSession(
-            id: 1,
-            title: "Launch the new website",
-            latestMessage: "The final accessibility review is ready.",
-            time: "2:31 PM",
-            unreadCount: 2,
-            tint: .blue
-        ),
-        PlaceholderSession(
-            id: 2,
-            title: "Research competitors",
-            latestMessage: "I found three products worth comparing.",
-            time: "1:08 PM",
-            unreadCount: 1,
-            tint: .purple
-        ),
-        PlaceholderSession(
-            id: 3,
-            title: "Organize my Downloads",
-            latestMessage: "Everything is grouped and ready for review.",
-            time: "Yesterday",
-            unreadCount: 0,
-            tint: .green
-        ),
-        PlaceholderSession(
-            id: 4,
-            title: "Prepare the weekly report",
-            latestMessage: "The draft is waiting for your feedback.",
-            time: "Tuesday",
-            unreadCount: 0,
-            tint: .orange
-        )
-    ]
-}
-
-private struct EmptyTabScreen: View {
     var body: some View {
-        Color(uiColor: .systemBackground)
-            .ignoresSafeArea()
+        CoCaptainView(
+            viewModel: session.coCaptain,
+            presentationStyle: .session,
+            sessionTitle: session.sessionLibrary.session(id: sessionID)?.title ?? "New Session",
+            focusComposerOnAppear: session.shouldFocusSessionComposer,
+            onOpenCanvas: {
+                session.presentCanvas()
+            }
+        )
     }
 }
 
