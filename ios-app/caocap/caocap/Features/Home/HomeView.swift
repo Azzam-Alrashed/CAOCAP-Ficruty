@@ -199,7 +199,7 @@ private struct SessionRow: View {
     let session: SessionSummary
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(Color(uiColor: .systemBlue))
@@ -219,11 +219,35 @@ private struct SessionRow: View {
 
             Spacer(minLength: 8)
 
-            Text(session.updatedAt, format: .relative(presentation: .named))
-                .font(.caption)
+            Text(compactTimestamp)
+                .font(.caption2)
+                .monospacedDigit()
                 .foregroundStyle(Color(uiColor: .secondaryLabel))
+                .fixedSize()
         }
         .contentShape(Rectangle())
+    }
+
+    private var compactTimestamp: String {
+        let now = Date()
+        let elapsed = max(0, now.timeIntervalSince(session.updatedAt))
+
+        if elapsed < 60 {
+            return "Now"
+        }
+        if elapsed < 3_600 {
+            return "\(Int(elapsed / 60))m"
+        }
+        if elapsed < 86_400 {
+            return "\(Int(elapsed / 3_600))h"
+        }
+        if elapsed < 604_800 {
+            return session.updatedAt.formatted(.dateTime.weekday(.abbreviated))
+        }
+        if Calendar.current.isDate(session.updatedAt, equalTo: now, toGranularity: .year) {
+            return session.updatedAt.formatted(.dateTime.day().month(.abbreviated))
+        }
+        return session.updatedAt.formatted(.dateTime.month(.abbreviated).year(.twoDigits))
     }
 }
 
