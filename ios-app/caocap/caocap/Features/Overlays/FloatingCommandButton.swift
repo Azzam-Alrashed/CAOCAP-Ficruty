@@ -31,6 +31,8 @@ struct FloatingCommandButton: View {
     var copilot: CopilotPersona = UserProfileStore().loadSelectedCopilot()
 
     var tooltipAnchor: OnboardingTooltipAnchor = .floatingCommandButton
+    /// Additional clearance reserved beneath the snap grid (for global tab chrome).
+    var bottomInset: CGFloat = 0
     /// When non-null and overlapping the FAB, the button relocates to another snap point.
     var obstacleFrame: CGRect = .null
     /// Hit-test region for the overlay window (full screen while the radial menu is open).
@@ -324,7 +326,7 @@ struct FloatingCommandButton: View {
     private func initialPosition(in size: CGSize) -> CGPoint {
         CGPoint(
             x: size.width - padding - buttonSize / 2,
-            y: size.height - padding - buttonSize / 2
+            y: size.height - bottomInset - padding - buttonSize / 2
         )
     }
 
@@ -352,7 +354,7 @@ struct FloatingCommandButton: View {
         let minX = padding + buttonSize / 2
         let maxX = size.width - padding - buttonSize / 2
         let minY = 60 + buttonSize / 2
-        let maxY = size.height - padding - buttonSize / 2
+        let maxY = size.height - bottomInset - padding - buttonSize / 2
         let centerX = size.width / 2
         let centerY = size.height / 2
         return [

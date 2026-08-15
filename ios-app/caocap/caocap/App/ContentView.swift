@@ -3,7 +3,7 @@ import SwiftUI
 /// Root view that switches between launch, onboarding, and the signed-in app shell.
 ///
 /// Session orchestration lives in `AppSessionCoordinator`; this view wires UI only.
-/// Call chrome, confetti, and force-update live in a passthrough `UIWindow` above system sheets.
+/// FAB, call chrome, confetti, and force-update live in a passthrough `UIWindow` above system sheets.
 struct ContentView: View {
     @State private var session = AppSessionCoordinator()
     @Environment(\.undoManager) private var undoManager
@@ -54,7 +54,7 @@ struct ContentView: View {
         HomeView(session: session)
             .onboardingTooltipOverlay(
                 isCommandPalettePresented: session.commandPalette.isPresented,
-                // Canvas-local anchors, including its FAB, render inside the canvas sheet.
+                // Canvas-local anchors, including its FAB, render inside the Home canvas.
                 rendersAnchor: {
                     !$0.isCanvasLocal
                         && !$0.isPreviewShellLocal

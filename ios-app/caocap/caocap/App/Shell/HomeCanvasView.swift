@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// The active session's spatial workspace, presented above its primary chat.
-struct SessionCanvasSheet: View {
+/// The canvas-first Home tab, including its local command and FAB layers.
+struct HomeCanvasView: View {
     @Bindable var session: AppSessionCoordinator
-    @State private var fabAnchorFrame: CGRect = .null
+    var onOpenChat: () -> Void
 
     var body: some View {
         ZStack {
             workspaceCanvas
+                .ignoresSafeArea(.container, edges: .bottom)
 
             CommandPaletteView(viewModel: session.commandPalette)
 
@@ -16,7 +17,7 @@ struct SessionCanvasSheet: View {
                     session.commandPalette.setPresented(true)
                 },
                 onSummonCoCaptain: {
-                    session.dismissCanvas()
+                    onOpenChat()
                 },
                 onUndo: {
                     _ = session.actionDispatcher.perform(.undo, source: .user)
@@ -26,42 +27,11 @@ struct SessionCanvasSheet: View {
                 }
             )
 
-            FloatingCommandButton(
-                onTap: {
-                    session.handleFloatingCommandButtonTap()
-                },
-                onCenterCanvas: {
-                    session.centerActiveCanvas()
-                },
-                onOpenCommandLine: {
-                    session.openCommandLine()
-                },
-                onSelectMode: { mode in
-                    switch mode {
-                    case .chat:
-                        session.dismissCanvas()
-                    case .video:
-                        _ = session.actionDispatcher.perform(
-                            .summonCopilotVideo,
-                            source: .user
-                        )
-                    }
-                },
-                copilot: session.selectedCopilot,
-                onAnchorFrameChange: { frame in
-                    fabAnchorFrame = frame
-                }
-            )
-            .environment(\.layoutDirection, .leftToRight)
-            .environment(session.onboarding)
         }
         .background(Color(uiColor: .systemBackground))
-        .onboardingExplicitAnchorFrames(fabExplicitAnchorFrames)
         .onboardingTooltipOverlay(
             isCommandPalettePresented: session.commandPalette.isPresented,
-            rendersAnchor: { anchor in
-                anchor.isCanvasLocal || anchor == .floatingCommandButton
-            }
+            rendersAnchor: { $0.isCanvasLocal }
         )
         .environment(session.onboarding)
     }
@@ -86,11 +56,6 @@ struct SessionCanvasSheet: View {
                 onEmptySpaceTap: dismissCommandLine
             )
         }
-    }
-
-    private var fabExplicitAnchorFrames: [OnboardingTooltipAnchor: CGRect] {
-        guard !fabAnchorFrame.isNull, !fabAnchorFrame.isEmpty else { return [:] }
-        return [.floatingCommandButton: fabAnchorFrame]
     }
 
     private func dismissCommandLine() {

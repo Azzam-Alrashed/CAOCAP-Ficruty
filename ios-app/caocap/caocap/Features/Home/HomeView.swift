@@ -1,21 +1,32 @@
 import SwiftUI
 
-/// App-level navigation shell with a traditional list of conversation sessions.
+/// Canvas-first app shell with dedicated chat, activity, settings, and search tabs.
 struct HomeView: View {
     let session: AppSessionCoordinator
 
-    @State private var selectedTab: HomeTab = .sessions
-    @State private var searchContext: HomeTab = .sessions
+    @State private var searchContext: HomeTab = .home
     @State private var searchText = ""
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab(value: HomeTab.sessions) {
-                sessionsTab
+        @Bindable var session = session
+
+        return TabView(selection: $session.selectedHomeTab) {
+            Tab(value: HomeTab.home) {
+                HomeCanvasView(session: session) {
+                    session.openChatTab()
+                }
             } label: {
                 Image("icons8-Home Plumpy")
                     .renderingMode(.template)
                     .accessibilityLabel("Home")
+            }
+
+            Tab(value: HomeTab.chat) {
+                chatTab
+            } label: {
+                Image("icons8-Chat Plumpy")
+                    .renderingMode(.template)
+                    .accessibilityLabel("Chat")
             }
 
             Tab(value: HomeTab.activity) {
@@ -39,14 +50,17 @@ struct HomeView: View {
             }
         }
         .tint(tabTint)
-        .onChange(of: selectedTab) { _, newTab in
+        .onChange(of: session.selectedHomeTab) { oldTab, newTab in
+            if oldTab == .chat, newTab != .chat {
+                session.leaveChatTab()
+            }
             guard newTab != .search else { return }
             searchContext = newTab
             searchText = ""
         }
     }
 
-    private var sessionsTab: some View {
+    private var chatTab: some View {
         @Bindable var session = session
 
         return NavigationStack(path: $session.sessionPath) {
@@ -93,7 +107,7 @@ struct HomeView: View {
                     .padding(.vertical, 20)
                 }
             }
-            .navigationTitle("Home")
+            .navigationTitle("Chats")
             .navigationDestination(for: UUID.self) { sessionID in
                 SessionChatView(session: session, sessionID: sessionID)
                     .toolbar(.hidden, for: .tabBar)
@@ -149,7 +163,9 @@ struct HomeView: View {
 
     private var searchTitle: String {
         switch searchContext {
-        case .sessions:
+        case .home:
+            "Search Canvas"
+        case .chat:
             "Search Sessions"
         case .activity:
             "Search Activity"
@@ -162,7 +178,9 @@ struct HomeView: View {
 
     private var searchPrompt: String {
         switch searchContext {
-        case .sessions:
+        case .home:
+            "Nodes and canvas content"
+        case .chat:
             "Sessions and messages"
         case .activity:
             "Events and agent actions"
@@ -174,10 +192,12 @@ struct HomeView: View {
     }
 
     private var tabTint: Color {
-        let activeContext = selectedTab == .search ? searchContext : selectedTab
+        let activeContext = session.selectedHomeTab == .search
+            ? searchContext
+            : session.selectedHomeTab
 
         switch activeContext {
-        case .sessions, .search:
+        case .home, .chat, .search:
             return Color(uiColor: .systemBlue)
         case .activity:
             return Color(uiColor: .systemGreen)
@@ -231,8 +251,9 @@ private struct NewSessionRow: View {
     }
 }
 
-private enum HomeTab: Hashable {
-    case sessions
+enum HomeTab: Hashable {
+    case home
+    case chat
     case activity
     case settings
     case search
@@ -303,10 +324,7 @@ private struct SessionChatView: View {
             viewModel: session.coCaptain,
             presentationStyle: .session,
             sessionTitle: session.sessionLibrary.session(id: sessionID)?.title ?? "New Session",
-            focusComposerOnAppear: session.shouldFocusSessionComposer,
-            onOpenCanvas: {
-                session.presentCanvas()
-            }
+            focusComposerOnAppear: session.shouldFocusSessionComposer
         )
     }
 }

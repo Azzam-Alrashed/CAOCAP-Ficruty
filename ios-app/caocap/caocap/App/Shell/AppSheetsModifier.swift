@@ -8,12 +8,6 @@ struct AppSheetsModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         coCaptainPresentation(content)
-            .sheet(isPresented: $session.showingCanvas) {
-                SessionCanvasSheet(session: session)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(.ultraThinMaterial)
-            }
             .sheet(isPresented: $session.showingSignIn) {
                 SignInView()
                     .presentationDetents([.large])

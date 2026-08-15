@@ -10,13 +10,13 @@ import UniformTypeIdentifiers
 @Observable
 final class AppSessionCoordinator {
     var sessionLibrary: SessionLibrary
+    var selectedHomeTab: HomeTab = .home
     var sessionPath: [UUID] = []
     private(set) var activeSessionID: UUID?
     private(set) var shouldFocusSessionComposer = false
-    var showingCanvas = false
     var router: AppRouter
     var commandPalette = CommandPaletteViewModel()
-    var coCaptain = CoCaptainViewModel()
+    var coCaptain: CoCaptainViewModel
     private(set) var actionDispatcher = AppActionDispatcher()
 
     var showingPurchaseSheet = false
@@ -47,7 +47,6 @@ final class AppSessionCoordinator {
     /// Hard cap so splash never blocks interaction longer than the old fixed delay.
     var launchMaximumVisibleDuration: Duration = .seconds(2.5)
     @ObservationIgnored private var launchDismissTask: Task<Void, Never>?
-    @ObservationIgnored private var draftCleanupTask: Task<Void, Never>?
     @ObservationIgnored private let projectPersistence: ProjectPersistenceService
 
 
@@ -64,10 +63,12 @@ final class AppSessionCoordinator {
 
     init(
         sessionLibrary: SessionLibrary? = nil,
-        projectPersistence: ProjectPersistenceService = ProjectPersistenceService()
+        projectPersistence: ProjectPersistenceService = ProjectPersistenceService(),
+        coCaptain: CoCaptainViewModel? = nil
     ) {
         self.sessionLibrary = sessionLibrary ?? SessionLibrary()
         self.projectPersistence = projectPersistence
+        self.coCaptain = coCaptain ?? CoCaptainViewModel()
         self.router = AppRouter(projectPersistence: projectPersistence)
         onboarding.onTutorialCompleted = { [weak self] in
             self?.celebrateTutorialGraduation()
@@ -113,7 +114,7 @@ final class AppSessionCoordinator {
         actionDispatcher.refreshCopilotActionTitle()
         syncViewportWithActiveStore()
         attachUndoManager(undoManager)
-        coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
+        coCaptain.configureProjectSession(store: router.rootStore, dispatcher: actionDispatcher)
 
         scheduleLaunchOverlayDismissal()
     }
@@ -167,7 +168,7 @@ final class AppSessionCoordinator {
         activeUndoManager = undoManager
         bindCommandPalette()
         attachUndoManager(undoManager)
-        coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
+        coCaptain.configureProjectSession(store: router.rootStore, dispatcher: actionDispatcher)
         syncCommandPaletteActions()
         syncViewportWithActiveStore()
     }
@@ -201,7 +202,7 @@ final class AppSessionCoordinator {
 
     /// Starts the gesture tutorial only when intro and personalization are both complete.
     func startInteractiveOnboardingIfNeeded() {
-        guard showingCanvas, !personalization.shouldPresent else { return }
+        guard !intro.shouldPresent, !personalization.shouldPresent else { return }
         onboarding.startIfNeeded()
     }
 
@@ -255,13 +256,13 @@ final class AppSessionCoordinator {
         sessionPath = []
         activeSessionID = nil
         shouldFocusSessionComposer = false
-        showingCanvas = false
+        selectedHomeTab = .home
         actionsConfigured = false
 
         bindCommandPalette()
         configureActionsIfNeeded()
         attachUndoManager(activeUndoManager)
-        coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
+        coCaptain.configureProjectSession(store: router.rootStore, dispatcher: actionDispatcher)
         syncViewportWithActiveStore()
         launchDismissTask?.cancel()
         launchDismissTask = nil
@@ -354,16 +355,7 @@ final class AppSessionCoordinator {
             showingCopilotPicker = false
             dismissed = true
         }
-        if showingCanvas {
-            showingCanvas = false
-            dismissed = true
-        }
         return dismissed
-    }
-
-    /// The FAB now belongs to the canvas sheet; tapping it returns to the chat below.
-    func handleFloatingCommandButtonTap() {
-        dismissCanvas()
     }
 
     /// Opens the Command Line from the FAB's middle long-press action.
@@ -383,6 +375,7 @@ final class AppSessionCoordinator {
     /// Pushes a real session using Home's native navigation stack.
     func openSession(id: UUID, focusComposer: Bool = false) {
         guard let summary = sessionLibrary.session(id: id) else { return }
+        selectedHomeTab = .chat
         activeSessionID = id
         shouldFocusSessionComposer = focusComposer
         sessionPath = [id]
@@ -399,20 +392,39 @@ final class AppSessionCoordinator {
     func returnHome() {
         commandPalette.setPresented(false)
         coCaptain.setPresented(false)
-        showingCanvas = false
         sessionPath = []
         closeActiveSession()
+        router.goRoot()
+        selectedHomeTab = .home
     }
 
-    func presentCanvas() {
-        guard activeSessionID != nil else { return }
-        showingCanvas = true
-        startInteractiveOnboardingIfNeeded()
+    func openChatTab() {
+        if selectedHomeTab != .chat {
+            sessionPath = []
+            closeActiveSession()
+        }
+        selectedHomeTab = .chat
     }
 
-    func dismissCanvas() {
+    /// Makes the Home surface active before presenting its canvas-local Command Line.
+    func openHomeCommandLine() {
+        dismissPresentedSheets()
+        selectedHomeTab = .home
+        openCommandLine()
+    }
+
+    /// Makes the Home canvas active before applying a viewport command from global chrome.
+    func openHomeAndCenterCanvas() {
+        dismissPresentedSheets()
+        selectedHomeTab = .home
+        centerActiveCanvas()
+    }
+
+    /// Resets Chat's navigation so returning to the tab always shows its session list.
+    func leaveChatTab() {
         commandPalette.setPresented(false)
-        showingCanvas = false
+        sessionPath = []
+        closeActiveSession()
     }
 
     // MARK: - Command Line
@@ -454,18 +466,13 @@ final class AppSessionCoordinator {
     }
 
     private func configureSession(_ summary: SessionSummary) {
-        router.navigate(
-            to: .project(summary.workspaceFileName),
-            addToStack: false,
-            animated: false
-        )
-        let store = router.activeStore
+        let store = router.rootStore
         attachUndoManager(activeUndoManager)
-        syncViewportWithActiveStore()
         coCaptain.onConversationMetadataChange = { [weak self] metadata in
             self?.handleConversationMetadata(metadata, sessionID: summary.id)
         }
         coCaptain.configureProjectSession(store: store, dispatcher: actionDispatcher)
+        coCaptain.selectConversation(for: summary.id)
     }
 
     private func handleConversationMetadata(
@@ -497,29 +504,12 @@ final class AppSessionCoordinator {
         shouldFocusSessionComposer = false
         coCaptain.onConversationMetadataChange = nil
 
-        guard let draft = sessionLibrary.discardDraft(id: id) else { return }
-        let store = router.detachProject(fileName: draft.workspaceFileName)
-        draftCleanupTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            if let store {
-                await store.prepareForDataReset()
-            }
-            await self.coCaptain.discardProjectSession(fileName: draft.workspaceFileName)
-            do {
-                try self.projectPersistence.deleteProject(fileName: draft.workspaceFileName)
-            } catch {
-                Logger(
-                    subsystem: "com.caocap.app",
-                    category: "SessionCleanup"
-                ).error(
-                    "Could not remove abandoned session: \(error.localizedDescription, privacy: .public)"
-                )
-            }
-        }
+        guard sessionLibrary.discardDraft(id: id) != nil else { return }
+        coCaptain.deleteConversation(id: id)
     }
 
     func waitForDraftCleanup() async {
-        await draftCleanupTask?.value
+        await Task.yield()
     }
 
     private func syncViewportWithActiveStore() {
@@ -568,12 +558,7 @@ final class AppSessionCoordinator {
         }
         actionDispatcher.register(.summonCoCaptain) { [weak self] in
             guard let self else { return }
-            self.coCaptain.configureProjectSession(store: self.router.activeStore, dispatcher: self.actionDispatcher)
-            if self.activeSessionID != nil {
-                self.dismissCanvas()
-            } else {
-                self.presentCoCaptain()
-            }
+            self.openChatTab()
         }
         actionDispatcher.register(.summonCopilotVideo) { [weak self] in
             self?.presentCopilotCall(mode: .video)
@@ -699,12 +684,12 @@ final class AppSessionCoordinator {
            onboarding.content(for: step)?.blocksCoCaptainPrompt == true {
             return
         }
-        coCaptain.configureProjectSession(store: router.activeStore, dispatcher: actionDispatcher)
-        if activeSessionID != nil {
-            dismissCanvas()
-        } else {
-            presentCoCaptain()
+        coCaptain.configureProjectSession(store: router.rootStore, dispatcher: actionDispatcher)
+        if activeSessionID == nil {
+            let draft = createSession()
+            coCaptain.selectConversation(for: draft.id)
         }
+        selectedHomeTab = .chat
         coCaptain.sendMessage(prompt, purpose: .standard)
     }
 

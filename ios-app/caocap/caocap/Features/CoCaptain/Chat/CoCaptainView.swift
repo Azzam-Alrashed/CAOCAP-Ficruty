@@ -12,7 +12,6 @@ struct CoCaptainView: View {
     var presentationStyle: CoCaptainPresentationStyle = .legacySheet
     var sessionTitle: String?
     var focusComposerOnAppear = false
-    var onOpenCanvas: (() -> Void)?
     @State private var text: String = ""
     @State private var mentions: [CoCaptainNodeMention] = []
     @State private var attachments: [CoCaptainAttachment] = []
@@ -201,15 +200,6 @@ struct CoCaptainView: View {
                         .lineLimit(1)
                 }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        isFocused = false
-                        onOpenCanvas?()
-                    } label: {
-                        Image(systemName: "square.on.square")
-                    }
-                    .accessibilityLabel("Open canvas")
-                }
             }
         }
     }

@@ -76,6 +76,10 @@ public final class CoCaptainViewModel {
     @ObservationIgnored
     private var loadedConversationFileName: String?
     @ObservationIgnored
+    private var pendingConversationSelectionID: UUID?
+    @ObservationIgnored
+    private var pendingConversationDeletionIDs: Set<UUID> = []
+    @ObservationIgnored
     private var sessionEpoch = UUID()
     @ObservationIgnored
     private var isDiscardingProjectSession = false
@@ -287,6 +291,43 @@ public final class CoCaptainViewModel {
         persistConversationArchive()
     }
 
+    /// Selects the Home session's matching conversation in the shared canvas archive.
+    /// A missing conversation is created with the session ID so chat histories remain
+    /// independent even though every session uses the same root `ProjectStore`.
+    public func selectConversation(for sessionID: UUID) {
+        guard scope == .project, !isThinking else { return }
+        guard !isConversationArchiveLoading else {
+            pendingConversationSelectionID = sessionID
+            pendingConversationDeletionIDs.remove(sessionID)
+            return
+        }
+
+        if activeConversationID != sessionID {
+            synchronizeActiveConversation()
+        }
+
+        let conversation: CoCaptainConversation
+        if let existing = conversations.first(where: { $0.id == sessionID }) {
+            conversation = existing
+        } else {
+            conversation = makeConversation(id: sessionID)
+            conversations.append(conversation)
+        }
+
+        activeConversationID = conversation.id
+        items = conversation.items
+        lastScrollPosition = conversation.lastScrollPosition
+        lastTurnCompletion = nil
+        restoreProjectReviewRecordsFromTimeline()
+        agentCoordinator.resetChat(scope: scope)
+        shouldReplayConversationContext = conversation.items.contains { item in
+            guard case .message(let message) = item.content else { return false }
+            return message.isUser
+        }
+        requestEmptyComposerDraft()
+        persistConversationArchive()
+    }
+
     public func switchConversation(to conversationID: UUID) {
         guard scope == .project,
               !isThinking,
@@ -325,8 +366,17 @@ public final class CoCaptainViewModel {
 
     public func deleteConversation(id: UUID) {
         guard scope == .project,
-              !isThinking,
-              !isConversationArchiveLoading,
+              !isThinking else {
+            return
+        }
+        guard !isConversationArchiveLoading else {
+            pendingConversationDeletionIDs.insert(id)
+            if pendingConversationSelectionID == id {
+                pendingConversationSelectionID = nil
+            }
+            return
+        }
+        guard
               let index = conversations.firstIndex(where: { $0.id == id }) else {
             return
         }
@@ -1203,8 +1253,9 @@ public final class CoCaptainViewModel {
         conversations[index].title = String(singleLine.prefix(48))
     }
 
-    private func makeConversation() -> CoCaptainConversation {
+    private func makeConversation(id: UUID = UUID()) -> CoCaptainConversation {
         CoCaptainConversation(
+            id: id,
             title: LocalizationManager.shared.localizedString("New conversation"),
             items: []
         )
@@ -1269,10 +1320,29 @@ public final class CoCaptainViewModel {
                 )
             }
 
-            conversations = archive.conversations
-            let selected = conversations.first(where: {
-                $0.id == archive.activeConversationID
-            }) ?? conversations[0]
+            conversations = archive.conversations.filter {
+                !self.pendingConversationDeletionIDs.contains($0.id)
+            }
+            pendingConversationDeletionIDs.removeAll()
+            if conversations.isEmpty {
+                conversations = [makeConversation()]
+            }
+
+            let requestedID = pendingConversationSelectionID
+            pendingConversationSelectionID = nil
+            let selected: CoCaptainConversation
+            if let requestedID,
+               let requested = conversations.first(where: { $0.id == requestedID }) {
+                selected = requested
+            } else if let requestedID {
+                let requested = makeConversation(id: requestedID)
+                conversations.append(requested)
+                selected = requested
+            } else {
+                selected = conversations.first(where: {
+                    $0.id == archive.activeConversationID
+                }) ?? conversations[0]
+            }
             activeConversationID = selected.id
             items = selected.items
             lastScrollPosition = selected.lastScrollPosition

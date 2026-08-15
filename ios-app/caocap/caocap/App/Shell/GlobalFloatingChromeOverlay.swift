@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// Transparent window that sits above system sheets and only accepts hits inside
-/// explicitly registered chrome frames, such as the call pill.
+/// explicitly registered chrome frames, such as the FAB and call pill.
 ///
 /// Must not become the key window — otherwise overlay taps steal first-responder
 /// ownership from the main app window and the Command Line keyboard never appears.
@@ -125,11 +125,14 @@ final class GlobalFloatingChromeController {
     }
 }
 
-/// Call chrome, confetti, and force-update rendered in the overlay window above sheets.
+/// FAB, call chrome, confetti, and force-update rendered in the overlay window above sheets.
 struct GlobalFloatingChromeView: View {
     @Bindable var bridge: GlobalFloatingChromeBridge
 
     @State private var callChromeFrame: CGRect = .null
+    @State private var fabInteractiveFrame: CGRect = .null
+    @State private var fabAnchorFrame: CGRect = .null
+    @State private var fabTooltipFrame: CGRect = .null
 
     var body: some View {
         Group {
@@ -159,6 +162,47 @@ struct GlobalFloatingChromeView: View {
                 .transition(.opacity)
             }
 
+            if shouldShowFAB(session) {
+                FloatingCommandButton(
+                    onTap: {
+                        session.dismissPresentedSheets()
+                        session.openChatTab()
+                    },
+                    onCenterCanvas: {
+                        session.openHomeAndCenterCanvas()
+                    },
+                    onOpenCommandLine: {
+                        session.openHomeCommandLine()
+                    },
+                    onSelectMode: { mode in
+                        switch mode {
+                        case .chat:
+                            session.dismissPresentedSheets()
+                            session.openChatTab()
+                        case .video:
+                            _ = session.actionDispatcher.perform(
+                                .summonCopilotVideo,
+                                source: .user
+                            )
+                        }
+                    },
+                    copilot: session.selectedCopilot,
+                    bottomInset: 96,
+                    obstacleFrame: callChromeFrame,
+                    onInteractiveFrameChange: { frame in
+                        fabInteractiveFrame = frame
+                        publishInteractiveFrames(session: session)
+                    },
+                    onAnchorFrameChange: { frame in
+                        fabAnchorFrame = frame
+                    }
+                )
+                .environment(\.layoutDirection, .leftToRight)
+                .environment(session.onboarding)
+                .transition(.opacity)
+                .zIndex(1_500)
+            }
+
             if session.showConfetti {
                 confettiOverlay(showGraduationBanner: session.showTutorialGraduationBanner)
                     .transition(.opacity)
@@ -171,6 +215,15 @@ struct GlobalFloatingChromeView: View {
                     .zIndex(2_000)
             }
         }
+        .onboardingExplicitAnchorFrames(fabExplicitAnchorFrames)
+        .fabChromeOnboardingTooltipOverlay(
+            isCommandPalettePresented: session.commandPalette.isPresented,
+            onCardFrameChange: { frame in
+                fabTooltipFrame = frame
+                publishInteractiveFrames(session: session)
+            }
+        )
+        .environment(session.onboarding)
         .onAppear {
             publishInteractiveFrames(session: session)
             bridge.onBlocksAllPassthroughChange(showsForceUpdate)
@@ -196,6 +249,20 @@ struct GlobalFloatingChromeView: View {
         }
         .onChange(of: session.appUpdateService.availableUpdate) { _, _ in
             refreshChromeVisibility(session: session)
+        }
+        .onChange(of: shouldShowFAB(session)) { _, showing in
+            if !showing {
+                fabInteractiveFrame = .null
+                fabAnchorFrame = .null
+                fabTooltipFrame = .null
+            }
+            publishInteractiveFrames(session: session)
+        }
+        .onChange(of: session.onboarding.currentStep) { _, _ in
+            publishInteractiveFrames(session: session)
+        }
+        .onChange(of: session.onboarding.showPopover) { _, _ in
+            publishInteractiveFrames(session: session)
         }
     }
 
@@ -229,22 +296,53 @@ struct GlobalFloatingChromeView: View {
             && !shouldShowForceUpdate(session)
     }
 
+    private func shouldShowFAB(_ session: AppSessionCoordinator) -> Bool {
+        !session.isLaunching
+            && !session.intro.shouldPresent
+            && !session.personalization.shouldPresent
+            && !shouldShowForceUpdate(session)
+    }
+
+    private var fabExplicitAnchorFrames: [OnboardingTooltipAnchor: CGRect] {
+        guard !fabAnchorFrame.isNull, !fabAnchorFrame.isEmpty else { return [:] }
+        return [.floatingCommandButton: fabAnchorFrame]
+    }
+
+    private func shouldRegisterFABTooltip(_ session: AppSessionCoordinator) -> Bool {
+        guard session.onboarding.showPopover,
+              let step = session.onboarding.currentStep,
+              let content = session.onboarding.content(for: step) else {
+            return false
+        }
+        return content.tooltipAnchor == .floatingCommandButton
+    }
+
     private func refreshChromeVisibility(session: AppSessionCoordinator) {
         if !shouldShowCallChrome(session) {
             callChromeFrame = .null
+        }
+        if !shouldShowFAB(session) {
+            fabInteractiveFrame = .null
+            fabAnchorFrame = .null
+            fabTooltipFrame = .null
         }
         bridge.onBlocksAllPassthroughChange(shouldShowForceUpdate(session))
         publishInteractiveFrames(session: session)
     }
 
     private func publishInteractiveFrames(session: AppSessionCoordinator) {
-        guard shouldShowCallChrome(session) else {
-            bridge.onInteractiveFramesChange([])
-            return
-        }
         var frames: [CGRect] = []
-        if session.showingCopilotCall, !callChromeFrame.isNull, !callChromeFrame.isEmpty {
+        if shouldShowCallChrome(session), !callChromeFrame.isNull, !callChromeFrame.isEmpty {
             frames.append(callChromeFrame)
+        }
+        if shouldShowFAB(session), !fabInteractiveFrame.isNull, !fabInteractiveFrame.isEmpty {
+            frames.append(fabInteractiveFrame)
+        }
+        if shouldShowFAB(session),
+           shouldRegisterFABTooltip(session),
+           !fabTooltipFrame.isNull,
+           !fabTooltipFrame.isEmpty {
+            frames.append(fabTooltipFrame)
         }
         bridge.onInteractiveFramesChange(frames)
     }
